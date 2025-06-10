@@ -6,8 +6,8 @@ function categories_CrimesReported20242025_3(feature, value, size, resolution, l
                 var valueStr = (value !== null && value !== undefined) ? value.toString() : 'default';
                 switch(valueStr) {case 'MISC':
                     return [ new ol.style.Style({
-        image: new ol.style.Circle({radius: 4.0 + size,
-            displacement: [0, 0], stroke: new ol.style.Stroke({color: 'rgba(35,35,35,0.9)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 0.0}), fill: new ol.style.Fill({color: 'rgba(148,232,109,0.9)'})}),
+        image: new ol.style.Circle({radius: 8.0 + size,
+            displacement: [0, 0], stroke: new ol.style.Stroke({color: 'rgba(117,58,128,0.9)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 1.52}), fill: new ol.style.Fill({color: 'rgba(149,74,162,0.9)'})}),
         text: createTextStyle(feature, resolution, labelText, labelFont,
                               labelFill, placement, bufferColor,
                               bufferWidth)
@@ -103,7 +103,7 @@ case 'Criminal Threat':
 case 'GTA':
                     return [ new ol.style.Style({
         image: new ol.style.RegularShape({radius: 8.8 + size, points: 4,
-            displacement: [0, 0], stroke: new ol.style.Stroke({color: 'rgba(128,17,25,0.9)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 1.52}), fill: new ol.style.Fill({color: 'rgba(219,30,42,0.9)'})}),
+            displacement: [0, 0], stroke: new ol.style.Stroke({color: 'rgba(128,17,25,0.9)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 1.52}), fill: new ol.style.Fill({color: 'rgba(30,203,219,0.9)'})}),
         text: createTextStyle(feature, resolution, labelText, labelFont,
                               labelFill, placement, bufferColor,
                               bufferWidth)
@@ -112,7 +112,7 @@ case 'GTA':
 case 'Robbery':
                     return [ new ol.style.Style({
         image: new ol.style.RegularShape({radius: 8.0 + size, points: 3,
-            displacement: [0, 0], stroke: new ol.style.Stroke({color: 'rgba(128,17,25,0.9)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 1.52}), fill: new ol.style.Fill({color: 'rgba(219,30,208,0.9)'})}),
+            displacement: [0, 0], stroke: new ol.style.Stroke({color: 'rgba(128,17,25,0.9)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 1.52}), fill: new ol.style.Fill({color: 'rgba(212,250,5,0.9)'})}),
         text: createTextStyle(feature, resolution, labelText, labelFont,
                               labelFill, placement, bufferColor,
                               bufferWidth)
@@ -120,8 +120,8 @@ case 'Robbery':
                     break;
 case 'TFMV':
                     return [ new ol.style.Style({
-        image: new ol.style.Circle({radius: 4.0 + size,
-            displacement: [0, 0], stroke: new ol.style.Stroke({color: 'rgba(35,35,35,0.9)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 0.0}), fill: new ol.style.Fill({color: 'rgba(72,145,193,0.9)'})}),
+        image: new ol.style.RegularShape({radius: 6.8 + size, points: 4,
+            displacement: [0, 0], stroke: new ol.style.Stroke({color: 'rgba(50,87,128,0.9)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 1.52}), fill: new ol.style.Fill({color: 'rgba(243,246,249,0.9)'})}),
         text: createTextStyle(feature, resolution, labelText, labelFont,
                               labelFill, placement, bufferColor,
                               bufferWidth)

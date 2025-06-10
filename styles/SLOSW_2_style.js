@@ -1,99 +1,91 @@
 var size = 0;
 var placement = 'point';
-function categories_SLOJurisdiction_1(feature, value, size, resolution, labelText,
+function categories_SLOSW_2(feature, value, size, resolution, labelText,
                        labelFont, labelFill, bufferColor, bufferWidth,
                        placement) {
                 var valueStr = (value !== null && value !== undefined) ? value.toString() : 'default';
-                switch(valueStr) {case 'Ana Maria Mejia #33682':
+                switch(valueStr) {case 'Acting SLO Cole #37623':
                     return [ new ol.style.Style({
-        stroke: new ol.style.Stroke({color: 'rgba(0,0,0,0.502)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 0.988}),fill: new ol.style.Fill({color: 'rgba(215,25,28,0.502)'}),
+        stroke: new ol.style.Stroke({color: 'rgba(35,35,35,0.303)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 0.988}),fill: new ol.style.Fill({color: 'rgba(178,234,59,0.303)'}),
         text: createTextStyle(feature, resolution, labelText, labelFont,
                               labelFill, placement, bufferColor,
                               bufferWidth)
     })];
                     break;
-case 'John Bionndo #36576 / Cesar Lopez #38512 ':
+case 'Acting SLO Gatus #40359':
                     return [ new ol.style.Style({
-        stroke: new ol.style.Stroke({color: 'rgba(0,0,0,0.502)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 0.988}),fill: new ol.style.Fill({color: 'rgba(230,85,56,0.502)'}),
+        stroke: new ol.style.Stroke({color: 'rgba(35,35,35,0.303)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 0.988}),fill: new ol.style.Fill({color: 'rgba(92,41,202,0.303)'}),
         text: createTextStyle(feature, resolution, labelText, labelFont,
                               labelFill, placement, bufferColor,
                               bufferWidth)
     })];
                     break;
-case 'Jose Saldana #36870':
+case 'SLO Ana Maria Mejia #33682/Acting SLO Chavez  #36761':
                     return [ new ol.style.Style({
-        stroke: new ol.style.Stroke({color: 'rgba(0,0,0,0.502)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 0.988}),fill: new ol.style.Fill({color: 'rgba(245,144,83,0.502)'}),
+        stroke: new ol.style.Stroke({color: 'rgba(35,35,35,0.303)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 0.988}),fill: new ol.style.Fill({color: 'rgba(224,126,113,0.303)'}),
         text: createTextStyle(feature, resolution, labelText, labelFont,
                               labelFill, placement, bufferColor,
                               bufferWidth)
     })];
                     break;
-case 'Kenneth Sanchez #37713':
+case 'SLO John Biondo #36576 ':
                     return [ new ol.style.Style({
-        stroke: new ol.style.Stroke({color: 'rgba(0,0,0,0.502)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 0.988}),fill: new ol.style.Fill({color: 'rgba(253,190,116,0.502)'}),
+        stroke: new ol.style.Stroke({color: 'rgba(35,35,35,0.303)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 0.988}),fill: new ol.style.Fill({color: 'rgba(217,18,235,0.303)'}),
         text: createTextStyle(feature, resolution, labelText, labelFont,
                               labelFill, placement, bufferColor,
                               bufferWidth)
     })];
                     break;
-case 'Nichol Garner #32272':
+case 'SLO Jose Saldana #36870':
                     return [ new ol.style.Style({
-        stroke: new ol.style.Stroke({color: 'rgba(0,0,0,0.502)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 0.988}),fill: new ol.style.Fill({color: 'rgba(254,223,153,0.502)'}),
+        stroke: new ol.style.Stroke({color: 'rgba(35,35,35,0.303)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 0.988}),fill: new ol.style.Fill({color: 'rgba(117,204,215,0.303)'}),
         text: createTextStyle(feature, resolution, labelText, labelFont,
                               labelFill, placement, bufferColor,
                               bufferWidth)
     })];
                     break;
-case 'Paul Evleth #38086':
+case 'SLO Kenneth Sanchez #37713':
                     return [ new ol.style.Style({
-        stroke: new ol.style.Stroke({color: 'rgba(0,0,0,0.502)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 0.988}),fill: new ol.style.Fill({color: 'rgba(255,255,191,0.502)'}),
+        stroke: new ol.style.Stroke({color: 'rgba(35,35,35,0.303)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 0.988}),fill: new ol.style.Fill({color: 'rgba(18,204,114,0.303)'}),
         text: createTextStyle(feature, resolution, labelText, labelFont,
                               labelFill, placement, bufferColor,
                               bufferWidth)
     })];
                     break;
-case 'Rickey Crowder #36763':
+case 'SLO Paul Evleth #38086':
                     return [ new ol.style.Style({
-        stroke: new ol.style.Stroke({color: 'rgba(0,0,0,0.502)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 0.988}),fill: new ol.style.Fill({color: 'rgba(221,241,180,0.502)'}),
+        stroke: new ol.style.Stroke({color: 'rgba(35,35,35,0.303)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 0.988}),fill: new ol.style.Fill({color: 'rgba(226,192,105,0.303)'}),
         text: createTextStyle(feature, resolution, labelText, labelFont,
                               labelFill, placement, bufferColor,
                               bufferWidth)
     })];
                     break;
-case 'Sam Salazar #31256':
+case 'SLO Rickey Crowder #36763':
                     return [ new ol.style.Style({
-        stroke: new ol.style.Stroke({color: 'rgba(0,0,0,0.502)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 0.988}),fill: new ol.style.Fill({color: 'rgba(188,228,169,0.502)'}),
+        stroke: new ol.style.Stroke({color: 'rgba(35,35,35,0.303)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 0.988}),fill: new ol.style.Fill({color: 'rgba(19,72,208,0.303)'}),
         text: createTextStyle(feature, resolution, labelText, labelFont,
                               labelFill, placement, bufferColor,
                               bufferWidth)
     })];
                     break;
-case 'Scott Landeros 41618':
+case 'SLO Scott Landeros 41618':
                     return [ new ol.style.Style({
-        stroke: new ol.style.Stroke({color: 'rgba(0,0,0,0.502)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 0.988}),fill: new ol.style.Fill({color: 'rgba(145,203,168,0.502)'}),
+        stroke: new ol.style.Stroke({color: 'rgba(35,35,35,0.303)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 0.988}),fill: new ol.style.Fill({color: 'rgba(32,204,16,0.303)'}),
         text: createTextStyle(feature, resolution, labelText, labelFont,
                               labelFill, placement, bufferColor,
                               bufferWidth)
     })];
                     break;
-case 'Tyler Whiteman #3947':
+case 'SLO Tyler Whiteman #39471':
                     return [ new ol.style.Style({
-        stroke: new ol.style.Stroke({color: 'rgba(0,0,0,0.502)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 0.988}),fill: new ol.style.Fill({color: 'rgba(94,167,177,0.502)'}),
-        text: createTextStyle(feature, resolution, labelText, labelFont,
-                              labelFill, placement, bufferColor,
-                              bufferWidth)
-    })];
-                    break;
-default:
-                    return [ new ol.style.Style({
-        stroke: new ol.style.Stroke({color: 'rgba(0,0,0,0.502)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 0.988}),fill: new ol.style.Fill({color: 'rgba(43,131,186,0.502)'}),
+        stroke: new ol.style.Stroke({color: 'rgba(35,35,35,0.303)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 0.988}),fill: new ol.style.Fill({color: 'rgba(204,60,127,0.303)'}),
         text: createTextStyle(feature, resolution, labelText, labelFont,
                               labelFill, placement, bufferColor,
                               bufferWidth)
     })];
                     break;}};
 
-var style_SLOJurisdiction_1 = function(feature, resolution){
+var style_SLOSW_2 = function(feature, resolution){
     var context = {
         feature: feature,
         variables: {}
@@ -101,19 +93,19 @@ var style_SLOJurisdiction_1 = function(feature, resolution){
     
     var labelText = ""; 
     var value = feature.get("SLO Name");
-    var labelFont = "13.0px \'Open Sans\', sans-serif";
-    var labelFill = "#323232";
+    var labelFont = "10px, sans-serif";
+    var labelFill = "#000000";
     var bufferColor = "";
     var bufferWidth = 0;
     var textAlign = "left";
     var offsetX = 0;
     var offsetY = 0;
     var placement = 'point';
-    if (feature.get("q2wHide_RD") !== null) {
-        labelText = String(feature.get("q2wHide_RD"));
+    if ("" !== null) {
+        labelText = String("");
     }
     
-    var style = categories_SLOJurisdiction_1(feature, value, size, resolution, labelText,
+    var style = categories_SLOSW_2(feature, value, size, resolution, labelText,
                             labelFont, labelFill, bufferColor,
                             bufferWidth, placement);
 

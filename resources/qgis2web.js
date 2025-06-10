@@ -4,12 +4,12 @@ var map = new ol.Map({
     renderer: 'canvas',
     layers: layersList,
     view: new ol.View({
-        extent: [-13175803.137713, 4028578.797422, -13169756.557532, 4035642.653992], maxZoom: 28, minZoom: 1
+        extent: [-13175536.530437, 4028710.844791, -13169953.940716, 4035636.016334], maxZoom: 20, minZoom: 1
     })
 });
 
 //initial view - epsg:3857 coordinates if not "Match project CRS"
-map.getView().fit([-13175803.137713, 4028578.797422, -13169756.557532, 4035642.653992], map.getSize());
+map.getView().fit([-13175536.530437, 4028710.844791, -13169953.940716, 4035636.016334], map.getSize());
 
 ////small screen definition
     var hasTouchScreen = map.getViewport().classList.contains('ol-touch');
@@ -543,17 +543,6 @@ document.getElementsByClassName('gcd-gl-btn')[0].className += ' fa fa-search';
 
 //layer search
 
-var searchLayer = new SearchLayer({
-    layer: lyr_CrimesReported20242025_3,
-    colName: 'Crime',
-    zoom: 10,
-    collapsed: true,
-    map: map
-});
-map.addControl(searchLayer);
-document.getElementsByClassName('search-layer')[0].getElementsByTagName('button')[0].className += ' fa fa-binoculars';
-document.getElementsByClassName('search-layer-input-search')[0].placeholder = 'Search feature ...';
-    
 
 //scalebar
 

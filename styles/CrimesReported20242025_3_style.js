@@ -4,16 +4,7 @@ function categories_CrimesReported20242025_3(feature, value, size, resolution, l
                        labelFont, labelFill, bufferColor, bufferWidth,
                        placement) {
                 var valueStr = (value !== null && value !== undefined) ? value.toString() : 'default';
-                switch(valueStr) {case 'MISC':
-                    return [ new ol.style.Style({
-        image: new ol.style.Circle({radius: 8.0 + size,
-            displacement: [0, 0], stroke: new ol.style.Stroke({color: 'rgba(117,58,128,0.9)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 1.52}), fill: new ol.style.Fill({color: 'rgba(149,74,162,0.9)'})}),
-        text: createTextStyle(feature, resolution, labelText, labelFont,
-                              labelFill, placement, bufferColor,
-                              bufferWidth)
-    })];
-                    break;
-case 'Aggravated Assault':
+                switch(valueStr) {case 'Aggravated Assault':
                     return [ new ol.style.Style({
         image: new ol.style.RegularShape({radius: 13.2 + size, points: 5,
             radius2: 6.6, displacement: [0, 0], stroke: new ol.style.Stroke({color: 'rgba(184,8,8,0.9)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 0.76}), fill: new ol.style.Fill({color: 'rgba(17,1,1,0.9)'})}),
@@ -155,6 +146,36 @@ case 'Vandalism':
     }),new ol.style.Style({
         image: new ol.style.RegularShape({radius: 14.4 + size, points: 5,
             radius2: 7.2, displacement: [0, 0], stroke: new ol.style.Stroke({color: 'rgba(255,0,0,0.9)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 0.76}), fill: new ol.style.Fill({color: 'rgba(240,237,231,0.9)'})}),
+        text: createTextStyle(feature, resolution, labelText, labelFont,
+                              labelFill, placement, bufferColor,
+                              bufferWidth)
+    })];
+                    break;
+case 'SHOTS FIRED':
+                    return [ new ol.style.Style({
+        image: new ol.style.RegularShape({radius: 13.2 + size, points: 5,
+            radius2: 6.6, displacement: [0, 0], stroke: new ol.style.Stroke({color: 'rgba(184,8,8,0.9)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 0.76}), fill: new ol.style.Fill({color: 'rgba(129,22,230,0.9)'})}),
+        text: createTextStyle(feature, resolution, labelText, labelFont,
+                              labelFill, placement, bufferColor,
+                              bufferWidth)
+    }),new ol.style.Style({
+        image: new ol.style.RegularShape({radius: 14.4 + size, points: 5,
+            radius2: 7.2, displacement: [0, 0], stroke: new ol.style.Stroke({color: 'rgba(255,0,0,0.9)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 0.76}), fill: new ol.style.Fill({color: 'rgba(129,22,230,0.9)'})}),
+        text: createTextStyle(feature, resolution, labelText, labelFont,
+                              labelFill, placement, bufferColor,
+                              bufferWidth)
+    })];
+                    break;
+default:
+                    return [ new ol.style.Style({
+        image: new ol.style.RegularShape({radius: 17.6 + size, points: 6,
+            displacement: [0, 0], stroke: new ol.style.Stroke({color: 'rgba(250,139,57,0.9)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 3.8}), fill: new ol.style.Fill({color: 'rgba(15,191,252,0.9)'})}),
+        text: createTextStyle(feature, resolution, labelText, labelFont,
+                              labelFill, placement, bufferColor,
+                              bufferWidth)
+    }),new ol.style.Style({
+        image: new ol.style.RegularShape({radius: 7.2 + size, points: 6,
+            displacement: [0, 0], stroke: new ol.style.Stroke({color: 'rgba(250,176,124,0.9)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 0.76}), fill: new ol.style.Fill({color: 'rgba(15,191,252,0.9)'})}),
         text: createTextStyle(feature, resolution, labelText, labelFont,
                               labelFill, placement, bufferColor,
                               bufferWidth)

@@ -65,20 +65,21 @@ var lyr_CrimesReported20242025_3 = new ol.layer.Vector({
                 popuplayertitle: 'Crimes Reported 2024-2025',
                 interactive: true,
     title: 'Crimes Reported 2024-2025<br />\
-    <img src="styles/legend/CrimesReported20242025_3_0.png" /> All Other Crimes<br />\
-    <img src="styles/legend/CrimesReported20242025_3_1.png" /> Aggravated Assault<br />\
-    <img src="styles/legend/CrimesReported20242025_3_2.png" /> Attempt GTA<br />\
-    <img src="styles/legend/CrimesReported20242025_3_3.png" /> Battery<br />\
-    <img src="styles/legend/CrimesReported20242025_3_4.png" /> BFMV<br />\
-    <img src="styles/legend/CrimesReported20242025_3_5.png" /> BTFV<br />\
-    <img src="styles/legend/CrimesReported20242025_3_6.png" /> Burglary<br />\
-    <img src="styles/legend/CrimesReported20242025_3_7.png" /> Criminal Threat<br />\
-    <img src="styles/legend/CrimesReported20242025_3_8.png" /> GTA<br />\
-    <img src="styles/legend/CrimesReported20242025_3_9.png" /> Robbery<br />\
-    <img src="styles/legend/CrimesReported20242025_3_10.png" /> TFMV<br />\
-    <img src="styles/legend/CrimesReported20242025_3_11.png" /> Theft<br />\
-    <img src="styles/legend/CrimesReported20242025_3_12.png" /> Theft from Vehicle<br />\
-    <img src="styles/legend/CrimesReported20242025_3_13.png" /> Vandalism<br />' });
+    <img src="styles/legend/CrimesReported20242025_3_0.png" /> Aggravated Assault<br />\
+    <img src="styles/legend/CrimesReported20242025_3_1.png" /> Attempt GTA<br />\
+    <img src="styles/legend/CrimesReported20242025_3_2.png" /> Battery<br />\
+    <img src="styles/legend/CrimesReported20242025_3_3.png" /> BFMV<br />\
+    <img src="styles/legend/CrimesReported20242025_3_4.png" /> BTFV<br />\
+    <img src="styles/legend/CrimesReported20242025_3_5.png" /> Burglary<br />\
+    <img src="styles/legend/CrimesReported20242025_3_6.png" /> Criminal Threat<br />\
+    <img src="styles/legend/CrimesReported20242025_3_7.png" /> GTA<br />\
+    <img src="styles/legend/CrimesReported20242025_3_8.png" /> Robbery<br />\
+    <img src="styles/legend/CrimesReported20242025_3_9.png" /> TFMV<br />\
+    <img src="styles/legend/CrimesReported20242025_3_10.png" /> Theft<br />\
+    <img src="styles/legend/CrimesReported20242025_3_11.png" /> Theft from Vehicle<br />\
+    <img src="styles/legend/CrimesReported20242025_3_12.png" /> Vandalism<br />\
+    <img src="styles/legend/CrimesReported20242025_3_13.png" /> SHOTS FIRED<br />\
+    <img src="styles/legend/CrimesReported20242025_3_14.png" /> <br />' });
 
 lyr_OSMStandard_0.setVisible(true);lyr_StreetNames_1.setVisible(true);lyr_SLOSW_2.setVisible(true);lyr_CrimesReported20242025_3.setVisible(true);
 var layersList = [lyr_OSMStandard_0,lyr_StreetNames_1,lyr_SLOSW_2,lyr_CrimesReported20242025_3];

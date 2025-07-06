@@ -58,9 +58,13 @@ var jsonSource_CrimesReported20242025_3 = new ol.source.Vector({
     attributions: ' ',
 });
 jsonSource_CrimesReported20242025_3.addFeatures(features_CrimesReported20242025_3);
+cluster_CrimesReported20242025_3 = new ol.source.Cluster({
+  distance: 30,
+  source: jsonSource_CrimesReported20242025_3
+});
 var lyr_CrimesReported20242025_3 = new ol.layer.Vector({
                 declutter: false,
-                source:jsonSource_CrimesReported20242025_3, 
+                source:cluster_CrimesReported20242025_3, 
                 style: style_CrimesReported20242025_3,
                 popuplayertitle: 'Crimes Reported 2024-2025',
                 interactive: true,
@@ -88,7 +92,7 @@ lyr_SLOSW_2.set('fieldAliases', {'OBJECTID': 'OBJECTID', 'RD': 'RD', 'OMEGA_NAME
 lyr_CrimesReported20242025_3.set('fieldAliases', {'id': 'id', 'Crime': 'Crime', 'Address': 'Address', 'Zip': 'Zip', 'When': 'When', 'Date': 'Date', 'Time': 'Time', 'Descriptio': 'Descriptio', 'latlong': 'latlong', });
 lyr_StreetNames_1.set('fieldImages', {'AutoID': 'Hidden', 'OBJECTID': 'Hidden', 'ASSETID': 'Hidden', 'INT_ID_FROM': 'Hidden', 'INT_ID_TO': 'Hidden', 'STNUM': 'Hidden', 'MAPSHEET': 'Hidden', 'ID': 'Hidden', 'ADRF': 'Hidden', 'ADRT': 'Hidden', 'ZIP_R': 'Hidden', 'ADLF': 'Hidden', 'ADLT': 'Hidden', 'ZIP_L': 'Hidden', 'TDIR': 'Hidden', 'STNAME': 'TextEdit', 'STSFX': 'RelationReference', 'SFXDIR': 'Hidden', 'STNAME_A': 'Hidden', 'STSFX_A': 'Hidden', 'STATUS': 'Hidden', 'TEMP_': 'Hidden', 'SECT_ID': 'Hidden', 'REMARKS': 'Hidden', 'SV_STATUS': 'Hidden', 'ST_SUBTYPE': 'Hidden', 'CRTN_DT': 'Hidden', 'LST_MODF_DT': 'Hidden', 'OLD_STREET_DESIGNATION': 'Hidden', 'PLANNING_STREET_STANDARD': 'Hidden', 'BSS_ST_CLASS': 'Hidden', 'TOOLTIP': 'Hidden', 'NLA_URL': 'Hidden', 'Planning_ASSETID': 'Hidden', 'TYPE': 'Hidden', 'MODIFIED': 'Hidden', 'Street_Designation': 'Hidden', 'Street_Designation_WO_Mod': 'Hidden', });
 lyr_SLOSW_2.set('fieldImages', {'OBJECTID': 'Range', 'RD': 'TextEdit', 'OMEGA_NAME': 'TextEdit', 'Shape_Length': 'TextEdit', 'Shape_Area': 'TextEdit', 'SLO Name': 'TextEdit', 'email': 'TextEdit', 'Cell#': 'TextEdit', 'CAR': 'TextEdit', });
-lyr_CrimesReported20242025_3.set('fieldImages', {'id': 'TextEdit', 'Crime': 'TextEdit', 'Address': 'TextEdit', 'Zip': 'TextEdit', 'When': 'Hidden', 'Date': 'DateTime', 'Time': 'DateTime', 'Descriptio': 'TextEdit', 'latlong': 'TextEdit', });
+lyr_CrimesReported20242025_3.set('fieldImages', {'id': 'TextEdit', 'Crime': 'Classification', 'Address': 'TextEdit', 'Zip': 'TextEdit', 'When': 'Hidden', 'Date': 'DateTime', 'Time': 'DateTime', 'Descriptio': 'TextEdit', 'latlong': 'TextEdit', });
 lyr_StreetNames_1.set('fieldLabels', {'STNAME': 'no label', 'STSFX': 'no label', });
 lyr_SLOSW_2.set('fieldLabels', {'OBJECTID': 'hidden field', 'RD': 'no label', 'OMEGA_NAME': 'no label', 'Shape_Length': 'hidden field', 'Shape_Area': 'hidden field', 'SLO Name': 'no label', 'email': 'no label', 'Cell#': 'no label', 'CAR': 'no label', });
 lyr_CrimesReported20242025_3.set('fieldLabels', {'id': 'hidden field', 'Crime': 'inline label - visible with data', 'Address': 'no label', 'Zip': 'no label', 'Date': 'no label', 'Time': 'no label', 'Descriptio': 'no label', 'latlong': 'hidden field', });

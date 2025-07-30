@@ -4,12 +4,12 @@ var map = new ol.Map({
     renderer: 'canvas',
     layers: layersList,
     view: new ol.View({
-        extent: [-13179085.289738, 4024760.152187, -13165052.022023, 4037378.534322], maxZoom: 28, minZoom: 1
+        extent: [-13178402.953813, 4025452.025313, -13165703.788853, 4036870.905973], maxZoom: 20, minZoom: 1
     })
 });
 
 //initial view - epsg:3857 coordinates if not "Match project CRS"
-map.getView().fit([-13179085.289738, 4024760.152187, -13165052.022023, 4037378.534322], map.getSize());
+map.getView().fit([-13178402.953813, 4025452.025313, -13165703.788853, 4036870.905973], map.getSize());
 
 ////small screen definition
     var hasTouchScreen = map.getViewport().classList.contains('ol-touch');
@@ -530,16 +530,6 @@ geolocation.setTracking(true);
 
 //geocoder
 
-var geocoder = new Geocoder('nominatim', {
-  provider: 'osm',
-  lang: 'en-US',
-  placeholder: 'Search place or address ...',
-  limit: 5,
-  keepOpen: true,
-});
-map.addControl(geocoder);
-document.getElementsByClassName('gcd-gl-btn')[0].className += ' fa fa-search';
-
 
 //layer search
 
@@ -619,9 +609,9 @@ document.addEventListener('DOMContentLoaded', function() {
         topLeftContainerDiv.appendChild(measureControl);
     }
     //geocoder
-    var geocoderControl = document.getElementsByClassName('ol-geocoder')[0];
-    if (geocoderControl) {
-        topLeftContainerDiv.appendChild(geocoderControl);
+    var searchbar = document.getElementsByClassName('photon-geocoder-autocomplete ol-unselectable ol-control')[0];
+    if (searchbar) {
+        topLeftContainerDiv.appendChild(searchbar);
     }
     //search layer
     var searchLayerControl = document.getElementsByClassName('search-layer')[0];

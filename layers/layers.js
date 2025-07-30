@@ -95,7 +95,7 @@ lyr_SLOSW_2.set('fieldImages', {'OBJECTID': 'Range', 'RD': 'TextEdit', 'OMEGA_NA
 lyr_CrimesReported20242025_3.set('fieldImages', {'id': 'TextEdit', 'Crime': 'Classification', 'Address': 'TextEdit', 'Zip': 'TextEdit', 'When': 'Hidden', 'Date': 'DateTime', 'Time': 'DateTime', 'Descriptio': 'TextEdit', 'latlong': 'TextEdit', });
 lyr_StreetNames_1.set('fieldLabels', {'STNAME': 'no label', 'STSFX': 'no label', });
 lyr_SLOSW_2.set('fieldLabels', {'OBJECTID': 'hidden field', 'RD': 'no label', 'OMEGA_NAME': 'no label', 'Shape_Length': 'hidden field', 'Shape_Area': 'hidden field', 'SLO Name': 'no label', 'email': 'no label', 'Cell#': 'no label', 'CAR': 'no label', });
-lyr_CrimesReported20242025_3.set('fieldLabels', {'id': 'hidden field', 'Crime': 'inline label - visible with data', 'Address': 'no label', 'Zip': 'no label', 'Date': 'no label', 'Time': 'no label', 'Descriptio': 'no label', 'latlong': 'hidden field', });
+lyr_CrimesReported20242025_3.set('fieldLabels', {'id': 'hidden field', 'Crime': 'inline label - visible with data', 'Address': 'no label', 'Zip': 'hidden field', 'Date': 'no label', 'Time': 'no label', 'Descriptio': 'no label', 'latlong': 'hidden field', });
 lyr_CrimesReported20242025_3.on('precompose', function(evt) {
     evt.context.globalCompositeOperation = 'normal';
 });

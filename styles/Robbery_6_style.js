@@ -1,7 +1,7 @@
 var size = 0;
 var placement = 'point';
 
-var style_GTA_4 = function(feature, resolution){
+var style_Robbery_6 = function(feature, resolution){
     var context = {
         feature: feature,
         variables: {}
@@ -21,8 +21,8 @@ var style_GTA_4 = function(feature, resolution){
         labelText = String("");
     }
     var style = [ new ol.style.Style({
-        image: new ol.style.RegularShape({radius: 8.8 + size, points: 4,
-            displacement: [0, 0], stroke: new ol.style.Stroke({color: 'rgba(128,17,25,1.0)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 1.52}), fill: new ol.style.Fill({color: 'rgba(30,203,219,1.0)'})}),
+        image: new ol.style.RegularShape({radius: 8.0 + size, points: 3,
+            displacement: [0, 0], stroke: new ol.style.Stroke({color: 'rgba(128,17,25,1.0)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 1.52}), fill: new ol.style.Fill({color: 'rgba(212,250,5,1.0)'})}),
         text: createTextStyle(feature, resolution, labelText, labelFont,
                               labelFill, placement, bufferColor,
                               bufferWidth)

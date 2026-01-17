@@ -1,6 +1,6 @@
-var json_CriminalThreat_11 = {
+var json_CriminalThreat_10 = {
 "type": "FeatureCollection",
-"name": "CriminalThreat_11",
+"name": "CriminalThreat_10",
 "crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
 "features": [
 { "type": "Feature", "properties": { "id": "441", "Crime": "Criminal Threat", "Address": "37** Crenshaw Blvd", "Zip": "90016", "Date": "11/19/24", "Time": "1545", "Descriptio": "Suspect threatened to shoot and kill victim, victim believes threat to be credible and victim is in fear.", "latlong": "34.019743383062,-118.335166427423" }, "geometry": { "type": "Point", "coordinates": [ -118.335166427423005, 34.019743383062 ] } },

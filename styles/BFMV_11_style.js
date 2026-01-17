@@ -1,7 +1,7 @@
 var size = 0;
 var placement = 'point';
 
-var style_BFMV_13 = function(feature, resolution){
+var style_BFMV_11 = function(feature, resolution){
     var context = {
         feature: feature,
         variables: {}

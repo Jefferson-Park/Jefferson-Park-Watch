@@ -76,7 +76,7 @@ case 'SLO Scott Landeros 41618':
                               bufferWidth)
     })];
                     break;
-case 'SLO Tyler Whiteman #39471':
+case 'SLO Shawn Alexander # 37316':
                     return [ new ol.style.Style({
         stroke: new ol.style.Stroke({color: 'rgba(35,35,35,0.303)', lineDash: null, lineCap: 'butt', lineJoin: 'miter', width: 0.988}),fill: new ol.style.Fill({color: 'rgba(204,60,127,0.303)'}),
         text: createTextStyle(feature, resolution, labelText, labelFont,

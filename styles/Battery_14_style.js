@@ -1,7 +1,7 @@
 var size = 0;
 var placement = 'point';
 
-var style_Battery_12 = function(feature, resolution){
+var style_Battery_14 = function(feature, resolution){
     var context = {
         feature: feature,
         variables: {}

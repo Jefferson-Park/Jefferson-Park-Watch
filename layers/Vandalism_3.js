@@ -1,6 +1,6 @@
-var json_Vandalism_9 = {
+var json_Vandalism_3 = {
 "type": "FeatureCollection",
-"name": "Vandalism_9",
+"name": "Vandalism_3",
 "crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
 "features": [
 { "type": "Feature", "properties": { "id": "131", "Crime": "Vandalism", "Address": "35** Chesapeake Ave", "Zip": "90016", "Date": "1/4/25", "Time": "1730", "Descriptio": "Suspect and Victim engaged in verbal argument. Susp threw plate at Victims TV causing permanent damage. Suspect then punched glass window. Suspect left location.", "latlong": "34.022610179445,-118.345112667775" }, "geometry": { "type": "Point", "coordinates": [ -118.345112667774998, 34.022610179445003 ] } },

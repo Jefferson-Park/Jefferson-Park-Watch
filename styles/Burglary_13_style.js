@@ -1,7 +1,7 @@
 var size = 0;
 var placement = 'point';
 
-var style_Burglary_3 = function(feature, resolution){
+var style_Burglary_13 = function(feature, resolution){
     var context = {
         feature: feature,
         variables: {}

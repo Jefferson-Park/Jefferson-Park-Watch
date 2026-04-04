@@ -1,0 +1,1534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CrimeWatch Admin Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #161b24;
+    --surface2: #1e2633;
+    --border: #2a3444;
+    --accent: #e8414b;
+    --accent2: #f7a325;
+    --accent3: #3b82f6;
+    --text: #e2e8f0;
+    --text-dim: #64748b;
+    --text-muted: #3d4f63;
+    --green: #22c55e;
+    --mono: 'Space Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* TOP BAR */
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 0 20px;
+    height: 52px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    z-index: 100;
+  }
+  .topbar-logo {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .topbar-logo span { color: var(--text-dim); }
+  .topbar-divider { width: 1px; height: 24px; background: var(--border); }
+  .tab-btn {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all .15s;
+    letter-spacing: .3px;
+  }
+  .tab-btn:hover { color: var(--text); background: var(--surface2); }
+  .tab-btn.active { color: var(--text); background: var(--surface2); border: 1px solid var(--border); }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .stat-pill {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+  }
+  .stat-pill b { color: var(--accent2); }
+
+  /* LAYOUT */
+  .main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* PANEL */
+  .panel {
+    display: none;
+    flex: 1;
+    overflow: hidden;
+  }
+  .panel.active { display: flex; }
+
+  /* ===================== MAP PANEL ===================== */
+  .map-layout {
+    display: flex;
+    width: 100%;
+    overflow: hidden;
+  }
+  .map-sidebar {
+    width: 300px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .sidebar-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .sidebar-header .count-badge {
+    margin-left: auto;
+    background: var(--accent);
+    color: white;
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-family: var(--mono);
+  }
+  .crime-list {
+    overflow-y: auto;
+    flex: 1;
+  }
+  .crime-item {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background .1s;
+  }
+  .crime-item:hover { background: var(--surface2); }
+  .crime-item.selected { background: rgba(59,130,246,.1); border-left: 3px solid var(--accent3); }
+  .crime-item-type {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 3px;
+  }
+  .crime-item-addr {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+    font-family: var(--mono);
+  }
+  .crime-item-meta {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .status-badge {
+    font-size: 10px;
+    font-family: var(--mono);
+    padding: 2px 7px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+  .status-open { background: rgba(232,65,75,.15); color: var(--accent); border: 1px solid rgba(232,65,75,.3); }
+  .status-investigating { background: rgba(247,163,37,.15); color: var(--accent2); border: 1px solid rgba(247,163,37,.3); }
+  .status-closed { background: rgba(34,197,94,.15); color: var(--green); border: 1px solid rgba(34,197,94,.3); }
+  .status-unfounded { background: rgba(100,116,139,.15); color: var(--text-dim); border: 1px solid var(--border); }
+  .date-label { font-size: 10px; color: var(--text-muted); font-family: var(--mono); }
+  .geocoded-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    display: inline-block;
+  }
+  .geocoded-dot.yes { background: var(--green); }
+  .geocoded-dot.no { background: var(--accent); }
+
+  #map {
+    flex: 1;
+    background: #111;
+  }
+
+  /* Map info bar */
+  .map-info-bar {
+    position: absolute;
+    bottom: 0;
+    left: 300px;
+    right: 0;
+    background: rgba(13,15,20,.85);
+    backdrop-filter: blur(8px);
+    border-top: 1px solid var(--border);
+    padding: 8px 16px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    z-index: 1000;
+    display: flex;
+    gap: 20px;
+    align-items: center;
+  }
+  .map-info-bar kbd {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-size: 10px;
+    color: var(--text);
+  }
+
+  /* Detail popover */
+  .detail-popover {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 280px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    z-index: 1000;
+    overflow: hidden;
+    display: none;
+    box-shadow: 0 8px 32px rgba(0,0,0,.5);
+  }
+  .detail-popover.visible { display: block; }
+  .detail-popover-header {
+    background: var(--surface2);
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .detail-popover-title { font-size: 13px; font-weight: 600; flex: 1; }
+  .detail-popover-close {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    padding: 2px 4px;
+  }
+  .detail-popover-body { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .detail-field label {
+    font-size: 10px;
+    font-family: var(--mono);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    display: block;
+    margin-bottom: 4px;
+  }
+  .detail-field input, .detail-field select, .detail-field textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 12px;
+    padding: 6px 10px;
+    outline: none;
+    transition: border-color .15s;
+  }
+  .detail-field input:focus, .detail-field select:focus, .detail-field textarea:focus {
+    border-color: var(--accent3);
+  }
+  .detail-field textarea { resize: vertical; min-height: 60px; }
+  .detail-field select option { background: var(--surface); }
+  .btn-row { display: flex; gap: 8px; }
+  .btn {
+    flex: 1;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: none;
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .btn-primary { background: var(--accent3); color: white; }
+  .btn-primary:hover { background: #2563eb; }
+  .btn-danger { background: rgba(232,65,75,.2); color: var(--accent); border: 1px solid rgba(232,65,75,.3); }
+  .btn-danger:hover { background: rgba(232,65,75,.3); }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { background: var(--border); }
+  .relocate-hint {
+    font-size: 11px;
+    color: var(--accent2);
+    font-family: var(--mono);
+    padding: 6px 10px;
+    background: rgba(247,163,37,.08);
+    border-radius: 5px;
+    border: 1px solid rgba(247,163,37,.2);
+    display: none;
+  }
+  .relocate-hint.visible { display: block; }
+
+  /* ===================== IMPORT PANEL ===================== */
+  .import-layout {
+    display: flex;
+    width: 100%;
+    overflow: hidden;
+  }
+  .import-left {
+    width: 420px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .import-right {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .import-section {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .import-section-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  textarea.import-text {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 10px;
+    outline: none;
+    resize: none;
+    height: 180px;
+    transition: border-color .15s;
+  }
+  textarea.import-text:focus { border-color: var(--accent3); }
+  .import-controls {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  .import-btn {
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: none;
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .import-btn.ai { background: var(--accent); color: white; }
+  .import-btn.ai:hover { background: #c73039; }
+  .import-btn.ai:disabled { opacity: .5; cursor: default; }
+  .import-btn.manual { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .import-btn.manual:hover { background: var(--border); }
+  .spinner {
+    width: 12px; height: 12px;
+    border: 2px solid rgba(255,255,255,.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+    display: none;
+  }
+  .spinner.visible { display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .import-city-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .import-city-row input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 12px;
+    padding: 7px 10px;
+    outline: none;
+  }
+  .import-city-row input:focus { border-color: var(--accent3); }
+  .import-city-row label { font-size: 12px; color: var(--text-dim); white-space: nowrap; }
+
+  /* Extracted list */
+  .extracted-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .extracted-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .extracted-card-header {
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,.02);
+  }
+  .extracted-card-num {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    background: var(--border);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .extracted-card-type { font-size: 12px; font-weight: 600; flex: 1; }
+  .geo-status {
+    font-size: 10px;
+    font-family: var(--mono);
+    padding: 2px 7px;
+    border-radius: 4px;
+  }
+  .geo-status.pending { background: rgba(247,163,37,.15); color: var(--accent2); border: 1px solid rgba(247,163,37,.3); }
+  .geo-status.geocoded { background: rgba(34,197,94,.15); color: var(--green); border: 1px solid rgba(34,197,94,.3); }
+  .geo-status.failed { background: rgba(232,65,75,.15); color: var(--accent); border: 1px solid rgba(232,65,75,.3); }
+  .extracted-card-body {
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .extracted-card-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .extracted-card-row label {
+    font-size: 10px;
+    font-family: var(--mono);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    width: 45px;
+    flex-shrink: 0;
+  }
+  .extracted-card-row input, .extracted-card-row select {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 5px 8px;
+    outline: none;
+  }
+  .extracted-card-row input:focus, .extracted-card-row select:focus { border-color: var(--accent3); }
+  .extracted-card-row select option { background: var(--surface); }
+  .extracted-card-footer {
+    padding: 8px 12px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 6px;
+  }
+  .small-btn {
+    flex: 1;
+    padding: 5px 8px;
+    border-radius: 5px;
+    border: none;
+    font-size: 11px;
+    font-family: var(--sans);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .small-btn.geocode { background: var(--accent3); color: white; }
+  .small-btn.geocode:hover { background: #2563eb; }
+  .small-btn.geocode:disabled { opacity: .4; cursor: default; }
+  .small-btn.add-db { background: var(--green); color: #000; }
+  .small-btn.add-db:hover { background: #16a34a; }
+  .small-btn.add-db:disabled { opacity: .4; cursor: default; }
+  .small-btn.remove { background: var(--surface); color: var(--text-dim); border: 1px solid var(--border); }
+  .small-btn.remove:hover { background: var(--border); }
+
+  .import-tip {
+    padding: 10px 14px;
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: var(--mono);
+    background: rgba(59,130,246,.05);
+    border-top: 1px solid rgba(59,130,246,.15);
+    line-height: 1.6;
+  }
+
+  .geocode-all-row {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .geocode-all-btn {
+    padding: 7px 14px;
+    border-radius: 6px;
+    border: none;
+    background: var(--accent3);
+    color: white;
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .geocode-all-btn:hover { background: #2563eb; }
+  .geocode-all-btn:disabled { opacity: .4; cursor: default; }
+  .add-all-btn {
+    padding: 7px 14px;
+    border-radius: 6px;
+    border: none;
+    background: var(--green);
+    color: #000;
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .add-all-btn:hover { background: #16a34a; }
+  .add-all-btn:disabled { opacity: .4; cursor: default; }
+
+  /* ===================== TABLE PANEL ===================== */
+  .table-layout {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    overflow: hidden;
+  }
+  .table-toolbar {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    background: var(--surface);
+  }
+  .table-toolbar input, .table-toolbar select {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 12px;
+    padding: 6px 10px;
+    outline: none;
+  }
+  .table-toolbar input:focus, .table-toolbar select:focus { border-color: var(--accent3); }
+  .table-toolbar input { width: 200px; }
+  .table-export-btn {
+    margin-left: auto;
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .table-export-btn:hover { background: var(--border); }
+  .crimes-table-wrap {
+    flex: 1;
+    overflow: auto;
+  }
+  table.crimes-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  table.crimes-table th {
+    position: sticky;
+    top: 0;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 14px;
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+  }
+  table.crimes-table th:hover { color: var(--text); }
+  table.crimes-table td {
+    padding: 9px 14px;
+    border-bottom: 1px solid rgba(42,52,68,.5);
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+  table.crimes-table tr:hover td { background: var(--surface2); }
+  .table-select {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-size: 11px;
+    padding: 3px 6px;
+    outline: none;
+    cursor: pointer;
+  }
+  .table-select:focus { border-color: var(--accent3); }
+  .table-notes-input {
+    background: transparent;
+    border: none;
+    border-bottom: 1px dashed var(--border);
+    color: var(--text);
+    font-size: 11px;
+    width: 180px;
+    padding: 2px 4px;
+    outline: none;
+    font-family: var(--sans);
+  }
+  .table-notes-input:focus { border-bottom-color: var(--accent3); }
+  .table-delete-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: all .1s;
+  }
+  .table-delete-btn:hover { background: rgba(232,65,75,.2); color: var(--accent); }
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+    font-family: var(--mono);
+    font-size: 13px;
+  }
+  .empty-state p { margin-top: 10px; font-size: 11px; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+  /* Toast */
+  .toast-container {
+    position: fixed;
+    bottom: 40px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .toast {
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-family: var(--mono);
+    animation: slideIn .2s ease;
+    max-width: 300px;
+    border: 1px solid;
+  }
+  .toast.success { background: rgba(34,197,94,.15); border-color: rgba(34,197,94,.3); color: var(--green); }
+  .toast.error { background: rgba(232,65,75,.15); border-color: rgba(232,65,75,.3); color: var(--accent); }
+  .toast.info { background: rgba(59,130,246,.15); border-color: rgba(59,130,246,.3); color: var(--accent3); }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+
+  /* Manual add form */
+  .manual-form {
+    padding: 14px;
+    border-bottom: 1px solid var(--border);
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .manual-form.visible { display: flex; }
+  .manual-form-row { display: flex; gap: 8px; }
+  .manual-form-row input, .manual-form-row select {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 12px;
+    padding: 7px 10px;
+    outline: none;
+  }
+  .manual-form-row input:focus, .manual-form-row select:focus { border-color: var(--accent3); }
+  .manual-form-row select option { background: var(--surface); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-logo">Crime<span>Watch</span> Admin</div>
+  <div class="topbar-divider"></div>
+  <button class="tab-btn active" onclick="switchTab('map')">🗺 Map View</button>
+  <button class="tab-btn" onclick="switchTab('import')">📄 Import PDF</button>
+  <button class="tab-btn" onclick="switchTab('table')">📋 Admin Table</button>
+  <div class="topbar-right">
+    <div class="stat-pill">Total: <b id="totalCount">0</b></div>
+    <div class="stat-pill">Open: <b id="openCount" style="color:var(--accent)">0</b></div>
+    <div class="stat-pill">Geocoded: <b id="geocodedCount" style="color:var(--green)">0</b></div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- ============ MAP PANEL ============ -->
+  <div class="panel active" id="panel-map">
+    <div class="map-layout" style="position:relative;width:100%">
+      <div class="map-sidebar">
+        <div class="sidebar-header">
+          Crime Records
+          <span class="count-badge" id="sidebarCount">0</span>
+        </div>
+        <div class="crime-list" id="crimeList"></div>
+      </div>
+      <div id="map"></div>
+
+      <!-- Detail popover -->
+      <div class="detail-popover" id="detailPopover">
+        <div class="detail-popover-header">
+          <span class="detail-popover-title" id="popoverTitle">Crime Detail</span>
+          <button class="detail-popover-close" onclick="closePopover()">✕</button>
+        </div>
+        <div class="detail-popover-body">
+          <div class="relocate-hint" id="relocateHint">
+            📍 Click anywhere on the map to reposition this point, then click Save Location.
+          </div>
+          <div class="detail-field">
+            <label>Status</label>
+            <select id="popStatus">
+              <option value="open">Open</option>
+              <option value="investigating">Investigating</option>
+              <option value="closed">Closed</option>
+              <option value="unfounded">Unfounded</option>
+            </select>
+          </div>
+          <div class="detail-field">
+            <label>Crime Type</label>
+            <input type="text" id="popType" placeholder="e.g. Burglary">
+          </div>
+          <div class="detail-field">
+            <label>Address</label>
+            <input type="text" id="popAddress" placeholder="Block-level address">
+          </div>
+          <div class="detail-field">
+            <label>Date / Time</label>
+            <input type="text" id="popDate" placeholder="e.g. 2024-03-15 22:00">
+          </div>
+          <div class="detail-field">
+            <label>Notes</label>
+            <textarea id="popNotes" placeholder="Case notes..."></textarea>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="savePopover()">Save</button>
+            <button class="btn btn-secondary" id="relocateBtn" onclick="startRelocate()">Relocate</button>
+            <button class="btn btn-danger" onclick="deleteFromPopover()">Delete</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="map-info-bar">
+        <span><kbd>Click map</kbd> to add new crime point</span>
+        <span><kbd>Click marker</kbd> to edit / relocate</span>
+        <span id="coordDisplay">Lat: — Lng: —</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ IMPORT PANEL ============ -->
+  <div class="panel" id="panel-import">
+    <div class="import-layout">
+      <div class="import-left">
+        <div class="import-section">
+          <div class="import-section-title">Base City / State (for geocoding)</div>
+          <div class="import-city-row">
+            <label>City:</label>
+            <input type="text" id="cityInput" value="Los Angeles, CA" placeholder="City, State">
+          </div>
+        </div>
+        <div class="import-section" style="flex:1;display:flex;flex-direction:column;gap:10px">
+          <div class="import-section-title">Paste Crime Report Text from PDF</div>
+          <textarea class="import-text" id="pdfText" style="flex:1;height:auto" placeholder="Paste the text content from your police department PDF here. The AI will extract crime records automatically.
+
+Example format:
+03/15/2024 22:34 - BURGLARY - 1200 BLK MAIN ST
+Suspect entered through rear window...
+
+03/16/2024 01:12 - VEHICLE THEFT - 500 BLK ELM AVE
+Vehicle reported stolen overnight..."></textarea>
+          <div class="import-controls">
+            <button class="import-btn ai" id="extractBtn" onclick="extractWithAI()">
+              <span class="spinner" id="extractSpinner"></span>
+              ✨ Extract with AI
+            </button>
+            <button class="import-btn manual" onclick="toggleManualForm()">+ Add Manual</button>
+          </div>
+        </div>
+        <div class="manual-form" id="manualForm">
+          <div class="import-section-title">Manual Entry</div>
+          <div class="manual-form-row">
+            <input type="text" id="manualType" placeholder="Crime type (e.g. Burglary)">
+            <input type="text" id="manualDate" placeholder="Date (e.g. 03/15/2024)">
+          </div>
+          <div class="manual-form-row">
+            <input type="text" id="manualAddr" placeholder="Block-level address">
+          </div>
+          <div class="manual-form-row">
+            <button class="import-btn manual" style="flex:1" onclick="addManualEntry()">Add Entry</button>
+          </div>
+        </div>
+        <div class="import-tip">
+          💡 AI extraction reads block-level addresses like "1200 BLK MAIN ST" and geocodes them with slight random offset to avoid overlap on the same block.
+        </div>
+      </div>
+
+      <div class="import-right">
+        <div class="geocode-all-row">
+          <span style="font-size:12px;color:var(--text-dim)" id="extractedLabel">Extracted crimes will appear here</span>
+          <button class="geocode-all-btn" id="geocodeAllBtn" onclick="geocodeAll()" disabled>
+            <span class="spinner" id="geocodeSpinner"></span>
+            🌍 Geocode All
+          </button>
+          <button class="add-all-btn" id="addAllBtn" onclick="addAllToDb()" disabled>✅ Add All to Database</button>
+        </div>
+        <div class="extracted-list" id="extractedList">
+          <div class="empty-state">
+            📋 Paste PDF text and click "Extract with AI"<br>
+            <p>or add entries manually using the form on the left</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ TABLE PANEL ============ -->
+  <div class="panel" id="panel-table">
+    <div class="table-layout">
+      <div class="table-toolbar">
+        <input type="text" id="searchInput" placeholder="Search address, type, notes..." oninput="renderTable()">
+        <select id="filterStatus" onchange="renderTable()">
+          <option value="">All Statuses</option>
+          <option value="open">Open</option>
+          <option value="investigating">Investigating</option>
+          <option value="closed">Closed</option>
+          <option value="unfounded">Unfounded</option>
+        </select>
+        <select id="filterType" onchange="renderTable()">
+          <option value="">All Types</option>
+        </select>
+        <button class="table-export-btn" onclick="exportGeoJSON()">⬇ GeoJSON</button>
+        <button class="table-export-btn" onclick="exportCSV()">⬇ CSV</button>
+      </div>
+      <div class="crimes-table-wrap">
+        <table class="crimes-table">
+          <thead>
+            <tr>
+              <th onclick="sortTable('date')">Date ↕</th>
+              <th onclick="sortTable('type')">Type ↕</th>
+              <th onclick="sortTable('address')">Address ↕</th>
+              <th onclick="sortTable('status')">Status ↕</th>
+              <th>Geocoded</th>
+              <th>Notes</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ============================================================
+// DATA STORE
+// ============================================================
+const STORAGE_KEY = 'crimewatch_db';
+
+function loadDB() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+  catch { return []; }
+}
+function saveDB(data) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  updateStats();
+  renderCrimeList();
+  renderMarkers();
+  renderTable();
+}
+
+let db = loadDB();
+let extractedCrimes = [];
+let selectedId = null;
+let relocating = false;
+let relocateTempMarker = null;
+let sortCol = 'date';
+let sortDir = -1;
+
+const CRIME_TYPES = ['Burglary', 'Vehicle Theft', 'Robbery', 'Assault', 'Vandalism', 'Drug Offense', 'Theft', 'Sexual Assault', 'Homicide', 'Arson', 'Fraud', 'Other'];
+const STATUS_LIST = ['open', 'investigating', 'closed', 'unfounded'];
+
+function genId() { return 'c_' + Math.random().toString(36).substr(2, 9) + Date.now(); }
+
+// ============================================================
+// MAP SETUP
+// ============================================================
+const map = L.map('map', { zoomControl: true }).setView([34.052, -118.243], 13);
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+  subdomains: 'abcd', maxZoom: 19
+}).addTo(map);
+
+const markers = {};
+const markerGroup = L.layerGroup().addTo(map);
+
+function crimeIcon(status) {
+  const colors = { open: '#e8414b', investigating: '#f7a325', closed: '#22c55e', unfounded: '#64748b' };
+  const c = colors[status] || '#e8414b';
+  return L.divIcon({
+    className: '',
+    html: `<div style="width:14px;height:14px;border-radius:50%;background:${c};border:2px solid rgba(255,255,255,.4);box-shadow:0 2px 8px rgba(0,0,0,.5)"></div>`,
+    iconSize: [14, 14], iconAnchor: [7, 7]
+  });
+}
+
+function renderMarkers() {
+  markerGroup.clearLayers();
+  Object.keys(markers).forEach(k => delete markers[k]);
+  db.forEach(crime => {
+    if (!crime.lat || !crime.lng) return;
+    const m = L.marker([crime.lat, crime.lng], { icon: crimeIcon(crime.status) })
+      .addTo(markerGroup)
+      .on('click', () => openPopover(crime.id));
+    markers[crime.id] = m;
+  });
+}
+
+// Click map to add or relocate
+map.on('click', e => {
+  if (relocating && selectedId) {
+    const crime = db.find(c => c.id === selectedId);
+    if (crime) {
+      crime.lat = e.latlng.lat;
+      crime.lng = e.latlng.lng;
+      crime.geocoded = true;
+      saveDB(db);
+      stopRelocate();
+      openPopover(selectedId);
+      toast('📍 Location updated', 'success');
+    }
+    return;
+  }
+  // Add new crime
+  const id = genId();
+  const crime = {
+    id, lat: e.latlng.lat, lng: e.latlng.lng,
+    type: 'Unknown', address: 'Click to edit address',
+    date: new Date().toISOString().slice(0,10),
+    status: 'open', notes: '', geocoded: true,
+    source: 'manual'
+  };
+  db.push(crime);
+  saveDB(db);
+  openPopover(id);
+  toast('✅ New crime point added', 'success');
+});
+
+map.on('mousemove', e => {
+  document.getElementById('coordDisplay').textContent =
+    `Lat: ${e.latlng.lat.toFixed(5)}  Lng: ${e.latlng.lng.toFixed(5)}`;
+});
+
+// ============================================================
+// POPOVER
+// ============================================================
+function openPopover(id) {
+  selectedId = id;
+  const crime = db.find(c => c.id === id);
+  if (!crime) return;
+
+  document.getElementById('popoverTitle').textContent = crime.type || 'Crime Detail';
+  document.getElementById('popStatus').value = crime.status || 'open';
+  document.getElementById('popType').value = crime.type || '';
+  document.getElementById('popAddress').value = crime.address || '';
+  document.getElementById('popDate').value = crime.date || '';
+  document.getElementById('popNotes').value = crime.notes || '';
+  document.getElementById('detailPopover').classList.add('visible');
+
+  // Highlight list item
+  document.querySelectorAll('.crime-item').forEach(el => el.classList.remove('selected'));
+  const listItem = document.querySelector(`.crime-item[data-id="${id}"]`);
+  if (listItem) { listItem.classList.add('selected'); listItem.scrollIntoView({block:'nearest'}); }
+
+  // Pan to marker
+  if (crime.lat && crime.lng) map.panTo([crime.lat, crime.lng]);
+}
+
+function closePopover() {
+  document.getElementById('detailPopover').classList.remove('visible');
+  stopRelocate();
+  selectedId = null;
+}
+
+function savePopover() {
+  if (!selectedId) return;
+  const crime = db.find(c => c.id === selectedId);
+  if (!crime) return;
+  crime.status = document.getElementById('popStatus').value;
+  crime.type = document.getElementById('popType').value;
+  crime.address = document.getElementById('popAddress').value;
+  crime.date = document.getElementById('popDate').value;
+  crime.notes = document.getElementById('popNotes').value;
+  document.getElementById('popoverTitle').textContent = crime.type;
+  saveDB(db);
+  toast('💾 Saved', 'success');
+}
+
+function deleteFromPopover() {
+  if (!selectedId) return;
+  if (!confirm('Delete this crime record?')) return;
+  db = db.filter(c => c.id !== selectedId);
+  saveDB(db);
+  closePopover();
+  toast('🗑 Deleted', 'info');
+}
+
+function startRelocate() {
+  relocating = true;
+  document.getElementById('relocateHint').classList.add('visible');
+  document.getElementById('relocateBtn').textContent = 'Cancel Relocate';
+  document.getElementById('relocateBtn').onclick = stopRelocate;
+  map.getContainer().style.cursor = 'crosshair';
+  toast('📍 Click on the map to reposition', 'info');
+}
+
+function stopRelocate() {
+  relocating = false;
+  document.getElementById('relocateHint').classList.remove('visible');
+  const btn = document.getElementById('relocateBtn');
+  btn.textContent = 'Relocate';
+  btn.onclick = startRelocate;
+  map.getContainer().style.cursor = '';
+}
+
+// ============================================================
+// CRIME LIST (sidebar)
+// ============================================================
+function renderCrimeList() {
+  const list = document.getElementById('crimeList');
+  document.getElementById('sidebarCount').textContent = db.length;
+
+  if (db.length === 0) {
+    list.innerHTML = `<div class="empty-state" style="padding:30px 16px;font-size:11px">No crimes recorded.<br><span style="color:var(--text-muted)">Click map or import PDF.</span></div>`;
+    return;
+  }
+
+  const sorted = [...db].sort((a,b) => new Date(b.date) - new Date(a.date));
+  list.innerHTML = sorted.map(crime => `
+    <div class="crime-item" data-id="${crime.id}" onclick="openPopover('${crime.id}')">
+      <div class="crime-item-type">${esc(crime.type)}</div>
+      <div class="crime-item-addr">${esc(crime.address)}</div>
+      <div class="crime-item-meta">
+        <span class="status-badge status-${crime.status}">${crime.status}</span>
+        <span class="date-label">${crime.date || '—'}</span>
+        <span class="geocoded-dot ${crime.geocoded ? 'yes' : 'no'}" title="${crime.geocoded ? 'Geocoded' : 'Not geocoded'}"></span>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ============================================================
+// STATS
+// ============================================================
+function updateStats() {
+  document.getElementById('totalCount').textContent = db.length;
+  document.getElementById('openCount').textContent = db.filter(c => c.status === 'open').length;
+  document.getElementById('geocodedCount').textContent = db.filter(c => c.geocoded).length;
+}
+
+// ============================================================
+// TAB SWITCHING
+// ============================================================
+function switchTab(tab) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + tab).classList.add('active');
+  event.target.classList.add('active');
+  if (tab === 'map') setTimeout(() => map.invalidateSize(), 100);
+  if (tab === 'table') { populateTypeFilter(); renderTable(); }
+}
+
+// ============================================================
+// GEOCODING (Nominatim / OpenStreetMap - free, no key needed)
+// ============================================================
+async function geocodeAddress(address) {
+  const city = document.getElementById('cityInput').value || '';
+  // Clean block-level address: "1200 BLK MAIN ST" → "1200 Main St, City"
+  const cleaned = address
+    .replace(/\bBLK\b/gi, '')
+    .replace(/\b(\d+)\s+(\d+)\b/, '$1') // take first number for block
+    .replace(/\s+/g, ' ').trim();
+  const query = encodeURIComponent(`${cleaned}, ${city}`);
+  const url = `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`;
+
+  try {
+    const res = await fetch(url, { headers: { 'Accept-Language': 'en' }});
+    const data = await res.json();
+    if (data && data[0]) {
+      // Add small random jitter so block-level points don't stack
+      const jitter = () => (Math.random() - 0.5) * 0.0006;
+      return { lat: parseFloat(data[0].lat) + jitter(), lng: parseFloat(data[0].lon) + jitter() };
+    }
+  } catch(e) {}
+  return null;
+}
+
+// ============================================================
+// AI EXTRACTION
+// ============================================================
+async function extractWithAI() {
+  const text = document.getElementById('pdfText').value.trim();
+  if (!text) { toast('Please paste PDF text first', 'error'); return; }
+
+  const btn = document.getElementById('extractBtn');
+  const spinner = document.getElementById('extractSpinner');
+  btn.disabled = true;
+  spinner.classList.add('visible');
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{
+          role: 'user',
+          content: `Extract all crime incidents from this police report text. Return ONLY a JSON array, no markdown, no extra text. Each item should have: {"type":"crime type","address":"block-level address as written","date":"date in YYYY-MM-DD format or best guess","time":"time if available or empty string","notes":"brief description of incident"}. If no clear date, use today. Text:\n\n${text.slice(0, 6000)}`
+        }]
+      })
+    });
+
+    const data = await response.json();
+    const raw = data.content?.[0]?.text || '[]';
+    let crimes;
+    try {
+      const clean = raw.replace(/```json|```/g, '').trim();
+      crimes = JSON.parse(clean);
+    } catch {
+      toast('Could not parse AI response. Try rephrasing your PDF text.', 'error');
+      return;
+    }
+
+    extractedCrimes = crimes.map((c, i) => ({
+      _eid: 'e_' + i + Date.now(),
+      type: c.type || 'Unknown',
+      address: c.address || '',
+      date: c.date || new Date().toISOString().slice(0,10),
+      time: c.time || '',
+      notes: c.notes || '',
+      lat: null, lng: null,
+      geoStatus: 'pending'
+    }));
+
+    renderExtractedList();
+    toast(`✨ Extracted ${crimes.length} crime records`, 'success');
+  } catch(e) {
+    toast('AI extraction failed: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    spinner.classList.remove('visible');
+  }
+}
+
+function renderExtractedList() {
+  const list = document.getElementById('extractedList');
+  document.getElementById('extractedLabel').textContent = `${extractedCrimes.length} crimes extracted`;
+  document.getElementById('geocodeAllBtn').disabled = extractedCrimes.length === 0;
+  document.getElementById('addAllBtn').disabled = extractedCrimes.length === 0;
+
+  if (extractedCrimes.length === 0) {
+    list.innerHTML = `<div class="empty-state">No crimes extracted yet.</div>`;
+    return;
+  }
+
+  list.innerHTML = extractedCrimes.map((c, i) => `
+    <div class="extracted-card" id="ecard_${c._eid}">
+      <div class="extracted-card-header">
+        <span class="extracted-card-num">#${i+1}</span>
+        <span class="extracted-card-type">${esc(c.type)}</span>
+        <span class="geo-status ${c.geoStatus}" id="geostatus_${c._eid}">${c.geoStatus}</span>
+      </div>
+      <div class="extracted-card-body">
+        <div class="extracted-card-row">
+          <label>Addr</label>
+          <input type="text" value="${esc(c.address)}" oninput="extractedCrimes[${i}].address=this.value" placeholder="Block address">
+        </div>
+        <div class="extracted-card-row">
+          <label>Type</label>
+          <input type="text" value="${esc(c.type)}" oninput="extractedCrimes[${i}].type=this.value" placeholder="Crime type">
+        </div>
+        <div class="extracted-card-row">
+          <label>Date</label>
+          <input type="text" value="${esc(c.date)}" oninput="extractedCrimes[${i}].date=this.value" placeholder="YYYY-MM-DD">
+        </div>
+        <div class="extracted-card-row">
+          <label>Coords</label>
+          <input type="text" value="${c.lat ? c.lat.toFixed(5)+', '+c.lng.toFixed(5) : '—'}" readonly style="color:var(--text-muted)" id="coords_${c._eid}">
+        </div>
+      </div>
+      <div class="extracted-card-footer">
+        <button class="small-btn geocode" onclick="geocodeSingle(${i})" id="geocodebtn_${c._eid}">📍 Geocode</button>
+        <button class="small-btn add-db" onclick="addSingleToDb(${i})" ${!c.lat ? 'disabled title="Geocode first"' : ''} id="addbtn_${c._eid}">✅ Add</button>
+        <button class="small-btn remove" onclick="removeSingle(${i})">✕</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function geocodeSingle(i) {
+  const c = extractedCrimes[i];
+  const btn = document.getElementById('geocodebtn_' + c._eid);
+  const statusEl = document.getElementById('geostatus_' + c._eid);
+  const coordsEl = document.getElementById('coords_' + c._eid);
+  const addBtn = document.getElementById('addbtn_' + c._eid);
+
+  btn.disabled = true; btn.textContent = '…';
+  statusEl.textContent = 'working'; statusEl.className = 'geo-status pending';
+
+  const coords = await geocodeAddress(c.address);
+  if (coords) {
+    c.lat = coords.lat; c.lng = coords.lng; c.geoStatus = 'geocoded';
+    statusEl.textContent = 'geocoded'; statusEl.className = 'geo-status geocoded';
+    coordsEl.value = coords.lat.toFixed(5) + ', ' + coords.lng.toFixed(5);
+    addBtn.disabled = false;
+    toast(`📍 ${c.address} geocoded`, 'success');
+  } else {
+    c.geoStatus = 'failed';
+    statusEl.textContent = 'failed'; statusEl.className = 'geo-status failed';
+    toast(`❌ Could not geocode: ${c.address}`, 'error');
+  }
+  btn.disabled = false; btn.textContent = '📍 Geocode';
+}
+
+async function geocodeAll() {
+  const btn = document.getElementById('geocodeAllBtn');
+  const spinner = document.getElementById('geocodeSpinner');
+  btn.disabled = true; spinner.classList.add('visible');
+
+  for (let i = 0; i < extractedCrimes.length; i++) {
+    if (!extractedCrimes[i].lat) await geocodeSingle(i);
+    await new Promise(r => setTimeout(r, 1200)); // respect Nominatim rate limit
+  }
+
+  btn.disabled = false; spinner.classList.remove('visible');
+  toast('✅ Geocoding complete', 'success');
+}
+
+function addSingleToDb(i) {
+  const c = extractedCrimes[i];
+  if (!c.lat) { toast('Geocode this address first', 'error'); return; }
+
+  const crime = {
+    id: genId(),
+    type: c.type, address: c.address,
+    date: c.date + (c.time ? ' ' + c.time : ''),
+    status: 'open', notes: c.notes || '',
+    lat: c.lat, lng: c.lng,
+    geocoded: true, source: 'import'
+  };
+  db.push(crime);
+  saveDB(db);
+
+  extractedCrimes.splice(i, 1);
+  renderExtractedList();
+  toast(`✅ Added: ${crime.type} at ${crime.address}`, 'success');
+}
+
+function addAllToDb() {
+  const geocoded = extractedCrimes.filter(c => c.lat);
+  if (geocoded.length === 0) { toast('No geocoded crimes to add', 'error'); return; }
+
+  geocoded.forEach(c => {
+    db.push({
+      id: genId(), type: c.type, address: c.address,
+      date: c.date + (c.time ? ' ' + c.time : ''),
+      status: 'open', notes: c.notes || '',
+      lat: c.lat, lng: c.lng, geocoded: true, source: 'import'
+    });
+  });
+  extractedCrimes = extractedCrimes.filter(c => !c.lat);
+  saveDB(db);
+  renderExtractedList();
+  toast(`✅ Added ${geocoded.length} crimes to database`, 'success');
+}
+
+function removeSingle(i) {
+  extractedCrimes.splice(i, 1);
+  renderExtractedList();
+}
+
+function toggleManualForm() {
+  document.getElementById('manualForm').classList.toggle('visible');
+}
+
+function addManualEntry() {
+  const type = document.getElementById('manualType').value.trim() || 'Unknown';
+  const date = document.getElementById('manualDate').value.trim() || new Date().toISOString().slice(0,10);
+  const addr = document.getElementById('manualAddr').value.trim();
+  if (!addr) { toast('Address is required', 'error'); return; }
+
+  extractedCrimes.push({
+    _eid: 'e_m_' + Date.now(),
+    type, address: addr,
+    date: formatDate(date), time: '', notes: '',
+    lat: null, lng: null, geoStatus: 'pending'
+  });
+
+  document.getElementById('manualType').value = '';
+  document.getElementById('manualDate').value = '';
+  document.getElementById('manualAddr').value = '';
+  renderExtractedList();
+  toast('✅ Manual entry added', 'success');
+}
+
+function formatDate(str) {
+  // Try MM/DD/YYYY → YYYY-MM-DD
+  const m = str.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (m) return `${m[3]}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;
+  return str;
+}
+
+// ============================================================
+// ADMIN TABLE
+// ============================================================
+function populateTypeFilter() {
+  const types = [...new Set(db.map(c => c.type))].sort();
+  const sel = document.getElementById('filterType');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">All Types</option>' + types.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('');
+  sel.value = cur;
+}
+
+function sortTable(col) {
+  if (sortCol === col) sortDir *= -1;
+  else { sortCol = col; sortDir = 1; }
+  renderTable();
+}
+
+function renderTable() {
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  const status = document.getElementById('filterStatus').value;
+  const type = document.getElementById('filterType').value;
+
+  let filtered = db.filter(c => {
+    if (status && c.status !== status) return false;
+    if (type && c.type !== type) return false;
+    if (search) {
+      const hay = (c.address + c.type + c.notes + c.date).toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    return true;
+  });
+
+  filtered.sort((a,b) => {
+    let av = (a[sortCol] || '').toString().toLowerCase();
+    let bv = (b[sortCol] || '').toString().toLowerCase();
+    return av < bv ? -sortDir : av > bv ? sortDir : 0;
+  });
+
+  const tbody = document.getElementById('tableBody');
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state">No records match your filter.<p>Try adjusting the search or filter criteria.</p></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(crime => `
+    <tr>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">${esc(crime.date)}</td>
+      <td><span style="font-weight:600">${esc(crime.type)}</span></td>
+      <td style="font-family:var(--mono);font-size:11px">${esc(crime.address)}</td>
+      <td>
+        <select class="table-select status-${crime.status}" onchange="updateStatus('${crime.id}', this.value)">
+          ${STATUS_LIST.map(s => `<option value="${s}" ${crime.status===s?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </td>
+      <td style="text-align:center">
+        <span class="geocoded-dot ${crime.geocoded?'yes':'no'}" title="${crime.geocoded?'Geocoded':'Not geocoded'}"></span>
+        ${crime.geocoded ? '<span style="font-size:10px;color:var(--green)">Yes</span>' : '<span style="font-size:10px;color:var(--accent)">No</span>'}
+      </td>
+      <td>
+        <input class="table-notes-input" value="${esc(crime.notes || '')}" placeholder="Add notes..."
+          onchange="updateNotes('${crime.id}', this.value)">
+      </td>
+      <td>
+        <button class="table-delete-btn" onclick="deleteRecord('${crime.id}')">🗑</button>
+        <button class="table-delete-btn" onclick="jumpToMap('${crime.id}')" title="View on map">🗺</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function updateStatus(id, status) {
+  const crime = db.find(c => c.id === id);
+  if (crime) { crime.status = status; saveDB(db); }
+}
+
+function updateNotes(id, notes) {
+  const crime = db.find(c => c.id === id);
+  if (crime) { crime.notes = notes; saveDB(db); }
+}
+
+function deleteRecord(id) {
+  if (!confirm('Delete this record?')) return;
+  db = db.filter(c => c.id !== id);
+  saveDB(db);
+  renderTable();
+  toast('🗑 Deleted', 'info');
+}
+
+function jumpToMap(id) {
+  switchTab('map');
+  document.querySelector('.tab-btn').click(); // activate map tab
+  document.querySelectorAll('.tab-btn')[0].click();
+  setTimeout(() => { openPopover(id); map.invalidateSize(); }, 200);
+}
+
+// ============================================================
+// EXPORT
+// ============================================================
+function exportGeoJSON() {
+  const geojson = {
+    type: 'FeatureCollection',
+    features: db.filter(c => c.lat).map(c => ({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [c.lng, c.lat] },
+      properties: { id: c.id, type: c.type, address: c.address, date: c.date, status: c.status, notes: c.notes }
+    }))
+  };
+  download('crimes.geojson', JSON.stringify(geojson, null, 2), 'application/json');
+  toast(`⬇ Exported ${geojson.features.length} features as GeoJSON`, 'success');
+}
+
+function exportCSV() {
+  const headers = ['id','type','address','date','status','notes','lat','lng','geocoded'];
+  const rows = db.map(c => headers.map(h => JSON.stringify(c[h] ?? '')).join(','));
+  download('crimes.csv', [headers.join(','), ...rows].join('\n'), 'text/csv');
+  toast(`⬇ Exported ${db.length} records as CSV`, 'success');
+}
+
+function download(filename, content, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], { type }));
+  a.download = filename;
+  a.click();
+}
+
+// ============================================================
+// UTILS
+// ============================================================
+function esc(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toast(msg, type = 'info') {
+  const div = document.createElement('div');
+  div.className = `toast ${type}`;
+  div.textContent = msg;
+  document.getElementById('toastContainer').appendChild(div);
+  setTimeout(() => div.remove(), 3500);
+}
+
+// ============================================================
+// INIT
+// ============================================================
+updateStats();
+renderCrimeList();
+renderMarkers();
+
+// If no data, show sample so the map isn't blank
+if (db.length === 0) {
+  toast('👋 Welcome! Click the map to add crimes, or use Import PDF.', 'info');
+}
+</script>
+</body>
+</html>

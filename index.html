@@ -5,9 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Jefferson Park Crime Map</title>
 <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/@mapbox/mapbox-gl-draw@1.4.3/dist/mapbox-gl-draw.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mapbox/mapbox-gl-draw@1.4.3/dist/mapbox-gl-draw.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   /* ── Reset & Base ─────────────────────────────────────────────── */
@@ -902,9 +900,6 @@ function initMap() {
     await loadCrimes();
     setupRealtimeSubscription();
     setupMapIcons();
-    if (userRole === 'admin' || userRole === 'field_officer') {
-      initDrawTools();
-    }
   });
 }
 
@@ -953,82 +948,6 @@ function setBasemap(type) {
   });
   document.getElementById('btn-street').classList.toggle('active', type === 'street');
   document.getElementById('btn-satellite').classList.toggle('active', type === 'satellite');
-}
-
-// ══════════════════════════════════════════════════════════════════
-// DRAW TOOLS
-// ══════════════════════════════════════════════════════════════════
-let draw = null;
-
-function initDrawTools() {
-  if (typeof MapboxDraw === 'undefined') {
-    console.warn('MapboxDraw not loaded');
-    return;
-  }
-  draw = new MapboxDraw({
-    displayControlsDefault: false,
-    controls: {
-      polygon:    true,
-      line_string: true,
-      point:      true,
-      trash:      true,
-    },
-    styles: [
-      { id: 'gl-draw-polygon-fill', type: 'fill', filter: ['all',['==','$type','Polygon'],['!=','mode','static']],
-        paint: { 'fill-color': '#00c2a8', 'fill-outline-color': '#00c2a8', 'fill-opacity': 0.15 } },
-      { id: 'gl-draw-polygon-stroke', type: 'line', filter: ['all',['==','$type','Polygon'],['!=','mode','static']],
-        layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': '#00c2a8', 'line-width': 2.5, 'line-opacity': 1 } },
-      { id: 'gl-draw-line', type: 'line', filter: ['all',['==','$type','LineString'],['!=','mode','static']],
-        layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': '#ffaa00', 'line-width': 2.5, 'line-opacity': 1 } },
-      { id: 'gl-draw-point-outer', type: 'circle', filter: ['all',['==','$type','Point'],['==','meta','feature']],
-        paint: { 'circle-radius': 8, 'circle-color': '#00c2a8', 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' } },
-      { id: 'gl-draw-vertex', type: 'circle', filter: ['all',['==','meta','vertex'],['==','$type','Point']],
-        paint: { 'circle-radius': 5, 'circle-color': '#fff', 'circle-stroke-width': 2, 'circle-stroke-color': '#00c2a8' } },
-      { id: 'gl-draw-midpoint', type: 'circle', filter: ['all',['==','meta','midpoint'],['==','$type','Point']],
-        paint: { 'circle-radius': 4, 'circle-color': '#00c2a8', 'circle-stroke-width': 0 } },
-    ]
-  });
-  map.addControl(draw, 'top-right');
-
-  map.on('draw.create', onDrawCreate);
-  map.on('draw.update', onDrawUpdate);
-}
-
-async function onDrawCreate(e) {
-  const feature = e.features[0];
-  const label = prompt('Label for this annotation (optional):') || '';
-  const notes = prompt('Notes (optional):') || '';
-
-  const { error } = await sb.from('map_annotations').insert({
-    created_by:      currentUser.id,
-    label:           label || null,
-    annotation_type: feature.geometry.type === 'Polygon' ? 'polygon'
-                   : feature.geometry.type === 'LineString' ? 'line' : 'point',
-    geometry:        `SRID=4326;${geojsonToWKT(feature.geometry)}`,
-    notes:           notes || null,
-    is_public:       false,
-  });
-  if (error) showToast('Error saving annotation: ' + error.message, 'error');
-  else showToast('Annotation saved', 'success');
-}
-
-async function onDrawUpdate(e) {
-  showToast('Annotation updated (save coming soon)', 'success');
-}
-
-function geojsonToWKT(geometry) {
-  if (geometry.type === 'Point') {
-    return \`POINT(\${geometry.coordinates[0]} \${geometry.coordinates[1]})\`;
-  } else if (geometry.type === 'LineString') {
-    const coords = geometry.coordinates.map(c => c.join(' ')).join(',');
-    return \`LINESTRING(\${coords})\`;
-  } else if (geometry.type === 'Polygon') {
-    const rings = geometry.coordinates.map(ring => '(' + ring.map(c => c.join(' ')).join(',') + ')');
-    return \`POLYGON(\${rings.join(',')})\`;
-  }
-  return '';
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -1153,10 +1072,10 @@ function renderBoundaries() {
       }
     });
     map.addLayer({ id: 'slo-fill', type: 'fill', source: 'slo-source',
-      paint: { 'fill-color': '#00c2a8', 'fill-opacity': boundaryVisible.slo ? 0.08 : 0 }
+      paint: { 'fill-color': '#00c2a8', 'fill-opacity': boundaryVisible.slo ? 0.05 : 0 }
     });
     map.addLayer({ id: 'slo-line', type: 'line', source: 'slo-source',
-      paint: { 'line-color': '#00c2a8', 'line-width': 2.5, 'line-opacity': boundaryVisible.slo ? 1.0 : 0 }
+      paint: { 'line-color': '#00c2a8', 'line-width': 1.5, 'line-opacity': boundaryVisible.slo ? 0.6 : 0 }
     });
     map.addLayer({ id: 'slo-labels', type: 'symbol', source: 'slo-source',
       layout: {
@@ -1169,7 +1088,7 @@ function renderBoundaries() {
 
     map.on('click', 'slo-fill', (e) => {
       const p = e.features[0].properties;
-      new maplibregl.Popup({ closeButton: true, className: 'boundary-popup-wrap' })
+      new maplibregl.Popup({ closeButton: false, className: 'boundary-popup-wrap' })
         .setLngLat(e.lngLat)
         .setHTML(`
           <div class="boundary-popup">
@@ -1197,10 +1116,10 @@ function renderBoundaries() {
       }
     });
     map.addLayer({ id: 'unnc-fill', type: 'fill', source: 'unnc-source',
-      paint: { 'fill-color': '#2d8bff', 'fill-opacity': boundaryVisible.unnc ? 0.08 : 0 }
+      paint: { 'fill-color': '#2d8bff', 'fill-opacity': boundaryVisible.unnc ? 0.04 : 0 }
     });
     map.addLayer({ id: 'unnc-line', type: 'line', source: 'unnc-source',
-      paint: { 'line-color': '#2d8bff', 'line-width': 2.5, 'line-dasharray': [6,2], 'line-opacity': boundaryVisible.unnc ? 1.0 : 0 }
+      paint: { 'line-color': '#2d8bff', 'line-width': 1.5, 'line-dasharray': [4,2], 'line-opacity': boundaryVisible.unnc ? 0.5 : 0 }
     });
   }
 }
@@ -1210,12 +1129,12 @@ function toggleBoundary(type) {
   document.getElementById('sw-' + type).classList.toggle('on', boundaryVisible[type]);
 
   if (type === 'slo') {
-    if (map.getLayer('slo-fill')) map.setPaintProperty('slo-fill', 'fill-opacity', boundaryVisible.slo ? 0.08 : 0);
-    if (map.getLayer('slo-line')) map.setPaintProperty('slo-line', 'line-opacity', boundaryVisible.slo ? 1.0 : 0);
+    if (map.getLayer('slo-fill')) map.setPaintProperty('slo-fill', 'fill-opacity', boundaryVisible.slo ? 0.05 : 0);
+    if (map.getLayer('slo-line')) map.setPaintProperty('slo-line', 'line-opacity', boundaryVisible.slo ? 0.6 : 0);
     if (map.getLayer('slo-labels')) map.setLayoutProperty('slo-labels', 'visibility', boundaryVisible.slo ? 'visible' : 'none');
   } else {
-    if (map.getLayer('unnc-fill')) map.setPaintProperty('unnc-fill', 'fill-opacity', boundaryVisible.unnc ? 0.08 : 0);
-    if (map.getLayer('unnc-line')) map.setPaintProperty('unnc-line', 'line-opacity', boundaryVisible.unnc ? 1.0 : 0);
+    if (map.getLayer('unnc-fill')) map.setPaintProperty('unnc-fill', 'fill-opacity', boundaryVisible.unnc ? 0.04 : 0);
+    if (map.getLayer('unnc-line')) map.setPaintProperty('unnc-line', 'line-opacity', boundaryVisible.unnc ? 0.5 : 0);
   }
 }
 
@@ -1223,10 +1142,8 @@ function toggleBoundary(type) {
 // RENDER CRIMES
 // ══════════════════════════════════════════════════════════════════
 function renderCrimes() {
-  if (map.getLayer('cluster-ring'))   map.removeLayer('cluster-ring');
   if (map.getLayer('clusters'))       map.removeLayer('clusters');
   if (map.getLayer('cluster-count')) map.removeLayer('cluster-count');
-  if (map.getLayer('unclustered-glow')) map.removeLayer('unclustered-glow');
   if (map.getLayer('unclustered'))   map.removeLayer('unclustered');
   if (map.getSource('crimes'))       map.removeSource('crimes');
 
@@ -1283,28 +1200,15 @@ function renderCrimes() {
     paint: { 'text-color': '#00c2a8' }
   });
 
-  // Individual crime dots — outer glow
-  map.addLayer({
-    id: 'unclustered-glow', type: 'circle', source: 'crimes',
-    filter: ['!', ['has', 'point_count']],
-    paint: {
-      'circle-color': ['get', 'color'],
-      'circle-radius': 16,
-      'circle-opacity': 0.15,
-      'circle-stroke-width': 0,
-    }
-  });
-
   // Individual crime circles (unclustered)
   map.addLayer({
     id: 'unclustered', type: 'circle', source: 'crimes',
     filter: ['!', ['has', 'point_count']],
     paint: {
       'circle-color': ['get', 'color'],
-      'circle-radius': 9,
+      'circle-radius': 10,
       'circle-stroke-width': 2.5,
-      'circle-stroke-color': 'rgba(255,255,255,0.95)',
-      'circle-pitch-alignment': 'map',
+      'circle-stroke-color': 'rgba(255,255,255,0.9)',
     }
   });
 
@@ -1324,8 +1228,6 @@ function renderCrimes() {
     showCrimePopup(props, coords);
   });
 
-  map.on('mouseenter', 'cluster-ring', () => map.getCanvas().style.cursor = 'pointer');
-  map.on('mouseleave', 'cluster-ring', () => map.getCanvas().style.cursor = '');
   map.on('mouseenter', 'clusters',    () => map.getCanvas().style.cursor = 'pointer');
   map.on('mouseleave', 'clusters',    () => map.getCanvas().style.cursor = '');
   map.on('mouseenter', 'unclustered', () => map.getCanvas().style.cursor = 'pointer');

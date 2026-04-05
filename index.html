@@ -866,7 +866,11 @@ async function launchApp() {
   }
 
   // Show admin panel
-  if (userRole === 'admin') document.getElementById('admin-panel').classList.add('visible');
+  console.log('launchApp: userRole =', userRole);
+  if (userRole === 'admin') {
+    document.getElementById('admin-panel').classList.add('visible');
+    console.log('Admin panel shown');
+  }
 
   buildCrimeToggles();
   initMap();
@@ -979,7 +983,11 @@ function setBasemap(type) {
       setupMapIcons();
       renderBoundaries();
       renderCrimes();
-    }, 200);
+      // Re-init draw tools after style change destroys them
+      if (userRole === 'admin' || userRole === 'field_officer') {
+        initDrawTools();
+      }
+    }, 300);
   });
   document.getElementById('btn-street').classList.toggle('active', type === 'street');
   document.getElementById('btn-satellite').classList.toggle('active', type === 'satellite');
@@ -1024,14 +1032,14 @@ function initDrawTools() {
         paint: { 'circle-radius': 4, 'circle-color': '#00c2a8', 'circle-stroke-width': 0 } },
     ]
   });
+  // Remove existing control if present
+  try { if (draw) map.removeControl(draw); } catch(e) {}
   map.addControl(draw, 'top-right');
   map.on('draw.create', onDrawCreate);
   map.on('draw.update', onDrawUpdate);
   console.log('✅ Draw tools initialized');
-  showToast('Draw tools ready', 'success');
   } catch(err) {
     console.error('Draw tools failed to init:', err);
-    showToast('Draw tools error: ' + err.message, 'error');
   }
 }
 
@@ -1218,7 +1226,9 @@ function renderBoundaries() {
           </div>`)
         .addTo(map);
     });
-    map.on('mouseenter', 'slo-fill', () => map.getCanvas().style.cursor = 'pointer');
+    map.on('mouseenter', 'slo-fill', () => {
+      if (boundaryVisible.slo) map.getCanvas().style.cursor = 'pointer';
+    });
     map.on('mouseleave', 'slo-fill', () => map.getCanvas().style.cursor = '');
   }
 
@@ -1244,7 +1254,8 @@ function renderBoundaries() {
     // UNNC click popup
     let unncPopup = null;
     map.on('click', 'unnc-fill', (e) => {
-      if (unncPopup) unncPopup.remove();
+      if (!boundaryVisible.unnc) return;
+      if (unncPopup) { unncPopup.remove(); unncPopup = null; }
       const p = e.features[0].properties;
       // Properties from MapLibre may be stringified
       let props = e.features[0].properties;
@@ -1261,7 +1272,7 @@ function renderBoundaries() {
           </div>`)
         .addTo(map);
     });
-    map.on('mouseenter', 'unnc-fill', () => map.getCanvas().style.cursor = 'pointer');
+    map.on('mouseenter', 'unnc-fill', () => { if (boundaryVisible.unnc) map.getCanvas().style.cursor = 'pointer'; });
     map.on('mouseleave', 'unnc-fill', () => map.getCanvas().style.cursor = '');
   }
 }
@@ -1368,16 +1379,14 @@ function renderCrimes() {
     id: 'cluster-count', type: 'symbol', source: 'crimes',
     filter: ['has', 'point_count'],
     layout: {
-      'text-field': ['get', 'point_count_abbreviated'],
-      'text-size': 14,
+      'text-field': '{point_count_abbreviated}',
+      'text-size': 13,
       'text-font': ['Open Sans Bold', 'Arial Unicode MS Regular'],
       'text-allow-overlap': true,
       'text-ignore-placement': true,
     },
     paint: {
       'text-color': '#000000',
-      'text-halo-color': 'rgba(255,255,255,0)',
-      'text-halo-width': 0,
     }
   });
 
@@ -1517,7 +1526,13 @@ function showCrimePopup(props, coords) {
     ${footer}
   `;
 
-  new maplibregl.Popup({ maxWidth: '360px', offset: 12 })
+  // Remove any existing crime popup
+  if (window._crimePopup) window._crimePopup.remove();
+  window._crimePopup = new maplibregl.Popup({
+    maxWidth: '360px', offset: 12,
+    closeButton: true,
+    closeOnClick: false,
+  })
     .setLngLat(coords)
     .setHTML(html)
     .addTo(map);

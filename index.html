@@ -794,7 +794,7 @@ const CRIME_ICONS = {
 // ══════════════════════════════════════════════════════════════════
 // AUTH
 // ══════════════════════════════════════════════════════════════════
-  async function doLogin() {
+async function doLogin() {
   const email = document.getElementById('login-email').value.trim();
   const pass  = document.getElementById('login-password').value;
   const btn   = document.getElementById('login-btn');
@@ -1041,13 +1041,13 @@ async function onDrawUpdate(e) {
 
 function geojsonToWKT(geometry) {
   if (geometry.type === 'Point') {
-    return \`POINT(\${geometry.coordinates[0]} \${geometry.coordinates[1]})\`;
+    return 'POINT(' + geometry.coordinates[0] + ' ' + geometry.coordinates[1] + ')';
   } else if (geometry.type === 'LineString') {
     const coords = geometry.coordinates.map(c => c.join(' ')).join(',');
-    return \`LINESTRING(\${coords})\`;
+    return 'LINESTRING(' + coords + ')';
   } else if (geometry.type === 'Polygon') {
     const rings = geometry.coordinates.map(ring => '(' + ring.map(c => c.join(' ')).join(',') + ')');
-    return \`POLYGON(\${rings.join(',')})\`;
+    return 'POLYGON(' + rings.join(',') + ')';
   }
   return '';
 }

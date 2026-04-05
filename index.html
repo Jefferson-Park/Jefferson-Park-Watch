@@ -794,7 +794,7 @@ const CRIME_ICONS = {
 // ══════════════════════════════════════════════════════════════════
 // AUTH
 // ══════════════════════════════════════════════════════════════════
-async function doLogin() {
+  async function doLogin() {
   const email = document.getElementById('login-email').value.trim();
   const pass  = document.getElementById('login-password').value;
   const btn   = document.getElementById('login-btn');
@@ -1936,25 +1936,52 @@ function triggerPhotoUpload(id, type) {
 
 async function uploadPhoto(e) {
   const file = e.target.files[0];
-  if (!file || !currentPhotoContext) return;
+  if (!file || !currentPhotoContext) { showToast('No file or context', 'error'); return; }
+  if (!currentUser) { showToast('Must be logged in to upload photos', 'error'); return; }
 
-  const ext  = file.name.split('.').pop();
-  const path = `${currentUser.id}/${currentPhotoContext.id}/${Date.now()}.${ext}`;
+  // Sanitize extension — heic files often come through as jpeg on iOS
+  const rawExt = file.name.split('.').pop().toLowerCase() || 'jpg';
+  const ext = ['jpg','jpeg','png','webp','heic'].includes(rawExt) ? rawExt : 'jpg';
 
-  const { error: uploadErr } = await sb.storage.from('crime-photos').upload(path, file);
-  if (uploadErr) { showToast('Upload failed: ' + uploadErr.message, 'error'); return; }
+  // Build a clean path: crimes/{crime_id}/{timestamp}.{ext}
+  const folder = currentPhotoContext.type === 'crime' ? 'crimes' : 'annotations';
+  const path   = `${folder}/${currentPhotoContext.id}/${Date.now()}.${ext}`;
 
+  showToast('Uploading photo…', 'success');
+
+  const { data: uploadData, error: uploadErr } = await sb.storage
+    .from('crime-photos')
+    .upload(path, file, {
+      cacheControl: '3600',
+      upsert: false,
+      contentType: file.type || 'image/jpeg',
+    });
+
+  if (uploadErr) {
+    console.error('Storage upload error:', uploadErr);
+    showToast('Upload failed: ' + uploadErr.message, 'error');
+    e.target.value = '';
+    return;
+  }
+
+  // Insert photo record into photos table
   const insertData = {
     uploaded_by:   currentUser.id,
     storage_path:  path,
-    crime_id:      currentPhotoContext.type === 'crime' ? currentPhotoContext.id : null,
+    crime_id:      currentPhotoContext.type === 'crime'      ? currentPhotoContext.id : null,
     annotation_id: currentPhotoContext.type === 'annotation' ? currentPhotoContext.id : null,
   };
-  const { error } = await sb.from('photos').insert(insertData);
-  if (error) showToast('Photo record error: ' + error.message, 'error');
-  else showToast('Photo uploaded', 'success');
+
+  const { error: dbErr } = await sb.from('photos').insert(insertData);
+  if (dbErr) {
+    console.error('Photo DB error:', dbErr);
+    showToast('Photo saved to storage but DB record failed: ' + dbErr.message, 'error');
+  } else {
+    showToast('Photo uploaded successfully', 'success');
+  }
 
   e.target.value = '';
+  currentPhotoContext = null;
 }
 
 // ══════════════════════════════════════════════════════════════════

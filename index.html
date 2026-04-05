@@ -9,6 +9,9 @@
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mapbox/mapbox-gl-draw@1.4.3/dist/mapbox-gl-draw.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   /* ── Reset & Base ─────────────────────────────────────────────── */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -32,8 +35,6 @@
     --font:      'DM Sans', system-ui, sans-serif;
     --mono:      'DM Mono', 'Fira Code', monospace;
   }
-
-  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
 
   html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); font-family: var(--font); color: var(--text); }
 
@@ -250,6 +251,16 @@
   }
   .maplibregl-popup-tip { display: none !important; }
   .maplibregl-popup-close-button {
+    background: #2e3350 !important;
+    border-radius: 50% !important;
+    width: 22px !important; height: 22px !important;
+    line-height: 22px !important; text-align: center !important;
+    font-size: 14px !important; color: #e8eaf0 !important;
+    top: 8px !important; right: 8px !important;
+  }
+  .maplibregl-popup-close-button:hover { background: #ff4444 !important; color: white !important; }
+  /* Override for boundary popups - transparent background since we style the inner div */
+  .maplibregl-popup-content {
     color: var(--muted) !important; font-size: 18px !important;
     right: 12px !important; top: 10px !important;
   }
@@ -713,8 +724,8 @@
 // ══════════════════════════════════════════════════════════════════
 // CONFIG — Replace with your actual values
 // ══════════════════════════════════════════════════════════════════
-const SUPABASE_URL = 'https://sqiioihssmnqatjrednq.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_3s5kREPGF10ahyWGMT9tBA_v9FUqbit';
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
 const CLAUDE_API_KEY = 'YOUR_CLAUDE_API_KEY'; // for PDF parsing
 
 // ══════════════════════════════════════════════════════════════════
@@ -1153,7 +1164,7 @@ function renderBoundaries() {
       }
     });
     map.addLayer({ id: 'slo-fill', type: 'fill', source: 'slo-source',
-      paint: { 'fill-color': '#00c2a8', 'fill-opacity': boundaryVisible.slo ? 0.08 : 0 }
+      paint: { 'fill-color': '#00c2a8', 'fill-opacity': boundaryVisible.slo ? 0.12 : 0 }
     });
     map.addLayer({ id: 'slo-line', type: 'line', source: 'slo-source',
       paint: { 'line-color': '#00c2a8', 'line-width': 2.5, 'line-opacity': boundaryVisible.slo ? 1.0 : 0 }
@@ -1167,16 +1178,17 @@ function renderBoundaries() {
       paint: { 'text-color': '#00c2a8', 'text-opacity': 0.8, 'text-halo-color': '#0f1117', 'text-halo-width': 1 }
     });
 
+    let sloPopup = null;
     map.on('click', 'slo-fill', (e) => {
+      if (sloPopup) sloPopup.remove();
       const p = e.features[0].properties;
-      new maplibregl.Popup({ closeButton: true, className: 'boundary-popup-wrap' })
+      sloPopup = new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: '260px' })
         .setLngLat(e.lngLat)
-        .setHTML(`
-          <div class="boundary-popup">
-            <div class="boundary-popup-title">RD ${p.rd}</div>
-            <div class="boundary-popup-row"><span>${p.slo_name || '—'}</span></div>
-            <div class="boundary-popup-row"><span>Email</span>${p.email || '—'}</div>
-            <div class="boundary-popup-row"><span>Cell</span>${p.cell || '—'}</div>
+        .setHTML(`<div style="background:#1a1d27;border-radius:8px;padding:12px 14px;font-family:system-ui,sans-serif;color:#e8eaf0">
+            <div style="font-weight:600;font-size:13px;margin-bottom:8px;color:#00c2a8">RD ${p.rd}</div>
+            <div style="font-size:12px;margin-bottom:4px">${p.slo_name || '—'}</div>
+            <div style="font-size:11px;color:#7b82a0;margin-bottom:2px">${p.email || ''}</div>
+            <div style="font-size:11px;color:#7b82a0">${p.cell || ''}</div>
           </div>`)
         .addTo(map);
     });
@@ -1197,11 +1209,27 @@ function renderBoundaries() {
       }
     });
     map.addLayer({ id: 'unnc-fill', type: 'fill', source: 'unnc-source',
-      paint: { 'fill-color': '#2d8bff', 'fill-opacity': boundaryVisible.unnc ? 0.08 : 0 }
+      paint: { 'fill-color': '#2d8bff', 'fill-opacity': boundaryVisible.unnc ? 0.12 : 0 }
     });
     map.addLayer({ id: 'unnc-line', type: 'line', source: 'unnc-source',
       paint: { 'line-color': '#2d8bff', 'line-width': 2.5, 'line-dasharray': [6,2], 'line-opacity': boundaryVisible.unnc ? 1.0 : 0 }
     });
+
+    // UNNC click popup
+    let unncPopup = null;
+    map.on('click', 'unnc-fill', (e) => {
+      if (unncPopup) unncPopup.remove();
+      const p = e.features[0].properties;
+      unncPopup = new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: '260px' })
+        .setLngLat(e.lngLat)
+        .setHTML(`<div style="background:#1a1d27;border-radius:8px;padding:12px 14px;font-family:system-ui,sans-serif;color:#e8eaf0">
+            <div style="font-weight:600;font-size:13px;margin-bottom:6px;color:#2d8bff">UNNC Region ${p.region || ''}</div>
+            <div style="font-size:12px">${p.name || e.features[0].properties.name || '—'}</div>
+          </div>`)
+        .addTo(map);
+    });
+    map.on('mouseenter', 'unnc-fill', () => map.getCanvas().style.cursor = 'pointer');
+    map.on('mouseleave', 'unnc-fill', () => map.getCanvas().style.cursor = '');
   }
 }
 
@@ -1210,11 +1238,11 @@ function toggleBoundary(type) {
   document.getElementById('sw-' + type).classList.toggle('on', boundaryVisible[type]);
 
   if (type === 'slo') {
-    if (map.getLayer('slo-fill')) map.setPaintProperty('slo-fill', 'fill-opacity', boundaryVisible.slo ? 0.08 : 0);
+    if (map.getLayer('slo-fill')) map.setPaintProperty('slo-fill', 'fill-opacity', boundaryVisible.slo ? 0.12 : 0);
     if (map.getLayer('slo-line')) map.setPaintProperty('slo-line', 'line-opacity', boundaryVisible.slo ? 1.0 : 0);
     if (map.getLayer('slo-labels')) map.setLayoutProperty('slo-labels', 'visibility', boundaryVisible.slo ? 'visible' : 'none');
   } else {
-    if (map.getLayer('unnc-fill')) map.setPaintProperty('unnc-fill', 'fill-opacity', boundaryVisible.unnc ? 0.08 : 0);
+    if (map.getLayer('unnc-fill')) map.setPaintProperty('unnc-fill', 'fill-opacity', boundaryVisible.unnc ? 0.12 : 0);
     if (map.getLayer('unnc-line')) map.setPaintProperty('unnc-line', 'line-opacity', boundaryVisible.unnc ? 1.0 : 0);
   }
 }
@@ -1260,27 +1288,38 @@ function renderCrimes() {
     cluster: true, clusterMaxZoom: 15, clusterRadius: 40
   });
 
-  // Cluster circles
+  // Cluster outer glow
+  map.addLayer({
+    id: 'cluster-ring', type: 'circle', source: 'crimes',
+    filter: ['has', 'point_count'],
+    paint: {
+      'circle-color': 'rgba(0,194,168,0.2)',
+      'circle-radius': ['step', ['get', 'point_count'], 26, 10, 34, 50, 44],
+      'circle-stroke-width': 0,
+    }
+  });
+
+  // Cluster filled circle
   map.addLayer({
     id: 'clusters', type: 'circle', source: 'crimes',
     filter: ['has', 'point_count'],
     paint: {
-      'circle-color': '#1a1d27',
-      'circle-radius': ['step', ['get', 'point_count'], 18, 10, 24, 50, 30],
-      'circle-stroke-width': 2.5,
-      'circle-stroke-color': '#00c2a8',
+      'circle-color': '#00c2a8',
+      'circle-radius': ['step', ['get', 'point_count'], 18, 10, 24, 50, 32],
+      'circle-stroke-width': 3,
+      'circle-stroke-color': 'white',
     }
   });
 
-  // Cluster count labels
+  // Cluster count labels — black on teal
   map.addLayer({
     id: 'cluster-count', type: 'symbol', source: 'crimes',
     filter: ['has', 'point_count'],
     layout: {
       'text-field': '{point_count_abbreviated}',
-      'text-size': 13, 'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+      'text-size': 14, 'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
     },
-    paint: { 'text-color': '#00c2a8' }
+    paint: { 'text-color': '#000000' }
   });
 
   // Individual crime dots — outer glow

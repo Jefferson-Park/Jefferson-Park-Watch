@@ -713,7 +713,7 @@
 // ══════════════════════════════════════════════════════════════════
 const SUPABASE_URL = 'https://sqiioihssmnqatjrednq.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_3s5kREPGF10ahyWGMT9tBA_v9FUqbit';
-//const CLAUDE_API_KEY = 'YOUR_CLAUDE_API_KEY'; // for PDF parsing
+const CLAUDE_API_KEY = 'YOUR_CLAUDE_API_KEY'; // for PDF parsing
 
 // ══════════════════════════════════════════════════════════════════
 // INIT
@@ -771,7 +771,7 @@ const CRIME_ICONS = {
 // ══════════════════════════════════════════════════════════════════
 // AUTH
 // ══════════════════════════════════════════════════════════════════
-  async function doLogin() {
+async function doLogin() {
   const email = document.getElementById('login-email').value.trim();
   const pass  = document.getElementById('login-password').value;
   const btn   = document.getElementById('login-btn');
@@ -798,8 +798,15 @@ async function viewPublic() {
 
 async function loadUserRole() {
   if (!currentUser) { userRole = 'public'; return; }
-  const { data } = await sb.from('profiles').select('role').eq('id', currentUser.id).single();
-  userRole = data?.role || 'field_officer';
+  try {
+    const { data, error } = await sb.rpc('get_my_role');
+    if (error) throw error;
+    userRole = data || 'field_officer';
+  } catch(e) {
+    console.warn('Role lookup failed:', e);
+    userRole = 'field_officer';
+  }
+  console.log('Role loaded:', userRole);
 }
 
 async function doLogout() {
@@ -1015,37 +1022,26 @@ function createClusterImage() {
 // LOAD DATA
 // ══════════════════════════════════════════════════════════════════
 async function loadCrimes() {
-  let query = sb.from('crimes')
-    .select('id, crime_type, status, address, zip, description, incident_date, incident_time, notes, source, location');
-
-  if (!showClosed) query = query.neq('status', 'closed');
-  if (dateFrom)   query = query.gte('incident_date', dateFrom);
-  if (dateTo)     query = query.lte('incident_date', dateTo);
-
-  const { data, error } = await query;
+  const { data, error } = await sb.rpc('get_crimes', {
+    p_exclude_closed: !showClosed,
+    p_date_from: dateFrom || null,
+    p_date_to:   dateTo   || null,
+  });
   if (error) { console.error('Crimes load error:', error); return; }
 
-  // Parse location from PostGIS format
-  crimesData = (data || []).map(c => {
-    let lng = null, lat = null;
-    if (c.location) {
-      // location comes as GeoJSON from Supabase
-      if (typeof c.location === 'object') {
-        lng = c.location.coordinates?.[0];
-        lat = c.location.coordinates?.[1];
-      }
-    }
-    return { ...c, lng, lat };
-  }).filter(c => c.lng && c.lat);
+  // lng and lat come back as floats directly from the function
+  crimesData = (data || []).filter(c => c.lng && c.lat);
+  console.log('Crimes loaded:', crimesData.length);
 
   updateStats();
   renderCrimes();
 }
 
 async function loadBoundaries() {
-  const { data, error } = await sb.from('boundaries').select('id, boundary_type, name, properties, geometry, is_visible');
+  const { data, error } = await sb.rpc('get_boundaries');
   if (error) { console.error('Boundaries error:', error); return; }
   boundariesData = data || [];
+  console.log('Boundaries loaded:', boundariesData.length);
   renderBoundaries();
 }
 

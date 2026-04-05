@@ -5,60 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Jefferson Park Crime Map</title>
 <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/@mapbox/mapbox-gl-draw@1.4.3/dist/mapbox-gl-draw.css" rel="stylesheet">
 <style>
-  /* Draw tool controls — dark theme override */
-  .mapboxgl-ctrl-group,
-  .maplibregl-ctrl-group {
-    background: #1a1d27 !important;
-    border: 1px solid #2e3350 !important;
-    border-radius: 8px !important;
-    overflow: hidden !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.4) !important;
-  }
-  .mapboxgl-ctrl-group button,
-  .maplibregl-ctrl-group button {
-    background-color: #1a1d27 !important;
-    color: #e8eaf0 !important;
-    border-bottom: 1px solid #2e3350 !important;
-    width: 32px !important;
-    height: 32px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-  }
-  .mapboxgl-ctrl-group button:last-child,
-  .maplibregl-ctrl-group button:last-child {
-    border-bottom: none !important;
-  }
-  .mapboxgl-ctrl-group button:hover,
-  .maplibregl-ctrl-group button:hover {
-    background-color: #22263a !important;
-  }
-  .mapboxgl-ctrl-group button.active,
-  .mapboxgl-ctrl-group button:active {
-    background-color: #00c2a8 !important;
-  }
-  /* Draw tool icons — make them white/visible */
-  .mapbox-gl-draw_ctrl-draw-btn {
-    background-repeat: no-repeat !important;
-    background-position: center !important;
-    background-size: 18px !important;
-    filter: invert(1) !important;
-  }
-  /* Navigation controls */
   .maplibregl-ctrl-zoom-in .maplibregl-ctrl-icon,
   .maplibregl-ctrl-zoom-out .maplibregl-ctrl-icon,
-  .maplibregl-ctrl-compass .maplibregl-ctrl-icon {
-    filter: invert(1) !important;
-  }
+  .maplibregl-ctrl-compass .maplibregl-ctrl-icon { filter: invert(1) !important; }
+  .maplibregl-ctrl-group { background: #1a1d27 !important; border: 1px solid #2e3350 !important; }
+  .maplibregl-ctrl-group button { background-color: #1a1d27 !important; border-bottom: 1px solid #2e3350 !important; }
+  .maplibregl-ctrl-group button:hover { background-color: #22263a !important; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
-<script>
-// MapLibre GL Draw compatibility shim
-window.mapboxgl = window.maplibregl;
-</script>
-<script src="https://cdn.jsdelivr.net/npm/@mapbox/mapbox-gl-draw@1.4.3/dist/mapbox-gl-draw.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -628,6 +583,34 @@ window.mapboxgl = window.maplibregl;
         <div class="toggle-switch" id="sw-unnc"></div>
       </div>
 
+      <!-- Draw Tools -->
+      <div id="draw-toolbar" style="display:none">
+        <div class="section-label">Draw &amp; Annotate</div>
+        <div style="display:flex;gap:6px;padding:4px 0 8px;flex-wrap:wrap">
+          <button id="draw-polygon-btn" onclick="setDrawMode('polygon')"
+            style="flex:1;background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:7px 4px;color:var(--text);font-size:11px;cursor:pointer;font-family:var(--font);display:flex;align-items:center;justify-content:center;gap:4px;transition:all .2s">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>
+            Area
+          </button>
+          <button id="draw-line-btn" onclick="setDrawMode('line')"
+            style="flex:1;background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:7px 4px;color:var(--text);font-size:11px;cursor:pointer;font-family:var(--font);display:flex;align-items:center;justify-content:center;gap:4px;transition:all .2s">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="4 20 10 14 14 18 22 4"/></svg>
+            Line
+          </button>
+          <button id="draw-point-btn" onclick="setDrawMode('point')"
+            style="flex:1;background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:7px 4px;color:var(--text);font-size:11px;cursor:pointer;font-family:var(--font);display:flex;align-items:center;justify-content:center;gap:4px;transition:all .2s">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/></svg>
+            Point
+          </button>
+          <button onclick="setDrawMode(null);clearDrawings()"
+            style="flex:1;background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:7px 4px;color:var(--muted);font-size:11px;cursor:pointer;font-family:var(--font);display:flex;align-items:center;justify-content:center;gap:4px;transition:all .2s">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+            Clear
+          </button>
+        </div>
+        <div id="draw-mode-hint" style="font-size:10px;color:var(--muted);padding:0 4px 6px;font-family:var(--mono)"></div>
+      </div>
+
       <!-- Crime Types -->
       <div class="section-label">Crime Types</div>
       <div id="crime-toggles"></div>
@@ -769,6 +752,29 @@ window.mapboxgl = window.maplibregl;
     </div>
   </div>
 </div>
+
+<!-- Annotation Modal -->
+<div id="annotation-modal" style="position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center">
+  <div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:24px;width:360px;position:relative">
+    <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:12px 12px 0 0"></div>
+    <div style="font-size:15px;font-weight:600;margin-bottom:16px">Save Annotation</div>
+    <div class="modal-field">
+      <label>Label</label>
+      <input type="text" id="ann-label" placeholder="e.g. Hotspot area, Patrol route…" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);font-size:13px;font-family:var(--font);outline:none">
+    </div>
+    <div class="modal-field" style="margin-top:10px">
+      <label>Notes</label>
+      <textarea id="ann-notes" placeholder="Additional notes…" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);font-size:13px;font-family:var(--font);outline:none;resize:vertical;min-height:70px"></textarea>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button onclick="closeAnnotationModal()" style="flex:1;background:transparent;border:1px solid var(--border);border-radius:6px;padding:9px;color:var(--muted);font-size:13px;cursor:pointer;font-family:var(--font)">Cancel</button>
+      <button onclick="submitAnnotation()" style="flex:2;background:var(--accent);color:#000;border:none;border-radius:6px;padding:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font)">Save Annotation</button>
+    </div>
+  </div>
+</div>
+
+<!-- Annotation modal visible class -->
+<style>#annotation-modal.visible { display: flex !important; }</style>
 
 <!-- Toast -->
 <div id="toast"></div>
@@ -1040,74 +1046,191 @@ function setBasemap(type) {
 }
 
 // ══════════════════════════════════════════════════════════════════
-// DRAW TOOLS
+// DRAW TOOLS — Custom MapLibre implementation (no external library)
 // ══════════════════════════════════════════════════════════════════
-let draw = null;
+let drawMode = null; // 'polygon' | 'line' | 'point' | null
+let drawPoints = [];
+let drawSourceReady = false;
 
 function initDrawTools() {
-  console.log('initDrawTools called, userRole:', userRole);
-  console.log('MapboxDraw available:', typeof MapboxDraw);
-  if (typeof MapboxDraw === 'undefined') {
-    console.warn('MapboxDraw not loaded — draw tools unavailable');
+  console.log('initDrawTools called for role:', userRole);
+  // Show draw toolbar in sidebar
+  const toolbar = document.getElementById('draw-toolbar');
+  if (toolbar) toolbar.style.display = 'block';
+
+  // Init draw source and layers on map
+  if (!map.getSource('draw-source')) {
+    map.addSource('draw-source', {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] }
+    });
+    map.addLayer({ id: 'draw-polygons', type: 'fill', source: 'draw-source',
+      filter: ['==', ['geometry-type'], 'Polygon'],
+      paint: { 'fill-color': '#00c2a8', 'fill-opacity': 0.15 }
+    });
+    map.addLayer({ id: 'draw-polygon-outline', type: 'line', source: 'draw-source',
+      filter: ['==', ['geometry-type'], 'Polygon'],
+      paint: { 'line-color': '#00c2a8', 'line-width': 2 }
+    });
+    map.addLayer({ id: 'draw-lines', type: 'line', source: 'draw-source',
+      filter: ['==', ['geometry-type'], 'LineString'],
+      paint: { 'line-color': '#ffaa00', 'line-width': 2.5, 'line-dasharray': [2,1] }
+    });
+    map.addLayer({ id: 'draw-points-layer', type: 'circle', source: 'draw-source',
+      filter: ['==', ['geometry-type'], 'Point'],
+      paint: { 'circle-radius': 7, 'circle-color': '#00c2a8', 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' }
+    });
+    map.addLayer({ id: 'draw-vertices', type: 'circle', source: 'draw-source',
+      filter: ['all', ['==', ['geometry-type'], 'Point'], ['==', ['get', '_vertex'], true]],
+      paint: { 'circle-radius': 5, 'circle-color': '#fff', 'circle-stroke-width': 2, 'circle-stroke-color': '#00c2a8' }
+    });
+    drawSourceReady = true;
+  }
+
+  map.on('click', onDrawClick);
+  map.on('dblclick', onDrawDoubleClick);
+  console.log('✅ Custom draw tools initialized');
+}
+
+function setDrawMode(mode) {
+  drawMode = mode;
+  drawPoints = [];
+  updateDrawPreview();
+
+  // Update button states
+  ['draw-polygon-btn','draw-line-btn','draw-point-btn'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) btn.style.background = 'var(--panel2)';
+  });
+  const activeId = mode === 'polygon' ? 'draw-polygon-btn'
+                 : mode === 'line'    ? 'draw-line-btn'
+                 : mode === 'point'   ? 'draw-point-btn' : null;
+  if (activeId) {
+    const btn = document.getElementById(activeId);
+    if (btn) btn.style.background = 'rgba(0,194,168,0.2)';
+  }
+
+  map.getCanvas().style.cursor = mode ? 'crosshair' : '';
+  if (mode) showToast(
+    mode === 'point' ? 'Click map to place point' :
+    mode === 'polygon' ? 'Click to draw polygon, double-click to finish' :
+    'Click to draw line, double-click to finish', 'success'
+  );
+}
+
+function onDrawClick(e) {
+  if (!drawMode) return;
+  const pt = [e.lngLat.lng, e.lngLat.lat];
+
+  if (drawMode === 'point') {
+    drawPoints = [pt];
+    finishDraw();
     return;
   }
-  try {
-  draw = new MapboxDraw({
-    displayControlsDefault: false,
-    controls: {
-      polygon:     true,
-      line_string: true,
-      point:       true,
-      trash:       true,
-    },
-    styles: [
-      { id: 'gl-draw-polygon-fill', type: 'fill', filter: ['all',['==','$type','Polygon'],['!=','mode','static']],
-        paint: { 'fill-color': '#00c2a8', 'fill-outline-color': '#00c2a8', 'fill-opacity': 0.15 } },
-      { id: 'gl-draw-polygon-stroke', type: 'line', filter: ['all',['==','$type','Polygon'],['!=','mode','static']],
-        layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': '#00c2a8', 'line-width': 2.5, 'line-opacity': 1 } },
-      { id: 'gl-draw-line', type: 'line', filter: ['all',['==','$type','LineString'],['!=','mode','static']],
-        layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': '#ffaa00', 'line-width': 2.5, 'line-opacity': 1 } },
-      { id: 'gl-draw-point-outer', type: 'circle', filter: ['all',['==','$type','Point'],['==','meta','feature']],
-        paint: { 'circle-radius': 8, 'circle-color': '#00c2a8', 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' } },
-      { id: 'gl-draw-vertex', type: 'circle', filter: ['all',['==','meta','vertex'],['==','$type','Point']],
-        paint: { 'circle-radius': 5, 'circle-color': '#fff', 'circle-stroke-width': 2, 'circle-stroke-color': '#00c2a8' } },
-      { id: 'gl-draw-midpoint', type: 'circle', filter: ['all',['==','meta','midpoint'],['==','$type','Point']],
-        paint: { 'circle-radius': 4, 'circle-color': '#00c2a8', 'circle-stroke-width': 0 } },
-    ]
+  drawPoints.push(pt);
+  updateDrawPreview();
+}
+
+function onDrawDoubleClick(e) {
+  if (!drawMode || drawMode === 'point') return;
+  e.preventDefault();
+  if (drawMode === 'polygon' && drawPoints.length < 3) {
+    showToast('Need at least 3 points for a polygon', 'error'); return;
+  }
+  if (drawMode === 'line' && drawPoints.length < 2) {
+    showToast('Need at least 2 points for a line', 'error'); return;
+  }
+  finishDraw();
+}
+
+function updateDrawPreview() {
+  if (!drawSourceReady || !map.getSource('draw-source')) return;
+  const features = [];
+  if (drawPoints.length >= 2) {
+    if (drawMode === 'polygon' && drawPoints.length >= 3) {
+      features.push({ type: 'Feature', geometry: {
+        type: 'Polygon', coordinates: [[...drawPoints, drawPoints[0]]]
+      }, properties: {} });
+    } else {
+      features.push({ type: 'Feature', geometry: {
+        type: 'LineString', coordinates: drawPoints
+      }, properties: {} });
+    }
+  }
+  // Show vertex dots
+  drawPoints.forEach(pt => {
+    features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: pt },
+      properties: { _vertex: true } });
   });
-  // Remove existing control if present
-  try { if (draw) map.removeControl(draw); } catch(e) {}
-  map.addControl(draw, 'top-right');
-  map.on('draw.create', onDrawCreate);
-  map.on('draw.update', onDrawUpdate);
-  console.log('✅ Draw tools initialized');
-  } catch(err) {
-    console.error('Draw tools failed to init:', err);
+  map.getSource('draw-source').setData({ type: 'FeatureCollection', features });
+}
+
+async function finishDraw() {
+  if (!drawPoints.length) return;
+
+  let geometry;
+  if (drawMode === 'point') {
+    geometry = { type: 'Point', coordinates: drawPoints[0] };
+  } else if (drawMode === 'line') {
+    geometry = { type: 'LineString', coordinates: drawPoints };
+  } else {
+    geometry = { type: 'Polygon', coordinates: [[...drawPoints, drawPoints[0]]] };
+  }
+
+  // Show annotation dialog
+  showAnnotationDialog(geometry);
+  drawPoints = [];
+  setDrawMode(null);
+}
+
+function showAnnotationDialog(geometry) {
+  const modal = document.getElementById('annotation-modal');
+  if (modal) {
+    modal.classList.add('visible');
+    modal._geometry = geometry;
   }
 }
 
-async function onDrawCreate(e) {
-  const feature = e.features[0];
-  const label = prompt('Label for this annotation (optional):') || '';
-  const notes = prompt('Notes (optional):') || '';
+async function submitAnnotation() {
+  const modal = document.getElementById('annotation-modal');
+  const geometry = modal._geometry;
+  const label = document.getElementById('ann-label').value.trim();
+  const notes = document.getElementById('ann-notes').value.trim();
+  const annType = geometry.type === 'Polygon' ? 'polygon'
+                : geometry.type === 'LineString' ? 'line' : 'point';
 
-  const { error } = await sb.from('map_annotations').insert({
-    created_by:      currentUser.id,
-    label:           label || null,
-    annotation_type: feature.geometry.type === 'Polygon' ? 'polygon'
-                   : feature.geometry.type === 'LineString' ? 'line' : 'point',
-    geometry:        `SRID=4326;${geojsonToWKT(feature.geometry)}`,
-    notes:           notes || null,
-    is_public:       false,
+  const { error } = await sb.rpc('insert_annotation', {
+    p_created_by: currentUser.id,
+    p_label:      label || null,
+    p_type:       annType,
+    p_geojson:    JSON.stringify(geometry),
+    p_notes:      notes || null,
   });
-  if (error) showToast('Error saving annotation: ' + error.message, 'error');
-  else showToast('Annotation saved', 'success');
+
+  if (error) showToast('Error saving: ' + error.message, 'error');
+  else {
+    showToast('Annotation saved', 'success');
+    // Keep drawn shape visible on map
+    updateDrawPreview();
+  }
+  closeAnnotationModal();
 }
 
-async function onDrawUpdate(e) {
-  showToast('Annotation updated (save coming soon)', 'success');
+function clearDrawings() {
+  drawPoints = [];
+  if (map.getSource('draw-source')) {
+    map.getSource('draw-source').setData({ type: 'FeatureCollection', features: [] });
+  }
+  showToast('Drawings cleared', 'success');
+}
+
+function closeAnnotationModal() {
+  const modal = document.getElementById('annotation-modal');
+  if (modal) {
+    modal.classList.remove('visible');
+    document.getElementById('ann-label').value = '';
+    document.getElementById('ann-notes').value = '';
+  }
 }
 
 function geojsonToWKT(geometry) {
@@ -1424,7 +1547,7 @@ function renderCrimes() {
     id: 'cluster-count', type: 'symbol', source: 'crimes',
     filter: ['has', 'point_count'],
     layout: {
-      'text-field': ['to-string', ['get', 'point_count']],
+      'text-field': ['number-format', ['get', 'point_count'], {}],
       'text-size': 13,
       'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
       'text-allow-overlap': true,
@@ -1433,8 +1556,8 @@ function renderCrimes() {
     },
     paint: {
       'text-color': '#0a0d16',
-      'text-halo-color': '#ffffff',
-      'text-halo-width': 1,
+      'text-halo-color': 'rgba(255,255,255,0.8)',
+      'text-halo-width': 1.5,
     }
   });
 
@@ -2113,7 +2236,29 @@ function showToast(msg, type = 'success') {
 })();
 </script>
 
-<!-- Supabase helper function — run this SQL in Supabase first:
+<!-- Supabase helper functions — run these SQL in Supabase first:
+
+Also run:
+CREATE OR REPLACE FUNCTION insert_annotation(
+  p_created_by uuid,
+  p_label      text,
+  p_type       text,
+  p_geojson    text,
+  p_notes      text DEFAULT NULL
+) RETURNS void AS $$
+BEGIN
+  INSERT INTO map_annotations (created_by, label, annotation_type, geometry, notes, is_public)
+  VALUES (
+    p_created_by, p_label, p_type,
+    ST_GeomFromGeoJSON(p_geojson)::geography,
+    p_notes, false
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION insert_annotation(uuid,text,text,text,text) TO authenticated;
+
+<!-- Original insert_crime function:
 
 CREATE OR REPLACE FUNCTION insert_crime(
   p_crime_type    text,

@@ -13,8 +13,8 @@
 // CONFIG — Replace with your actual values
 // ══════════════════════════════════════════════════════════════════
 const SUPABASE_URL = 'https://sqiioihssmnqatjrednq.supabase.co';       // e.g. https://xxxx.supabase.co
-const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNxaWlvaWhzc21ucWF0anJlZG5xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4MTQ2MDQsImV4cCI6MjA5MDM5MDYwNH0.7xmkq0yF_27ulgOMrOfblsg9vJsyDJtGve4bn0qgHIU1; // service_role key, NOT anon
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNxaWlvaWhzc21ucWF0anJlZG5xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4MTQ2MDQsImV4cCI6MjA5MDM5MDYwNH0.7xmkq0yF_27ulgOMrOfblsg9vJsyDJtGve4bn0qgHIU1; // service_role key, NOT anon
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 //const SUPABASE_URL = 'YOUR_SUPABASE_URL';
 //const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
 //const CLAUDE_API_KEY = 'blocked by Claude'; // for PDF parsing
@@ -725,7 +725,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // CONFIG — Replace with your actual values
 // ══════════════════════════════════════════════════════════════════
 const SUPABASE_URL = 'https://sqiioihssmnqatjrednq.supabase.co';       // e.g. https://xxxx.supabase.co
-const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNxaWlvaWhzc21ucWF0anJlZG5xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4MTQ2MDQsImV4cCI6MjA5MDM5MDYwNH0.7xmkq0yF_27ulgOMrOfblsg9vJsyDJtGve4bn0qgHIU1; // service_role key, NOT anon
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNxaWlvaWhzc21ucWF0anJlZG5xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4MTQ2MDQsImV4cCI6MjA5MDM5MDYwNH0.7xmkq0yF_27ulgOMrOfblsg9vJsyDJtGve4bn0qgHIU1; // service_role key, NOT anon
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 //const SUPABASE_URL = 'YOUR_SUPABASE_URL';
 //const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
@@ -787,7 +787,7 @@ const CRIME_ICONS = {
 // ══════════════════════════════════════════════════════════════════
 // AUTH
 // ══════════════════════════════════════════════════════════════════
-async function doLogin() { 
+  async function doLogin() { 
   const email = document.getElementById('login-email').value.trim();
   const pass  = document.getElementById('login-password').value;
   const btn   = document.getElementById('login-btn');
@@ -799,7 +799,7 @@ async function doLogin() {
   const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
   if (error) {
     err.textContent = error.message;
-    btn.disabled = false; btn.textContent = 'Sign in';
+    btn.disabled = true; btn.textContent = 'Sign in';
     return;
   }
   currentUser = data.user;

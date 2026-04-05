@@ -647,7 +647,7 @@
   <div id="admin-panel">
     <span class="admin-label">ADMIN</span>
     <div class="admin-sep"></div>
-    <button class="admin-btn" onclick="toggleClosedCases()">
+    <button class="admin-btn admin-only" onclick="toggleClosedCases()">
       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
       <span id="closed-btn-label">Show Closed</span>
     </button>
@@ -655,11 +655,11 @@
       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
       Add Crime
     </button>
-    <button class="admin-btn" onclick="openPDFImport()">
+    <button class="admin-btn admin-only" onclick="openPDFImport()">
       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
       Import PDF
     </button>
-    <button class="admin-btn" onclick="openSLOManager()">
+    <button class="admin-btn admin-only" onclick="openSLOManager()">
       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       SLO Officers
     </button>
@@ -917,11 +917,15 @@ async function launchApp() {
     document.getElementById('logout-btn').onclick = () => location.reload();
   }
 
-  // Show admin panel
+  // Show bottom panel based on role
   console.log('launchApp: userRole =', userRole);
-  if (userRole === 'admin') {
+  if (userRole === 'admin' || userRole === 'field_officer') {
     document.getElementById('admin-panel').classList.add('visible');
-    console.log('Admin panel shown');
+    // Hide admin-only buttons for field officers
+    if (userRole === 'field_officer') {
+      document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+    }
+    console.log('Panel shown for role:', userRole);
   }
 
   buildCrimeToggles();
@@ -1027,19 +1031,21 @@ function satelliteStyle() {
 function setBasemap(type) {
   const center = map.getCenter();
   const zoom   = map.getZoom();
+  // Reset draw source flag since style wipe removes all sources
+  drawSourceReady = false;
   map.setStyle(type === 'street' ? streetStyle() : satelliteStyle());
   map.once('style.load', () => {
     map.setCenter(center);
     map.setZoom(zoom);
+    // Wait for style to fully settle before adding layers
     setTimeout(() => {
       setupMapIcons();
       renderBoundaries();
       renderCrimes();
-      // Re-init draw tools after style change destroys them
       if (userRole === 'admin' || userRole === 'field_officer') {
         initDrawTools();
       }
-    }, 300);
+    }, 500);
   });
   document.getElementById('btn-street').classList.toggle('active', type === 'street');
   document.getElementById('btn-satellite').classList.toggle('active', type === 'satellite');
@@ -1057,8 +1063,14 @@ function initDrawTools() {
   // Show draw toolbar in sidebar
   const toolbar = document.getElementById('draw-toolbar');
   if (toolbar) toolbar.style.display = 'block';
+  console.log('Draw toolbar element:', toolbar ? 'found' : 'NOT FOUND');
 
   // Init draw source and layers on map
+  if (!map.isStyleLoaded()) {
+    console.warn('Style not loaded yet, deferring draw init');
+    map.once('style.load', () => setTimeout(initDrawTools, 200));
+    return;
+  }
   if (!map.getSource('draw-source')) {
     map.addSource('draw-source', {
       type: 'geojson',
@@ -1120,6 +1132,9 @@ function setDrawMode(mode) {
 
 function onDrawClick(e) {
   if (!drawMode) return;
+  e.preventDefault();
+  // Stop map click from also triggering crime popups
+  map.once('click', function(ev) { ev.originalEvent.stopPropagation(); });
   const pt = [e.lngLat.lng, e.lngLat.lat];
 
   if (drawMode === 'point') {
@@ -1547,17 +1562,18 @@ function renderCrimes() {
     id: 'cluster-count', type: 'symbol', source: 'crimes',
     filter: ['has', 'point_count'],
     layout: {
-      'text-field': ['number-format', ['get', 'point_count'], {}],
+      'text-field': ['concat', ['get', 'point_count_abbreviated']],
       'text-size': 13,
       'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
       'text-allow-overlap': true,
       'text-ignore-placement': true,
       'text-anchor': 'center',
+      'text-offset': [0, 0],
     },
     paint: {
-      'text-color': '#0a0d16',
-      'text-halo-color': 'rgba(255,255,255,0.8)',
-      'text-halo-width': 1.5,
+      'text-color': '#000000',
+      'text-halo-color': 'rgba(255,255,255,0.6)',
+      'text-halo-width': 1,
     }
   });
 

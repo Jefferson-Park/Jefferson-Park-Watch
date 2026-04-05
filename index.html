@@ -6,7 +6,53 @@
 <title>Jefferson Park Crime Map</title>
 <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/@mapbox/mapbox-gl-draw@1.4.3/dist/mapbox-gl-draw.css" rel="stylesheet">
-<style>.mapboxgl-ctrl-group { background: var(--panel) !important; border: 1px solid var(--border) !important; } .mapboxgl-ctrl-group button { background-color: var(--panel) !important; color: var(--text) !important; } .mapboxgl-ctrl-group button:hover { background-color: var(--panel2) !important; }</style>
+<style>
+  /* Draw tool controls — dark theme override */
+  .mapboxgl-ctrl-group,
+  .maplibregl-ctrl-group {
+    background: #1a1d27 !important;
+    border: 1px solid #2e3350 !important;
+    border-radius: 8px !important;
+    overflow: hidden !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4) !important;
+  }
+  .mapboxgl-ctrl-group button,
+  .maplibregl-ctrl-group button {
+    background-color: #1a1d27 !important;
+    color: #e8eaf0 !important;
+    border-bottom: 1px solid #2e3350 !important;
+    width: 32px !important;
+    height: 32px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  .mapboxgl-ctrl-group button:last-child,
+  .maplibregl-ctrl-group button:last-child {
+    border-bottom: none !important;
+  }
+  .mapboxgl-ctrl-group button:hover,
+  .maplibregl-ctrl-group button:hover {
+    background-color: #22263a !important;
+  }
+  .mapboxgl-ctrl-group button.active,
+  .mapboxgl-ctrl-group button:active {
+    background-color: #00c2a8 !important;
+  }
+  /* Draw tool icons — make them white/visible */
+  .mapbox-gl-draw_ctrl-draw-btn {
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-size: 18px !important;
+    filter: invert(1) !important;
+  }
+  /* Navigation controls */
+  .maplibregl-ctrl-zoom-in .maplibregl-ctrl-icon,
+  .maplibregl-ctrl-zoom-out .maplibregl-ctrl-icon,
+  .maplibregl-ctrl-compass .maplibregl-ctrl-icon {
+    filter: invert(1) !important;
+  }
+</style>
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 <script>
 // MapLibre GL Draw compatibility shim
@@ -1003,17 +1049,16 @@ function initDrawTools() {
   console.log('MapboxDraw available:', typeof MapboxDraw);
   if (typeof MapboxDraw === 'undefined') {
     console.warn('MapboxDraw not loaded — draw tools unavailable');
-    showToast('Draw tools unavailable (library not loaded)', 'error');
     return;
   }
   try {
   draw = new MapboxDraw({
     displayControlsDefault: false,
     controls: {
-      polygon:    true,
+      polygon:     true,
       line_string: true,
-      point:      true,
-      trash:      true,
+      point:       true,
+      trash:       true,
     },
     styles: [
       { id: 'gl-draw-polygon-fill', type: 'fill', filter: ['all',['==','$type','Polygon'],['!=','mode','static']],
@@ -1379,14 +1424,17 @@ function renderCrimes() {
     id: 'cluster-count', type: 'symbol', source: 'crimes',
     filter: ['has', 'point_count'],
     layout: {
-      'text-field': '{point_count_abbreviated}',
+      'text-field': ['to-string', ['get', 'point_count']],
       'text-size': 13,
-      'text-font': ['Open Sans Bold', 'Arial Unicode MS Regular'],
+      'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
       'text-allow-overlap': true,
       'text-ignore-placement': true,
+      'text-anchor': 'center',
     },
     paint: {
-      'text-color': '#000000',
+      'text-color': '#0a0d16',
+      'text-halo-color': '#ffffff',
+      'text-halo-width': 1,
     }
   });
 

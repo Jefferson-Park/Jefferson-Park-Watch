@@ -2,617 +2,400 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Jefferson Park Crime Map</title>
-<link href="https://cdn.jsdelivr.net/npm/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet">
-<style>
-  .maplibregl-ctrl-zoom-in .maplibregl-ctrl-icon,
-  .maplibregl-ctrl-zoom-out .maplibregl-ctrl-icon,
-  .maplibregl-ctrl-compass .maplibregl-ctrl-icon { filter: invert(1) !important; }
-  .maplibregl-ctrl-group { background: #1a1d27 !important; border: 1px solid #2e3350 !important; }
-  .maplibregl-ctrl-group button { background-color: #1a1d27 !important; border-bottom: 1px solid #2e3350 !important; }
-  .maplibregl-ctrl-group button:hover { background-color: #22263a !important; }
-</style>
-<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+
+<!-- Leaflet core -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+<!-- Marker clustering — gives us numbered cluster bubbles -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
+
+<!-- Leaflet Draw — polygon/line/point tools -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.min.js"></script>
+
+<!-- Supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- Google Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
 <style>
-  /* ── Reset & Base ─────────────────────────────────────────────── */
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* ── Reset ─────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  :root {
-    --bg:        #0f1117;
-    --panel:     #1a1d27;
-    --panel2:    #22263a;
-    --border:    #2e3350;
-    --accent:    #00c2a8;
-    --accent2:   #0088ff;
-    --text:      #e8eaf0;
-    --muted:     #7b82a0;
-    --danger:    #ff4444;
-    --warn:      #ffaa00;
-    --red:       #e8453c;
-    --amber:     #f0a500;
-    --blue:      #2d8bff;
-    --sidebar-w: 280px;
-    --topbar-h:  52px;
-    --font:      'DM Sans', system-ui, sans-serif;
-    --mono:      'DM Mono', 'Fira Code', monospace;
-  }
+:root {
+  --bg:       #0f1117;
+  --panel:    #1a1d27;
+  --panel2:   #22263a;
+  --border:   #2e3350;
+  --accent:   #00c2a8;
+  --blue:     #2d8bff;
+  --text:     #e8eaf0;
+  --muted:    #7b82a0;
+  --danger:   #ff4444;
+  --amber:    #f0a500;
+  --red:      #e8453c;
+  --sw:       280px;
+  --tb:       52px;
+  --font:     'DM Sans', system-ui, sans-serif;
+  --mono:     'DM Mono', monospace;
+}
 
-  html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); font-family: var(--font); color: var(--text); }
+html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); font-family:var(--font); color:var(--text); }
 
-  /* ── Login Overlay ────────────────────────────────────────────── */
-  #login-overlay {
-    position: fixed; inset: 0; z-index: 1000;
-    background: linear-gradient(135deg, #0a0d16 0%, #0f1525 50%, #0a1020 100%);
-    display: flex; align-items: center; justify-content: center;
-  }
-  .login-box {
-    width: 360px; background: var(--panel); border: 1px solid var(--border);
-    border-radius: 12px; padding: 40px 36px; position: relative; overflow: hidden;
-  }
-  .login-box::before {
-    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
-    background: linear-gradient(90deg, var(--accent), var(--accent2));
-  }
-  .login-badge {
-    display: flex; align-items: center; gap: 12px; margin-bottom: 32px;
-  }
-  .login-badge-icon {
-    width: 44px; height: 44px; background: var(--accent); border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .login-badge-icon svg { width: 24px; height: 24px; }
-  .login-title { font-size: 15px; font-weight: 600; letter-spacing: .02em; }
-  .login-sub { font-size: 11px; color: var(--muted); font-family: var(--mono); margin-top: 2px; }
-  .login-heading { font-size: 22px; font-weight: 600; margin-bottom: 6px; }
-  .login-desc { font-size: 13px; color: var(--muted); margin-bottom: 28px; }
-  .form-group { margin-bottom: 16px; }
-  .form-group label { display: block; font-size: 11px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
-  .form-group input {
-    width: 100%; background: var(--bg); border: 1px solid var(--border);
-    border-radius: 8px; padding: 10px 14px; color: var(--text); font-size: 14px;
-    font-family: var(--font); outline: none; transition: border-color .2s;
-  }
-  .form-group input:focus { border-color: var(--accent); }
-  .btn-primary {
-    width: 100%; background: var(--accent); color: #000; font-weight: 600;
-    font-size: 14px; border: none; border-radius: 8px; padding: 12px;
-    cursor: pointer; transition: opacity .2s; font-family: var(--font);
-    margin-top: 8px;
-  }
-  .btn-primary:hover { opacity: .85; }
-  .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
-  .login-error { color: var(--danger); font-size: 12px; margin-top: 10px; text-align: center; min-height: 18px; }
-  .login-public { text-align: center; margin-top: 20px; }
-  .login-public a { color: var(--muted); font-size: 12px; cursor: pointer; text-decoration: underline; }
+/* ── Login ─────────────────────────────────────────────────────── */
+#login-overlay {
+  position:fixed; inset:0; z-index:2000;
+  background:linear-gradient(135deg,#0a0d16,#0f1525,#0a1020);
+  display:flex; align-items:center; justify-content:center;
+}
+.login-box {
+  width:360px; background:var(--panel); border:1px solid var(--border);
+  border-radius:12px; padding:40px 36px; position:relative; overflow:hidden;
+}
+.login-box::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:3px;
+  background:linear-gradient(90deg,var(--accent),var(--blue));
+}
+.login-badge { display:flex; align-items:center; gap:12px; margin-bottom:28px; }
+.login-badge-icon { width:44px; height:44px; background:var(--accent); border-radius:10px; display:flex; align-items:center; justify-content:center; }
+.login-title { font-size:15px; font-weight:600; }
+.login-sub { font-size:11px; color:var(--muted); font-family:var(--mono); }
+.login-heading { font-size:22px; font-weight:600; margin-bottom:4px; }
+.login-desc { font-size:13px; color:var(--muted); margin-bottom:24px; }
+.fg { margin-bottom:14px; }
+.fg label { display:block; font-size:11px; font-weight:500; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:5px; }
+.fg input { width:100%; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px 14px; color:var(--text); font-size:14px; font-family:var(--font); outline:none; transition:border-color .2s; }
+.fg input:focus { border-color:var(--accent); }
+.btn-primary { width:100%; background:var(--accent); color:#000; font-weight:600; font-size:14px; border:none; border-radius:8px; padding:12px; cursor:pointer; font-family:var(--font); margin-top:6px; transition:opacity .2s; }
+.btn-primary:hover { opacity:.85; }
+.btn-primary:disabled { opacity:.5; cursor:not-allowed; }
+.login-err { color:var(--danger); font-size:12px; margin-top:8px; text-align:center; min-height:16px; }
+.login-pub { text-align:center; margin-top:16px; }
+.login-pub a { color:var(--muted); font-size:12px; cursor:pointer; text-decoration:underline; }
 
-  /* ── App Shell ────────────────────────────────────────────────── */
-  #app { display: none; width: 100%; height: 100%; position: relative; }
+/* ── App ───────────────────────────────────────────────────────── */
+#app { display:none; width:100%; height:100%; position:relative; }
 
-  /* ── Top Bar ──────────────────────────────────────────────────── */
-  #topbar {
-    position: absolute; top: 0; left: var(--sidebar-w); right: 0;
-    height: var(--topbar-h); z-index: 100;
-    background: var(--panel); border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; gap: 10px; padding: 0 16px;
-  }
-  #search-wrap { flex: 1; position: relative; max-width: 400px; }
-  #search-input {
-    width: 100%; background: var(--bg); border: 1px solid var(--border);
-    border-radius: 8px; padding: 8px 14px 8px 36px; color: var(--text);
-    font-size: 13px; font-family: var(--font); outline: none; transition: border-color .2s;
-  }
-  #search-input:focus { border-color: var(--accent); }
-  .search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); opacity: .4; }
-  #search-results {
-    position: absolute; top: calc(100% + 4px); left: 0; right: 0;
-    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
-    overflow: hidden; display: none; z-index: 200; max-height: 200px; overflow-y: auto;
-  }
-  .search-result {
-    padding: 10px 14px; font-size: 13px; cursor: pointer; transition: background .15s;
-  }
-  .search-result:hover { background: var(--panel2); }
-  .topbar-btn {
-    width: 36px; height: 36px; background: var(--panel2); border: 1px solid var(--border);
-    border-radius: 8px; display: flex; align-items: center; justify-content: center;
-    cursor: pointer; transition: all .2s; flex-shrink: 0;
-  }
-  .topbar-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .topbar-btn svg { width: 16px; height: 16px; }
-  #user-info {
-    display: flex; align-items: center; gap: 8px; margin-left: auto;
-    padding: 6px 12px; background: var(--panel2); border: 1px solid var(--border);
-    border-radius: 8px; font-size: 12px;
-  }
-  .user-role {
-    font-family: var(--mono); font-size: 10px; padding: 2px 6px;
-    border-radius: 4px; font-weight: 500;
-  }
-  .role-admin { background: rgba(0,194,168,.15); color: var(--accent); }
-  .role-officer { background: rgba(45,139,255,.15); color: var(--blue); }
-  .role-public { background: rgba(123,130,160,.15); color: var(--muted); }
-  #logout-btn {
-    padding: 6px 12px; background: transparent; border: 1px solid var(--border);
-    border-radius: 6px; color: var(--muted); font-size: 12px; cursor: pointer;
-    font-family: var(--font); transition: all .2s;
-  }
-  #logout-btn:hover { border-color: var(--danger); color: var(--danger); }
+/* ── Sidebar ───────────────────────────────────────────────────── */
+#sidebar {
+  position:absolute; top:0; left:0; bottom:0; width:var(--sw);
+  z-index:1000; background:var(--panel); border-right:1px solid var(--border);
+  display:flex; flex-direction:column; overflow:hidden;
+}
+.sb-head { padding:14px; border-bottom:1px solid var(--border); flex-shrink:0; }
+.sb-logo { display:flex; align-items:center; gap:10px; }
+.sb-logo-icon { width:36px; height:36px; background:var(--accent); border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.sb-logo-text { font-size:13px; font-weight:600; }
+.sb-logo-sub { font-size:10px; color:var(--muted); font-family:var(--mono); }
+.sb-scroll { flex:1; overflow-y:auto; padding:10px; }
+.sb-scroll::-webkit-scrollbar { width:3px; }
+.sb-scroll::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+.sec-label { font-size:10px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.1em; padding:10px 4px 5px; font-family:var(--mono); }
 
-  /* ── Sidebar ──────────────────────────────────────────────────── */
-  #sidebar {
-    position: absolute; top: 0; left: 0; bottom: 0;
-    width: var(--sidebar-w); z-index: 100;
-    background: var(--panel); border-right: 1px solid var(--border);
-    display: flex; flex-direction: column; overflow: hidden;
-  }
-  .sidebar-header {
-    padding: 16px; border-bottom: 1px solid var(--border); flex-shrink: 0;
-  }
-  .sidebar-logo {
-    display: flex; align-items: center; gap: 10px;
-  }
-  .sidebar-logo-icon {
-    width: 36px; height: 36px; background: var(--accent); border-radius: 8px;
-    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-  }
-  .sidebar-logo-icon svg { width: 20px; height: 20px; }
-  .sidebar-logo-text { font-size: 13px; font-weight: 600; line-height: 1.3; }
-  .sidebar-logo-sub { font-size: 10px; color: var(--muted); font-family: var(--mono); }
-  .sidebar-scroll { flex: 1; overflow-y: auto; padding: 12px; }
-  .sidebar-scroll::-webkit-scrollbar { width: 4px; }
-  .sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
-  .sidebar-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-  .section-label {
-    font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase;
-    letter-spacing: .1em; padding: 10px 4px 6px; font-family: var(--mono);
-  }
+/* stats */
+.stats-box { background:var(--panel2); border-radius:8px; padding:10px 12px; margin-bottom:8px; }
+.stats-num { font-family:var(--mono); font-size:22px; font-weight:500; color:var(--accent); }
+.stats-lbl { font-size:11px; color:var(--muted); }
+.stats-pills { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+.pill { font-size:10px; font-family:var(--mono); padding:2px 7px; border-radius:4px; display:flex; align-items:center; gap:4px; }
+.pill-dot { width:6px; height:6px; border-radius:50%; }
 
-  /* ── Toggle Rows ──────────────────────────────────────────────── */
-  .toggle-row {
-    display: flex; align-items: center; gap: 8px; padding: 6px 4px;
-    border-radius: 6px; cursor: pointer; transition: background .15s;
-  }
-  .toggle-row:hover { background: var(--panel2); }
-  .toggle-icon {
-    width: 28px; height: 28px; border-radius: 6px; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .toggle-icon svg { width: 14px; height: 14px; }
-  .toggle-label { font-size: 12px; flex: 1; }
-  .toggle-count { font-family: var(--mono); font-size: 10px; color: var(--muted); }
-  .toggle-switch {
-    width: 28px; height: 16px; background: var(--border); border-radius: 8px;
-    position: relative; transition: background .2s; flex-shrink: 0;
-  }
-  .toggle-switch.on { background: var(--accent); }
-  .toggle-switch::after {
-    content: ''; position: absolute; top: 2px; left: 2px;
-    width: 12px; height: 12px; background: white; border-radius: 50%;
-    transition: transform .2s;
-  }
-  .toggle-switch.on::after { transform: translateX(12px); }
+/* date filter */
+.date-row { display:flex; gap:5px; margin-bottom:5px; }
+.date-input { flex:1; background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:7px 8px; color:var(--text); font-size:11px; font-family:var(--font); outline:none; }
+.date-input:focus { border-color:var(--accent); }
+.date-btns { display:flex; gap:5px; }
+.btn-apply { background:var(--accent); color:#000; border:none; border-radius:6px; padding:7px 14px; font-size:11px; font-weight:600; cursor:pointer; font-family:var(--font); }
+.btn-clear { background:transparent; color:var(--muted); border:1px solid var(--border); border-radius:6px; padding:7px 10px; font-size:11px; cursor:pointer; font-family:var(--font); }
+.btn-clear:hover { border-color:var(--danger); color:var(--danger); }
 
-  /* ── Date Filter ──────────────────────────────────────────────── */
-  .date-row { display: flex; gap: 6px; padding: 4px 0; }
-  .date-input {
-    flex: 1; background: var(--bg); border: 1px solid var(--border);
-    border-radius: 6px; padding: 7px 8px; color: var(--text); font-size: 11px;
-    font-family: var(--font); outline: none; transition: border-color .2s;
-  }
-  .date-input:focus { border-color: var(--accent); }
-  .date-apply {
-    background: var(--accent); color: #000; border: none; border-radius: 6px;
-    padding: 7px 12px; font-size: 11px; font-weight: 600; cursor: pointer;
-    font-family: var(--font); transition: opacity .2s; white-space: nowrap;
-  }
-  .date-apply:hover { opacity: .85; }
-  .date-clear {
-    background: transparent; color: var(--muted); border: 1px solid var(--border);
-    border-radius: 6px; padding: 7px 10px; font-size: 11px; cursor: pointer;
-    font-family: var(--font); transition: all .2s;
-  }
-  .date-clear:hover { border-color: var(--danger); color: var(--danger); }
+/* basemap toggle */
+.bm-toggle { display:flex; background:var(--bg); border:1px solid var(--border); border-radius:8px; overflow:hidden; margin:4px 0 8px; }
+.bm-btn { flex:1; padding:8px; font-size:11px; font-weight:500; cursor:pointer; border:none; background:transparent; color:var(--muted); font-family:var(--font); transition:all .2s; }
+.bm-btn.active { background:var(--panel2); color:var(--text); }
 
-  /* ── Base Map Toggle ──────────────────────────────────────────── */
-  .basemap-toggle {
-    display: flex; background: var(--bg); border: 1px solid var(--border);
-    border-radius: 8px; overflow: hidden; margin: 4px 0;
-  }
-  .basemap-btn {
-    flex: 1; padding: 8px; font-size: 11px; font-weight: 500; cursor: pointer;
-    border: none; background: transparent; color: var(--muted); font-family: var(--font);
-    transition: all .2s;
-  }
-  .basemap-btn.active { background: var(--panel2); color: var(--text); }
+/* toggle rows */
+.tog-row { display:flex; align-items:center; gap:8px; padding:5px 4px; border-radius:6px; cursor:pointer; transition:background .15s; }
+.tog-row:hover { background:var(--panel2); }
+.tog-icon { width:26px; height:26px; border-radius:6px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.tog-label { font-size:12px; flex:1; }
+.tog-count { font-family:var(--mono); font-size:10px; color:var(--muted); }
+.tog-sw { width:28px; height:16px; background:var(--border); border-radius:8px; position:relative; transition:background .2s; flex-shrink:0; }
+.tog-sw.on { background:var(--accent); }
+.tog-sw::after { content:''; position:absolute; top:2px; left:2px; width:12px; height:12px; background:white; border-radius:50%; transition:transform .2s; }
+.tog-sw.on::after { transform:translateX(12px); }
 
-  /* ── Stats Bar ────────────────────────────────────────────────── */
-  .stats-bar {
-    padding: 10px 12px; background: var(--panel2); border-radius: 8px;
-    margin: 4px 0 8px;
-  }
-  .stats-row { display: flex; justify-content: space-between; align-items: center; }
-  .stats-num { font-family: var(--mono); font-size: 20px; font-weight: 500; color: var(--accent); }
-  .stats-label { font-size: 11px; color: var(--muted); }
-  .stats-breakdown { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
-  .stat-pill {
-    font-size: 10px; font-family: var(--mono); padding: 2px 6px;
-    border-radius: 4px; display: flex; align-items: center; gap: 4px;
-  }
-  .stat-dot { width: 6px; height: 6px; border-radius: 50%; }
+/* draw tools */
+.draw-btns { display:flex; gap:5px; flex-wrap:wrap; padding:4px 0 8px; }
+.draw-btn {
+  flex:1; min-width:56px; background:var(--panel2); border:1px solid var(--border);
+  border-radius:6px; padding:7px 4px; color:var(--text); font-size:11px;
+  cursor:pointer; font-family:var(--font); display:flex; align-items:center;
+  justify-content:center; gap:4px; transition:all .2s;
+}
+.draw-btn:hover { border-color:var(--accent); color:var(--accent); }
+.draw-btn.active { background:rgba(0,194,168,.2); border-color:var(--accent); color:var(--accent); }
+.draw-hint { font-size:10px; color:var(--muted); font-family:var(--mono); padding:0 4px 6px; min-height:14px; }
 
-  /* ── Map ──────────────────────────────────────────────────────── */
-  #map {
-    position: absolute; top: var(--topbar-h); left: var(--sidebar-w); right: 0; bottom: 0;
-  }
-  .maplibregl-popup-content {
-    background: var(--panel) !important; color: var(--text) !important;
-    border: 1px solid var(--border) !important; border-radius: 12px !important;
-    padding: 0 !important; box-shadow: 0 8px 32px rgba(0,0,0,.5) !important;
-    min-width: 300px; max-width: 360px;
-  }
-  .maplibregl-popup-tip { display: none !important; }
-  .maplibregl-popup-close-button {
-    position: absolute !important;
-    top: 10px !important; right: 12px !important;
-    width: 24px !important; height: 24px !important;
-    background: var(--panel2) !important;
-    border: 1px solid var(--border) !important;
-    border-radius: 50% !important;
-    color: var(--muted) !important;
-    font-size: 16px !important;
-    line-height: 22px !important;
-    text-align: center !important;
-    cursor: pointer !important;
-    z-index: 10 !important;
-  }
-  .maplibregl-popup-close-button:hover {
-    background: var(--danger) !important;
-    color: white !important;
-    border-color: var(--danger) !important;
-  }
+/* ── Top Bar ───────────────────────────────────────────────────── */
+#topbar {
+  position:absolute; top:0; left:var(--sw); right:0; height:var(--tb);
+  z-index:1000; background:var(--panel); border-bottom:1px solid var(--border);
+  display:flex; align-items:center; gap:8px; padding:0 14px;
+}
+#search-wrap { flex:1; position:relative; max-width:380px; }
+#search-input { width:100%; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:8px 14px 8px 34px; color:var(--text); font-size:13px; font-family:var(--font); outline:none; transition:border-color .2s; }
+#search-input:focus { border-color:var(--accent); }
+.s-icon { position:absolute; left:10px; top:50%; transform:translateY(-50%); opacity:.4; }
+#search-results { position:absolute; top:calc(100% + 4px); left:0; right:0; background:var(--panel); border:1px solid var(--border); border-radius:8px; display:none; z-index:200; max-height:180px; overflow-y:auto; }
+.s-result { padding:9px 14px; font-size:12px; cursor:pointer; }
+.s-result:hover { background:var(--panel2); }
+.tb-btn { width:36px; height:36px; background:var(--panel2); border:1px solid var(--border); border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all .2s; flex-shrink:0; }
+.tb-btn:hover { border-color:var(--accent); color:var(--accent); }
+#user-info { display:flex; align-items:center; gap:8px; padding:5px 12px; background:var(--panel2); border:1px solid var(--border); border-radius:8px; font-size:12px; margin-left:auto; }
+.role-badge { font-family:var(--mono); font-size:10px; padding:2px 6px; border-radius:4px; font-weight:500; }
+.role-admin   { background:rgba(0,194,168,.15); color:var(--accent); }
+.role-officer { background:rgba(45,139,255,.15); color:var(--blue); }
+.role-public  { background:rgba(123,130,160,.15); color:var(--muted); }
+#logout-btn { padding:5px 12px; background:transparent; border:1px solid var(--border); border-radius:6px; color:var(--muted); font-size:12px; cursor:pointer; font-family:var(--font); transition:all .2s; }
+#logout-btn:hover { border-color:var(--danger); color:var(--danger); }
 
-  /* ── Popup ────────────────────────────────────────────────────── */
-  .popup-header {
-    padding: 14px 16px 10px; border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; gap: 10px;
-  }
-  .popup-crime-icon {
-    width: 36px; height: 36px; border-radius: 8px; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .popup-crime-icon svg { width: 18px; height: 18px; }
-  .popup-type { font-size: 13px; font-weight: 600; }
-  .popup-date { font-size: 11px; color: var(--muted); font-family: var(--mono); }
-  .popup-body { padding: 12px 16px; }
-  .popup-address {
-    font-size: 12px; color: var(--muted); margin-bottom: 10px;
-    display: flex; align-items: center; gap: 6px;
-  }
-  .popup-desc { font-size: 12px; line-height: 1.6; margin-bottom: 12px; color: var(--text); }
-  .popup-field { margin-bottom: 10px; }
-  .popup-field label {
-    display: block; font-size: 10px; font-weight: 600; color: var(--muted);
-    text-transform: uppercase; letter-spacing: .08em; margin-bottom: 4px;
-  }
-  .popup-status-select {
-    width: 100%; background: var(--bg); border: 1px solid var(--border);
-    border-radius: 6px; padding: 7px 10px; color: var(--text); font-size: 12px;
-    font-family: var(--font); outline: none; cursor: pointer;
-  }
-  .popup-notes {
-    width: 100%; background: var(--bg); border: 1px solid var(--border);
-    border-radius: 6px; padding: 7px 10px; color: var(--text); font-size: 12px;
-    font-family: var(--font); outline: none; resize: vertical; min-height: 70px;
-    transition: border-color .2s;
-  }
-  .popup-notes:focus { border-color: var(--accent); }
-  .popup-footer {
-    padding: 10px 16px 14px; display: flex; gap: 8px; align-items: center;
-  }
-  .popup-save {
-    flex: 1; background: var(--accent); color: #000; border: none; border-radius: 6px;
-    padding: 9px; font-size: 12px; font-weight: 600; cursor: pointer;
-    font-family: var(--font); transition: opacity .2s;
-  }
-  .popup-save:hover { opacity: .85; }
-  .popup-save:disabled { opacity: .5; cursor: not-allowed; }
-  .popup-photo-btn {
-    background: var(--panel2); border: 1px solid var(--border); border-radius: 6px;
-    padding: 9px 12px; color: var(--muted); font-size: 12px; cursor: pointer;
-    font-family: var(--font); transition: all .2s; display: flex; align-items: center; gap: 6px;
-  }
-  .popup-photo-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .popup-status-badge {
-    font-family: var(--mono); font-size: 10px; padding: 3px 8px;
-    border-radius: 4px; margin-left: auto;
-  }
-  .status-open { background: rgba(232,69,60,.15); color: var(--red); }
-  .status-in_progress { background: rgba(240,165,0,.15); color: var(--amber); }
-  .status-closed { background: rgba(123,130,160,.15); color: var(--muted); }
-  .popup-photos { padding: 0 16px 12px; display: flex; gap: 6px; flex-wrap: wrap; }
-  .popup-photo-thumb {
-    width: 60px; height: 60px; object-fit: cover; border-radius: 6px;
-    border: 1px solid var(--border); cursor: pointer;
-  }
-  .popup-msg { font-size: 11px; color: var(--accent); padding: 0 16px 10px; }
+/* ── Map ───────────────────────────────────────────────────────── */
+#map { position:absolute; top:var(--tb); left:var(--sw); right:0; bottom:0; z-index:1; }
 
-  /* ── Admin Panel ──────────────────────────────────────────────── */
-  #admin-panel {
-    position: absolute; bottom: 0; left: var(--sidebar-w); right: 0;
-    background: var(--panel); border-top: 1px solid var(--border);
-    padding: 10px 16px; display: none; align-items: center; gap: 10px; z-index: 100;
-  }
-  #admin-panel.visible { display: flex; }
-  .admin-label { font-size: 11px; color: var(--muted); font-family: var(--mono); }
-  .admin-btn {
-    padding: 7px 14px; background: var(--panel2); border: 1px solid var(--border);
-    border-radius: 6px; color: var(--text); font-size: 12px; cursor: pointer;
-    font-family: var(--font); transition: all .2s; display: flex; align-items: center; gap: 6px;
-  }
-  .admin-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .admin-btn svg { width: 14px; height: 14px; }
-  .admin-sep { width: 1px; height: 24px; background: var(--border); }
+/* Leaflet cluster override — match our dark theme */
+.marker-cluster-small,
+.marker-cluster-medium,
+.marker-cluster-large { background:rgba(0,194,168,0.25) !important; }
+.marker-cluster-small div,
+.marker-cluster-medium div,
+.marker-cluster-large div {
+  background:#00c2a8 !important;
+  color:#000 !important;
+  font-family:var(--mono) !important;
+  font-weight:600 !important;
+  font-size:13px !important;
+}
 
-  /* ── Add Crime Modal ──────────────────────────────────────────── */
-  #add-crime-modal {
-    position: fixed; inset: 0; z-index: 500; background: rgba(0,0,0,.7);
-    display: none; align-items: center; justify-content: center;
-  }
-  #add-crime-modal.visible { display: flex; }
-  .modal-box {
-    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
-    padding: 28px; width: 480px; max-height: 80vh; overflow-y: auto; position: relative;
-  }
-  .modal-box::before {
-    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
-    background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 12px 12px 0 0;
-  }
-  .modal-title { font-size: 16px; font-weight: 600; margin-bottom: 20px; }
-  .modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .modal-field { margin-bottom: 12px; }
-  .modal-field.full { grid-column: 1 / -1; }
-  .modal-field label {
-    display: block; font-size: 10px; font-weight: 600; color: var(--muted);
-    text-transform: uppercase; letter-spacing: .08em; margin-bottom: 5px;
-  }
-  .modal-field input, .modal-field select, .modal-field textarea {
-    width: 100%; background: var(--bg); border: 1px solid var(--border);
-    border-radius: 6px; padding: 8px 10px; color: var(--text); font-size: 13px;
-    font-family: var(--font); outline: none; transition: border-color .2s;
-  }
-  .modal-field input:focus, .modal-field select:focus, .modal-field textarea:focus { border-color: var(--accent); }
-  .modal-field textarea { resize: vertical; min-height: 80px; }
-  .modal-hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
-  .modal-footer { display: flex; gap: 8px; margin-top: 20px; }
-  .modal-cancel {
-    flex: 1; background: transparent; border: 1px solid var(--border); border-radius: 6px;
-    padding: 10px; color: var(--muted); font-size: 13px; cursor: pointer; font-family: var(--font);
-    transition: all .2s;
-  }
-  .modal-cancel:hover { border-color: var(--danger); color: var(--danger); }
-  .modal-submit {
-    flex: 2; background: var(--accent); color: #000; border: none; border-radius: 6px;
-    padding: 10px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: var(--font);
-    transition: opacity .2s;
-  }
-  .modal-submit:hover { opacity: .85; }
-  #geocode-status { font-size: 11px; color: var(--accent); margin-top: 4px; min-height: 16px; }
+/* Leaflet Draw toolbar — dark theme */
+.leaflet-draw-toolbar a { background-color:var(--panel) !important; color:var(--text) !important; border-color:var(--border) !important; }
+.leaflet-draw-toolbar a:hover { background-color:var(--panel2) !important; }
+.leaflet-draw-section { background:var(--panel) !important; }
+.leaflet-retina .leaflet-draw-toolbar a { background-image:url('https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/images/spritesheet-2x.png') !important; }
+.leaflet-touch .leaflet-draw-toolbar .leaflet-draw-draw-polygon,
+.leaflet-touch .leaflet-draw-toolbar .leaflet-draw-draw-polyline,
+.leaflet-touch .leaflet-draw-toolbar .leaflet-draw-draw-marker { filter:invert(1); }
 
-  /* ── PDF Import Modal ─────────────────────────────────────────── */
-  #pdf-modal {
-    position: fixed; inset: 0; z-index: 500; background: rgba(0,0,0,.7);
-    display: none; align-items: center; justify-content: center;
-  }
-  #pdf-modal.visible { display: flex; }
-  .pdf-drop {
-    border: 2px dashed var(--border); border-radius: 10px; padding: 30px;
-    text-align: center; cursor: pointer; transition: all .2s; margin-bottom: 16px;
-  }
-  .pdf-drop:hover, .pdf-drop.drag { border-color: var(--accent); background: rgba(0,194,168,.05); }
-  .pdf-drop-icon { font-size: 32px; margin-bottom: 8px; }
-  .pdf-drop-text { font-size: 13px; color: var(--muted); }
-  .pdf-drop-text strong { color: var(--text); }
-  #pdf-preview { display: none; }
-  .pdf-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 12px; }
-  .pdf-table th {
-    text-align: left; padding: 6px 8px; font-size: 10px; font-weight: 600;
-    color: var(--muted); text-transform: uppercase; letter-spacing: .06em;
-    border-bottom: 1px solid var(--border);
-  }
-  .pdf-table td { padding: 7px 8px; border-bottom: 1px solid rgba(46,51,80,.5); vertical-align: top; }
-  .pdf-table tr:hover td { background: var(--panel2); }
-  .pdf-row-skip { opacity: .4; }
-  .pdf-status { font-size: 11px; padding: 10px 0; color: var(--muted); }
-  .tag-dup { font-family: var(--mono); font-size: 9px; padding: 2px 5px; background: rgba(255,68,68,.15); color: var(--danger); border-radius: 3px; }
-  .tag-new { font-family: var(--mono); font-size: 9px; padding: 2px 5px; background: rgba(0,194,168,.15); color: var(--accent); border-radius: 3px; }
-  .tag-err { font-family: var(--mono); font-size: 9px; padding: 2px 5px; background: rgba(240,165,0,.15); color: var(--amber); border-radius: 3px; }
+/* Leaflet popup dark theme */
+.leaflet-popup-content-wrapper {
+  background:var(--panel) !important; color:var(--text) !important;
+  border:1px solid var(--border) !important; border-radius:12px !important;
+  box-shadow:0 8px 32px rgba(0,0,0,.5) !important; padding:0 !important;
+}
+.leaflet-popup-tip-container { display:none !important; }
+.leaflet-popup-close-button { color:var(--muted) !important; font-size:18px !important; padding:8px 10px !important; }
+.leaflet-popup-close-button:hover { color:var(--danger) !important; }
+.leaflet-popup-content { margin:0 !important; min-width:300px; max-width:340px; }
+.leaflet-container a.leaflet-popup-close-button { top:8px !important; right:8px !important; }
 
-  /* ── Notification Toast ───────────────────────────────────────── */
-  #toast {
-    position: fixed; bottom: 80px; right: 20px; z-index: 900;
-    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
-    padding: 12px 16px; font-size: 13px; display: none;
-    box-shadow: 0 4px 16px rgba(0,0,0,.4); max-width: 300px;
-  }
-  #toast.success { border-color: var(--accent); color: var(--accent); }
-  #toast.error { border-color: var(--danger); color: var(--danger); }
+/* Leaflet controls */
+.leaflet-control-zoom a { background:var(--panel) !important; color:var(--text) !important; border-color:var(--border) !important; }
+.leaflet-control-zoom a:hover { background:var(--panel2) !important; }
+.leaflet-control-attribution { background:rgba(26,29,39,.8) !important; color:var(--muted) !important; font-size:10px !important; }
+.leaflet-control-attribution a { color:var(--accent) !important; }
 
-  /* ── Locate pulse ─────────────────────────────────────────────── */
-  .user-location-dot {
-    width: 16px; height: 16px; background: var(--accent2); border-radius: 50%;
-    border: 3px solid white; box-shadow: 0 0 0 4px rgba(45,139,255,.3);
-    animation: pulse 2s ease-out infinite;
-  }
-  @keyframes pulse {
-    0%,100% { box-shadow: 0 0 0 4px rgba(45,139,255,.3); }
-    50% { box-shadow: 0 0 0 8px rgba(45,139,255,.1); }
-  }
+/* ── Popup Content ─────────────────────────────────────────────── */
+.pop-head { padding:14px 36px 10px 14px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; }
+.pop-icon { width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.pop-type { font-size:13px; font-weight:600; }
+.pop-date { font-size:11px; color:var(--muted); font-family:var(--mono); }
+.pop-body { padding:12px 14px; }
+.pop-addr { font-size:12px; color:var(--muted); margin-bottom:8px; display:flex; align-items:center; gap:5px; }
+.pop-desc { font-size:12px; line-height:1.6; margin-bottom:10px; }
+.pop-field { margin-bottom:10px; }
+.pop-field label { display:block; font-size:10px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:4px; }
+.pop-select { width:100%; background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:7px 10px; color:var(--text); font-size:12px; font-family:var(--font); outline:none; }
+.pop-notes { width:100%; background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:7px 10px; color:var(--text); font-size:12px; font-family:var(--font); outline:none; resize:vertical; min-height:65px; }
+.pop-footer { padding:8px 14px 12px; display:flex; gap:8px; }
+.pop-save { flex:1; background:var(--accent); color:#000; border:none; border-radius:6px; padding:9px; font-size:12px; font-weight:600; cursor:pointer; font-family:var(--font); }
+.pop-save:disabled { opacity:.5; cursor:not-allowed; }
+.pop-photo { background:var(--panel2); border:1px solid var(--border); border-radius:6px; padding:9px 12px; color:var(--muted); font-size:12px; cursor:pointer; font-family:var(--font); display:flex; align-items:center; gap:5px; }
+.pop-photo:hover { border-color:var(--accent); color:var(--accent); }
+.pop-msg { font-size:11px; color:var(--accent); padding:0 14px 8px; min-height:18px; }
+.status-badge { font-family:var(--mono); font-size:10px; padding:2px 7px; border-radius:4px; }
+.s-open { background:rgba(232,69,60,.15); color:var(--red); }
+.s-in_progress { background:rgba(240,165,0,.15); color:var(--amber); }
+.s-closed { background:rgba(123,130,160,.15); color:var(--muted); }
 
-  /* ── SLO Boundary Popup ───────────────────────────────────────── */
-  .boundary-popup {
-    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
-    padding: 12px 14px; font-size: 12px; min-width: 200px;
-  }
-  .boundary-popup-title { font-weight: 600; margin-bottom: 6px; font-size: 13px; }
-  .boundary-popup-row { display: flex; gap: 8px; margin-bottom: 4px; color: var(--muted); }
-  .boundary-popup-row span:first-child { color: var(--text); font-weight: 500; min-width: 60px; }
+/* ── Bottom Panel ──────────────────────────────────────────────── */
+#bottom-panel {
+  position:absolute; bottom:0; left:var(--sw); right:0; z-index:1000;
+  background:var(--panel); border-top:1px solid var(--border);
+  padding:8px 14px; display:none; align-items:center; gap:8px; flex-wrap:wrap;
+}
+#bottom-panel.visible { display:flex; }
+.bp-label { font-size:10px; color:var(--muted); font-family:var(--mono); }
+.bp-sep { width:1px; height:22px; background:var(--border); }
+.bp-btn { padding:6px 12px; background:var(--panel2); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:12px; cursor:pointer; font-family:var(--font); display:flex; align-items:center; gap:5px; transition:all .2s; }
+.bp-btn:hover { border-color:var(--accent); color:var(--accent); }
+.bp-btn svg { width:13px; height:13px; }
 
-  /* ── Loading Spinner ──────────────────────────────────────────── */
-  #map-loading {
-    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
-    z-index: 50; display: flex; flex-direction: column; align-items: center; gap: 12px;
-  }
-  .spinner {
-    width: 32px; height: 32px; border: 3px solid var(--border);
-    border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .loading-text { font-size: 12px; color: var(--muted); font-family: var(--mono); }
+/* ── Modals ────────────────────────────────────────────────────── */
+.modal-overlay { position:fixed; inset:0; z-index:3000; background:rgba(0,0,0,.7); display:none; align-items:center; justify-content:center; }
+.modal-overlay.open { display:flex; }
+.modal-box { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:26px; width:480px; max-width:95vw; max-height:85vh; overflow-y:auto; position:relative; }
+.modal-box::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,var(--accent),var(--blue)); border-radius:12px 12px 0 0; }
+.modal-title { font-size:16px; font-weight:600; margin-bottom:18px; }
+.mf { margin-bottom:12px; }
+.mf label { display:block; font-size:10px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:5px; }
+.mf input, .mf select, .mf textarea { width:100%; background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:8px 10px; color:var(--text); font-size:13px; font-family:var(--font); outline:none; transition:border-color .2s; }
+.mf input:focus, .mf select:focus, .mf textarea:focus { border-color:var(--accent); }
+.mf textarea { resize:vertical; min-height:80px; }
+.mf-hint { font-size:11px; color:var(--muted); margin-top:3px; }
+.mf-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.mf-full { grid-column:1/-1; }
+.modal-footer { display:flex; gap:8px; margin-top:18px; }
+.btn-cancel { flex:1; background:transparent; border:1px solid var(--border); border-radius:6px; padding:10px; color:var(--muted); font-size:13px; cursor:pointer; font-family:var(--font); }
+.btn-cancel:hover { border-color:var(--danger); color:var(--danger); }
+.btn-submit { flex:2; background:var(--accent); color:#000; border:none; border-radius:6px; padding:10px; font-size:13px; font-weight:600; cursor:pointer; font-family:var(--font); }
+#geocode-status { font-size:11px; color:var(--accent); margin-top:3px; min-height:15px; }
+
+/* PDF modal */
+.pdf-drop { border:2px dashed var(--border); border-radius:10px; padding:28px; text-align:center; cursor:pointer; transition:all .2s; margin-bottom:14px; }
+.pdf-drop:hover { border-color:var(--accent); background:rgba(0,194,168,.04); }
+.pdf-table { width:100%; border-collapse:collapse; font-size:11px; margin-top:10px; }
+.pdf-table th { text-align:left; padding:5px 7px; font-size:10px; font-weight:600; color:var(--muted); text-transform:uppercase; border-bottom:1px solid var(--border); }
+.pdf-table td { padding:6px 7px; border-bottom:1px solid rgba(46,51,80,.4); vertical-align:top; }
+.tag { font-family:var(--mono); font-size:9px; padding:1px 5px; border-radius:3px; }
+.tag-new { background:rgba(0,194,168,.15); color:var(--accent); }
+.tag-dup { background:rgba(255,68,68,.15); color:var(--danger); }
+.tag-err { background:rgba(240,165,0,.15); color:var(--amber); }
+
+/* Annotation modal */
+#ann-modal { width:360px; }
+
+/* ── Toast ─────────────────────────────────────────────────────── */
+#toast { position:fixed; bottom:70px; right:16px; z-index:4000; background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:11px 16px; font-size:13px; display:none; box-shadow:0 4px 16px rgba(0,0,0,.4); max-width:280px; }
+#toast.ok { border-color:var(--accent); color:var(--accent); }
+#toast.err { border-color:var(--danger); color:var(--danger); }
 </style>
 </head>
 <body>
 
-<!-- ══════════════════════════════════════════════════════════════
-     LOGIN OVERLAY
-════════════════════════════════════════════════════════════════ -->
+<!-- ═══════ LOGIN ═══════ -->
 <div id="login-overlay">
   <div class="login-box">
     <div class="login-badge">
       <div class="login-badge-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round">
-          <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7z"/>
-        </svg>
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round"><path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7z"/></svg>
       </div>
       <div>
         <div class="login-title">Jefferson Park</div>
-        <div class="login-sub">LAPD SOUTHWEST · UNNC</div>
+        <div class="login-sub">LAPD SW · UNNC</div>
       </div>
     </div>
     <div class="login-heading">Sign in</div>
     <div class="login-desc">Access the community crime map</div>
-    <div class="form-group">
-      <label>Email</label>
-      <input type="email" id="login-email" placeholder="you@example.com" autocomplete="email">
-    </div>
-    <div class="form-group">
-      <label>Password</label>
-      <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
-    </div>
-    <button class="btn-primary" id="login-btn" onclick="doLogin()">Sign in</button>
-    <div class="login-error" id="login-error"></div>
-    <div class="login-public">
-      <a onclick="viewPublic()">Continue as public viewer →</a>
-    </div>
+    <div class="fg"><label>Email</label><input type="email" id="li-email" placeholder="you@example.com" autocomplete="email"></div>
+    <div class="fg"><label>Password</label><input type="password" id="li-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <button class="btn-primary" id="li-btn" onclick="doLogin()">Sign in</button>
+    <div class="login-err" id="li-err"></div>
+    <div class="login-pub"><a onclick="viewPublic()">Continue as public viewer →</a></div>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════════
-     APP SHELL
-════════════════════════════════════════════════════════════════ -->
+<!-- ═══════ APP ═══════ -->
 <div id="app">
 
   <!-- Sidebar -->
   <div id="sidebar">
-    <div class="sidebar-header">
-      <div class="sidebar-logo">
-        <div class="sidebar-logo-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round">
-            <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7z"/>
-          </svg>
+    <div class="sb-head">
+      <div class="sb-logo">
+        <div class="sb-logo-icon">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round"><path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7z"/></svg>
         </div>
         <div>
-          <div class="sidebar-logo-text">Jefferson Park</div>
-          <div class="sidebar-logo-sub">Crime Map · SW Division</div>
+          <div class="sb-logo-text">Jefferson Park</div>
+          <div class="sb-logo-sub">Crime Map · SW Division</div>
         </div>
       </div>
     </div>
-
-    <div class="sidebar-scroll">
+    <div class="sb-scroll">
 
       <!-- Stats -->
-      <div class="stats-bar" id="stats-bar">
-        <div class="stats-row">
-          <div>
-            <div class="stats-num" id="stats-total">—</div>
-            <div class="stats-label">active incidents</div>
-          </div>
-          <div style="text-align:right">
-            <div class="stats-label" id="stats-range" style="font-family:var(--mono);font-size:10px;color:var(--muted)">loading...</div>
-          </div>
+      <div class="stats-box">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div><div class="stats-num" id="stats-total">—</div><div class="stats-lbl">active incidents</div></div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);text-align:right" id="stats-range">All dates</div>
         </div>
-        <div class="stats-breakdown" id="stats-breakdown"></div>
+        <div class="stats-pills" id="stats-pills"></div>
       </div>
 
       <!-- Date Filter -->
-      <div class="section-label">Date Range</div>
+      <div class="sec-label">Date Range</div>
       <div class="date-row">
-        <input type="date" class="date-input" id="date-from" title="From date">
-        <input type="date" class="date-input" id="date-to" title="To date">
+        <input type="date" class="date-input" id="df-from">
+        <input type="date" class="date-input" id="df-to">
       </div>
-      <div class="date-row">
-        <button class="date-apply" onclick="applyDateFilter()">Apply</button>
-        <button class="date-clear" onclick="clearDateFilter()">Clear</button>
+      <div class="date-btns" style="margin-bottom:8px">
+        <button class="btn-apply" onclick="applyDate()">Apply</button>
+        <button class="btn-clear" onclick="clearDate()">Clear</button>
       </div>
 
       <!-- Base Map -->
-      <div class="section-label">Base Map</div>
-      <div class="basemap-toggle">
-        <button class="basemap-btn active" id="btn-street" onclick="setBasemap('street')">🗺 Street</button>
-        <button class="basemap-btn" id="btn-satellite" onclick="setBasemap('satellite')">🛰 Satellite</button>
+      <div class="sec-label">Base Map</div>
+      <div class="bm-toggle">
+        <button class="bm-btn active" id="bm-street" onclick="setBasemap('street')">🗺 Street</button>
+        <button class="bm-btn" id="bm-sat" onclick="setBasemap('satellite')">🛰 Satellite</button>
       </div>
 
       <!-- Boundaries -->
-      <div class="section-label">Boundaries</div>
-      <div class="toggle-row" onclick="toggleBoundary('slo')">
-        <div class="toggle-icon" style="background:rgba(0,194,168,.15)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+      <div class="sec-label">Boundaries</div>
+      <div class="tog-row" onclick="toggleLayer('slo')">
+        <div class="tog-icon" style="background:rgba(0,194,168,.15)">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--accent)" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
         </div>
-        <span class="toggle-label">SLO Districts</span>
-        <div class="toggle-switch" id="sw-slo"></div>
+        <span class="tog-label">SLO Districts</span>
+        <div class="tog-sw" id="sw-slo"></div>
       </div>
-      <div class="toggle-row" onclick="toggleBoundary('unnc')">
-        <div class="toggle-icon" style="background:rgba(45,139,255,.15)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round"><polygon points="12 2 2 7 2 17 12 22 22 17 22 7"/></svg>
+      <div class="tog-row" onclick="toggleLayer('unnc')">
+        <div class="tog-icon" style="background:rgba(45,139,255,.15)">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--blue)" stroke-width="2"><polygon points="12 2 2 7 2 17 12 22 22 17 22 7"/></svg>
         </div>
-        <span class="toggle-label">UNNC Regions</span>
-        <div class="toggle-switch" id="sw-unnc"></div>
+        <span class="tog-label">UNNC Regions</span>
+        <div class="tog-sw" id="sw-unnc"></div>
       </div>
 
-      <!-- Draw Tools -->
-      <div id="draw-toolbar" style="display:none">
-        <div class="section-label">Draw &amp; Annotate</div>
-        <div style="display:flex;gap:6px;padding:4px 0 8px;flex-wrap:wrap">
-          <button id="draw-polygon-btn" onclick="setDrawMode('polygon')"
-            style="flex:1;background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:7px 4px;color:var(--text);font-size:11px;cursor:pointer;font-family:var(--font);display:flex;align-items:center;justify-content:center;gap:4px;transition:all .2s">
-            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>
-            Area
+      <!-- Draw Tools (officers/admin only) -->
+      <div id="draw-section" style="display:none">
+        <div class="sec-label">Draw &amp; Annotate</div>
+        <div class="draw-btns">
+          <button class="draw-btn" id="db-polygon" onclick="startDraw('polygon')">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>Area
           </button>
-          <button id="draw-line-btn" onclick="setDrawMode('line')"
-            style="flex:1;background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:7px 4px;color:var(--text);font-size:11px;cursor:pointer;font-family:var(--font);display:flex;align-items:center;justify-content:center;gap:4px;transition:all .2s">
-            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="4 20 10 14 14 18 22 4"/></svg>
-            Line
+          <button class="draw-btn" id="db-line" onclick="startDraw('line')">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 20 10 14 14 18 22 4"/></svg>Line
           </button>
-          <button id="draw-point-btn" onclick="setDrawMode('point')"
-            style="flex:1;background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:7px 4px;color:var(--text);font-size:11px;cursor:pointer;font-family:var(--font);display:flex;align-items:center;justify-content:center;gap:4px;transition:all .2s">
-            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/></svg>
-            Point
+          <button class="draw-btn" id="db-point" onclick="startDraw('point')">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/></svg>Point
           </button>
-          <button onclick="setDrawMode(null);clearDrawings()"
-            style="flex:1;background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:7px 4px;color:var(--muted);font-size:11px;cursor:pointer;font-family:var(--font);display:flex;align-items:center;justify-content:center;gap:4px;transition:all .2s">
-            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
-            Clear
+          <button class="draw-btn" onclick="cancelDraw()" style="color:var(--muted)">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Cancel
           </button>
         </div>
-        <div id="draw-mode-hint" style="font-size:10px;color:var(--muted);padding:0 4px 6px;font-family:var(--mono)"></div>
+        <div class="draw-hint" id="draw-hint"></div>
       </div>
 
       <!-- Crime Types -->
-      <div class="section-label">Crime Types</div>
+      <div class="sec-label">Crime Types</div>
       <div id="crime-toggles"></div>
 
     </div>
@@ -621,712 +404,345 @@
   <!-- Top Bar -->
   <div id="topbar">
     <div id="search-wrap">
-      <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-      <input type="text" id="search-input" placeholder="Search address…" oninput="onSearchInput()" onkeydown="onSearchKey(event)">
+      <svg class="s-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      <input type="text" id="search-input" placeholder="Search address…" oninput="onSearch()" onkeydown="onSearchKey(event)">
       <div id="search-results"></div>
     </div>
-    <div class="topbar-btn" onclick="locateUser()" title="Locate me">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8" stroke-dasharray="2 2"/></svg>
+    <div class="tb-btn" onclick="locateMe()" title="Locate me">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
     </div>
     <div id="user-info">
-      <span id="user-email-display" style="font-size:12px"></span>
-      <span class="user-role" id="user-role-badge"></span>
+      <span id="ui-email" style="font-size:12px"></span>
+      <span class="role-badge" id="ui-role"></span>
     </div>
     <button id="logout-btn" onclick="doLogout()">Sign out</button>
   </div>
 
   <!-- Map -->
-  <div id="map">
-    <div id="map-loading">
-      <div class="spinner"></div>
-      <div class="loading-text">Loading crime data…</div>
-    </div>
-  </div>
+  <div id="map"></div>
 
-  <!-- Admin Panel -->
-  <div id="admin-panel">
-    <span class="admin-label">ADMIN</span>
-    <div class="admin-sep"></div>
-    <button class="admin-btn admin-only" onclick="toggleClosedCases()">
-      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-      <span id="closed-btn-label">Show Closed</span>
-    </button>
-    <button class="admin-btn" onclick="openAddCrime()">
-      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+  <!-- Bottom Panel -->
+  <div id="bottom-panel">
+    <span class="bp-label">PANEL</span>
+    <div class="bp-sep"></div>
+    <button class="bp-btn" id="btn-add-crime" onclick="openAddCrime()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
       Add Crime
     </button>
-    <button class="admin-btn admin-only" onclick="openPDFImport()">
-      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+    <button class="bp-btn admin-only" onclick="toggleClosed()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+      <span id="closed-lbl">Show Closed</span>
+    </button>
+    <button class="bp-btn admin-only" onclick="openPDF()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
       Import PDF
     </button>
-    <button class="admin-btn admin-only" onclick="openSLOManager()">
-      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    <button class="bp-btn admin-only" onclick="openSLO()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       SLO Officers
     </button>
   </div>
 
 </div><!-- #app -->
 
-<!-- ══════════════════════════════════════════════════════════════
-     ADD CRIME MODAL
-════════════════════════════════════════════════════════════════ -->
-<div id="add-crime-modal">
+<!-- ═══════ ADD CRIME MODAL ═══════ -->
+<div class="modal-overlay" id="add-modal">
   <div class="modal-box">
     <div class="modal-title">Add Crime Incident</div>
-    <div class="modal-grid">
-      <div class="modal-field">
-        <label>Crime Type</label>
-        <select id="add-type"></select>
-      </div>
-      <div class="modal-field">
-        <label>Status</label>
+    <div class="mf-grid">
+      <div class="mf"><label>Crime Type</label><select id="add-type"></select></div>
+      <div class="mf"><label>Status</label>
         <select id="add-status">
           <option value="open">Open</option>
           <option value="in_progress">In Progress</option>
           <option value="closed">Closed</option>
         </select>
       </div>
-      <div class="modal-field full">
+      <div class="mf mf-full">
         <label>Address</label>
-        <input type="text" id="add-address" placeholder="e.g. 28** Crenshaw Bl" oninput="geocodeAddress()">
+        <input type="text" id="add-addr" placeholder="e.g. 28** Crenshaw Bl" oninput="geocodeAddr()">
         <div id="geocode-status"></div>
-        <div class="modal-hint">Use ** for redacted block numbers. City/ZIP will be added automatically.</div>
+        <div class="mf-hint">Use ** for redacted block numbers. Area defaults to Jefferson Park, LA.</div>
       </div>
-      <div class="modal-field">
-        <label>Date</label>
-        <input type="date" id="add-date">
-      </div>
-      <div class="modal-field">
-        <label>Time</label>
-        <input type="time" id="add-time">
-      </div>
-      <div class="modal-field full">
-        <label>Description</label>
-        <textarea id="add-desc" placeholder="Describe the incident…"></textarea>
-      </div>
+      <div class="mf"><label>Date</label><input type="date" id="add-date"></div>
+      <div class="mf"><label>Time</label><input type="time" id="add-time"></div>
+      <div class="mf mf-full"><label>Description</label><textarea id="add-desc" placeholder="Describe the incident…"></textarea></div>
     </div>
-    <div id="add-coords" style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:-4px"></div>
+    <div id="add-coords" style="font-family:var(--mono);font-size:10px;color:var(--muted)"></div>
     <div class="modal-footer">
-      <button class="modal-cancel" onclick="closeAddCrime()">Cancel</button>
-      <button class="modal-submit" onclick="submitAddCrime()">Save Incident</button>
+      <button class="btn-cancel" onclick="closeModal('add-modal')">Cancel</button>
+      <button class="btn-submit" onclick="submitCrime()">Save Incident</button>
     </div>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════════
-     PDF IMPORT MODAL
-════════════════════════════════════════════════════════════════ -->
-<div id="pdf-modal">
-  <div class="modal-box" style="width:640px;max-width:95vw">
+<!-- ═══════ ANNOTATION MODAL ═══════ -->
+<div class="modal-overlay" id="ann-modal">
+  <div class="modal-box" style="width:360px">
+    <div class="modal-title">Save Annotation</div>
+    <div class="mf"><label>Label</label><input type="text" id="ann-label" placeholder="e.g. Hotspot, Patrol route…"></div>
+    <div class="mf"><label>Notes</label><textarea id="ann-notes" placeholder="Additional notes…" style="min-height:70px"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('ann-modal');cancelDraw()">Cancel</button>
+      <button class="btn-submit" onclick="saveAnnotation()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ PDF IMPORT MODAL ═══════ -->
+<div class="modal-overlay" id="pdf-modal">
+  <div class="modal-box" style="width:620px">
     <div class="modal-title">Import Basic Car Update PDF</div>
-    <div class="pdf-drop" id="pdf-drop" onclick="document.getElementById('pdf-file').click()" ondragover="onDragOver(event)" ondrop="onDrop(event)">
-      <div class="pdf-drop-icon">📄</div>
-      <div class="pdf-drop-text"><strong>Click to select PDF</strong> or drag and drop</div>
-      <div class="pdf-drop-text" style="font-size:11px;margin-top:4px">Basic Car Update report (e.g. 3SL31_weekly…)</div>
+    <div class="pdf-drop" onclick="document.getElementById('pdf-file').click()" ondragover="event.preventDefault()" ondrop="onDrop(event)">
+      <div style="font-size:28px;margin-bottom:6px">📄</div>
+      <div style="font-size:13px;color:var(--muted)"><strong style="color:var(--text)">Click to select PDF</strong> or drag and drop</div>
     </div>
-    <input type="file" id="pdf-file" accept=".pdf" style="display:none" onchange="onPDFSelect(event)">
-    <div id="pdf-status" class="pdf-status"></div>
-    <div id="pdf-preview">
-      <div style="font-size:11px;color:var(--muted);margin-bottom:8px" id="pdf-report-info"></div>
-      <div style="overflow-x:auto">
-        <table class="pdf-table">
-          <thead><tr><th></th><th>Type</th><th>Date</th><th>Time</th><th>Location</th><th>Description</th></tr></thead>
-          <tbody id="pdf-table-body"></tbody>
-        </table>
-      </div>
+    <input type="file" id="pdf-file" accept=".pdf" style="display:none" onchange="processPDF(event)">
+    <div id="pdf-status" style="font-size:12px;color:var(--muted);padding:4px 0"></div>
+    <div id="pdf-preview" style="display:none">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px" id="pdf-info"></div>
+      <div style="overflow-x:auto"><table class="pdf-table">
+        <thead><tr><th></th><th>Type</th><th>Date</th><th>Time</th><th>Location</th><th>Description</th></tr></thead>
+        <tbody id="pdf-tbody"></tbody>
+      </table></div>
       <div class="modal-footer">
-        <button class="modal-cancel" onclick="closePDFModal()">Cancel</button>
-        <button class="modal-submit" id="pdf-import-btn" onclick="importPDFRecords()">Import Selected</button>
+        <button class="btn-cancel" onclick="closeModal('pdf-modal')">Cancel</button>
+        <button class="btn-submit" id="pdf-import-btn" onclick="importPDF()">Import Selected</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- SLO Manager Modal -->
-<div id="slo-modal" style="position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center">
-  <div class="modal-box" style="width:560px;max-width:95vw">
+<!-- ═══════ SLO MANAGER MODAL ═══════ -->
+<div class="modal-overlay" id="slo-modal">
+  <div class="modal-box" style="width:540px">
     <div class="modal-title">SLO Officer Management</div>
     <div id="slo-list" style="max-height:400px;overflow-y:auto"></div>
     <div class="modal-footer">
-      <button class="modal-cancel" onclick="closeSLOManager()">Close</button>
+      <button class="btn-cancel" onclick="closeModal('slo-modal')">Close</button>
     </div>
   </div>
 </div>
 
-<!-- Annotation Modal -->
-<div id="annotation-modal" style="position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center">
-  <div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:24px;width:360px;position:relative">
-    <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:12px 12px 0 0"></div>
-    <div style="font-size:15px;font-weight:600;margin-bottom:16px">Save Annotation</div>
-    <div class="modal-field">
-      <label>Label</label>
-      <input type="text" id="ann-label" placeholder="e.g. Hotspot area, Patrol route…" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);font-size:13px;font-family:var(--font);outline:none">
-    </div>
-    <div class="modal-field" style="margin-top:10px">
-      <label>Notes</label>
-      <textarea id="ann-notes" placeholder="Additional notes…" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);font-size:13px;font-family:var(--font);outline:none;resize:vertical;min-height:70px"></textarea>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:16px">
-      <button onclick="closeAnnotationModal()" style="flex:1;background:transparent;border:1px solid var(--border);border-radius:6px;padding:9px;color:var(--muted);font-size:13px;cursor:pointer;font-family:var(--font)">Cancel</button>
-      <button onclick="submitAnnotation()" style="flex:2;background:var(--accent);color:#000;border:none;border-radius:6px;padding:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font)">Save Annotation</button>
-    </div>
-  </div>
-</div>
-
-<!-- Annotation modal visible class -->
-<style>#annotation-modal.visible { display: flex !important; }</style>
-
-<!-- Toast -->
+<!-- Toast & photo input -->
 <div id="toast"></div>
-
-<!-- Hidden file input for photos -->
-<input type="file" id="photo-upload" accept="image/*" style="display:none" onchange="uploadPhoto(event)">
+<input type="file" id="photo-input" accept="image/*" style="display:none" onchange="uploadPhoto(event)">
 
 <script>
 // ══════════════════════════════════════════════════════════════════
-// CONFIG — Replace with your actual values
+// CONFIG — fill in your values
 // ══════════════════════════════════════════════════════════════════
 const SUPABASE_URL = 'https://sqiioihssmnqatjrednq.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_3s5kREPGF10ahyWGMT9tBA_v9FUqbit';
 const CLAUDE_API_KEY = 'YOUR_CLAUDE_API_KEY'; // for PDF parsing
-
 // ══════════════════════════════════════════════════════════════════
-// INIT
+// GLOBALS
 // ══════════════════════════════════════════════════════════════════
 const { createClient } = supabase;
-const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
 
 let map, currentUser, userRole = 'public';
 let crimesData = [], boundariesData = [];
-let showClosed = false;
+let showClosed = false, dateFrom = null, dateTo = null;
 let activeCrimeTypes = new Set();
-let boundaryVisible = { slo: false, unnc: false };
-let dateFrom = null, dateTo = null;
-let geocodedLng = null, geocodedLat = null;
-let currentPopupCrimeId = null;
-let currentPhotoContext = null;
+let layerVisible = { slo: false, unnc: false };
+let clusterGroup = null;
+let sloLayerGroup = null, unncLayerGroup = null;
+let geocodeLng = null, geocodeLat = null;
 let geocodeTimer = null;
+let currentPhotoCtx = null;
+let pdfRecords = [];
+let drawHandler = null;
+let pendingGeometry = null;
 
-// Crime type configuration
-const CRIME_CONFIG = {
-  'Aggravated Assault': { color: '#e8453c', category: 'violent',  icon: 'assault' },
-  'Battery':            { color: '#e8453c', category: 'violent',  icon: 'battery' },
-  'Robbery':            { color: '#e8453c', category: 'violent',  icon: 'robbery' },
-  'Homicide':           { color: '#7b0000', category: 'violent',  icon: 'homicide' },
-  'Criminal Threat':    { color: '#e8453c', category: 'violent',  icon: 'threat' },
-  'Shots Fired':        { color: '#ff6b35', category: 'violent',  icon: 'shots' },
-  'Burglary':           { color: '#f0a500', category: 'property', icon: 'burglary' },
-  'Theft':              { color: '#f0a500', category: 'property', icon: 'theft' },
-  'Vandalism':          { color: '#f0a500', category: 'property', icon: 'vandalism' },
-  'GTA':                { color: '#2d8bff', category: 'vehicle',  icon: 'gta' },
-  'Attempt GTA':        { color: '#2d8bff', category: 'vehicle',  icon: 'attempt_gta' },
-  'TFMV':               { color: '#2d8bff', category: 'vehicle',  icon: 'tfmv' },
-  'BFMV':               { color: '#2d8bff', category: 'vehicle',  icon: 'bfmv' },
-  'BTFV':               { color: '#2d8bff', category: 'vehicle',  icon: 'btfv' },
-};
-
-// SVG icon paths for each crime type
-const CRIME_ICONS = {
-  assault:     'M12 5c0 0-4 3-4 7h8c0-4-4-7-4-7zm-2 9l2 5 2-5H10z',
-  battery:     'M13 2L3 14h9l-1 8 10-12h-9l1-8z',
-  robbery:     'M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2zm-9 5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z',
-  homicide:    'M12 2a7 7 0 1 0 0 14 7 7 0 0 0 0-14zm0 2c2.8 0 5 2.2 5 5s-2.2 5-5 5-5-2.2-5-5 2.2-5 5-5zm-1 7v2h2v-2h-2zm0-4v3h2V7h-2z',
-  threat:      'M10.3 3.3L2 19h20L13.7 3.3c-.7-1.3-2.7-1.3-3.4 0zM11 9h2v5h-2zm0 6h2v2h-2z',
-  shots:       'M12 2l2 6h6l-5 4 2 6-5-4-5 4 2-6-5-4h6z',
-  burglary:    'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM9 22V12h6v10M9 12h6',
-  theft:       'M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8zM6 1v3M10 1v3M14 1v3',
-  vandalism:   'M2 20h20M6 20V10M10 20V4M14 20V10M18 20V4',
-  gta:         'M19 17H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2zM8 17v2M16 17v2',
-  attempt_gta: 'M5 17H3a2 2 0 0 1-2-2V9c0-1.1.9-2 2-2h11l5 5v3h-3M16 17a2 2 0 1 0 4 0 2 2 0 0 0-4 0M7 17a2 2 0 1 0 4 0 2 2 0 0 0-4 0',
-  tfmv:        'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z',
-  bfmv:        'M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18',
-  btfv:        'M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v5m-1 4v3m0 0H8m8 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0M5 17a2 2 0 1 0 4 0 2 2 0 0 0-4 0',
+// ── Crime config ──────────────────────────────────────────────────
+const CRIMES = {
+  'Aggravated Assault': { color:'#e8453c', cat:'violent'  },
+  'Battery':            { color:'#e8453c', cat:'violent'  },
+  'Robbery':            { color:'#e8453c', cat:'violent'  },
+  'Homicide':           { color:'#7b0000', cat:'violent'  },
+  'Criminal Threat':    { color:'#e8453c', cat:'violent'  },
+  'Shots Fired':        { color:'#ff6b35', cat:'violent'  },
+  'Burglary':           { color:'#f0a500', cat:'property' },
+  'Theft':              { color:'#f0a500', cat:'property' },
+  'Vandalism':          { color:'#f0a500', cat:'property' },
+  'GTA':                { color:'#2d8bff', cat:'vehicle'  },
+  'Attempt GTA':        { color:'#2d8bff', cat:'vehicle'  },
+  'TFMV':               { color:'#2d8bff', cat:'vehicle'  },
+  'BFMV':               { color:'#2d8bff', cat:'vehicle'  },
+  'BTFV':               { color:'#2d8bff', cat:'vehicle'  },
 };
 
 // ══════════════════════════════════════════════════════════════════
 // AUTH
 // ══════════════════════════════════════════════════════════════════
 async function doLogin() {
-  const email = document.getElementById('login-email').value.trim();
-  const pass  = document.getElementById('login-password').value;
-  const btn   = document.getElementById('login-btn');
-  const err   = document.getElementById('login-error');
-
-  if (!email || !pass) { err.textContent = 'Please enter email and password.'; return; }
+  const email = document.getElementById('li-email').value.trim();
+  const pass  = document.getElementById('li-pass').value;
+  const btn   = document.getElementById('li-btn');
+  const err   = document.getElementById('li-err');
+  if (!email || !pass) { err.textContent = 'Enter email and password.'; return; }
   btn.disabled = true; btn.textContent = 'Signing in…';
-
   const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
-  if (error) {
-    err.textContent = error.message;
-    btn.disabled = false; btn.textContent = 'Sign in';
-    return;
-  }
+  if (error) { err.textContent = error.message; btn.disabled = false; btn.textContent = 'Sign in'; return; }
   currentUser = data.user;
-  await loadUserRole();
-  launchApp();
+  await loadRole();
+  launch();
 }
 
-async function viewPublic() {
-  currentUser = null; userRole = 'public';
-  launchApp();
-}
+async function viewPublic() { currentUser = null; userRole = 'public'; launch(); }
 
-async function loadUserRole() {
+async function loadRole() {
   if (!currentUser) { userRole = 'public'; return; }
   try {
     const { data, error } = await sb.rpc('get_my_role');
-    if (error) throw error;
-    userRole = data || 'field_officer';
-    console.log('get_my_role returned:', data, '→ userRole:', userRole);
-  } catch(e) {
-    console.warn('Role lookup failed, defaulting field_officer:', e);
-    // Fallback: query profiles directly
-    try {
-      const { data: pd } = await sb.from('profiles')
-        .select('role').eq('id', currentUser.id).single();
-      userRole = pd?.role || 'field_officer';
-      console.log('Fallback profile query returned:', pd?.role);
-    } catch(e2) {
-      userRole = 'field_officer';
-    }
-  }
-  console.log('Final userRole:', userRole);
+    if (!error && data) { userRole = data; return; }
+  } catch(e) {}
+  // Fallback
+  try {
+    const { data } = await sb.from('profiles').select('role').eq('id', currentUser.id).single();
+    userRole = data?.role || 'field_officer';
+  } catch(e) { userRole = 'field_officer'; }
+  console.log('Role:', userRole);
 }
 
-async function doLogout() {
-  await sb.auth.signOut();
-  location.reload();
-}
+async function doLogout() { await sb.auth.signOut(); location.reload(); }
 
 // ══════════════════════════════════════════════════════════════════
-// APP LAUNCH
+// LAUNCH
 // ══════════════════════════════════════════════════════════════════
-async function launchApp() {
+function launch() {
   document.getElementById('login-overlay').style.display = 'none';
   document.getElementById('app').style.display = 'block';
 
-  // User info bar
+  // User bar
   if (currentUser) {
-    document.getElementById('user-email-display').textContent = currentUser.email;
-    const badge = document.getElementById('user-role-badge');
-    badge.textContent = userRole.replace('_', ' ');
-    badge.className = 'user-role role-' + (userRole === 'admin' ? 'admin' : userRole === 'field_officer' ? 'officer' : 'public');
+    document.getElementById('ui-email').textContent = currentUser.email;
+    const rb = document.getElementById('ui-role');
+    rb.textContent = userRole.replace('_',' ');
+    rb.className = 'role-badge role-' + (userRole === 'admin' ? 'admin' : userRole === 'field_officer' ? 'officer' : 'public');
   } else {
     document.getElementById('user-info').innerHTML = '<span style="font-size:12px;color:var(--muted)">Public View</span>';
     document.getElementById('logout-btn').textContent = 'Sign in';
     document.getElementById('logout-btn').onclick = () => location.reload();
   }
 
-  // Show bottom panel based on role
-  console.log('launchApp: userRole =', userRole);
+  // Bottom panel
   if (userRole === 'admin' || userRole === 'field_officer') {
-    document.getElementById('admin-panel').classList.add('visible');
-    // Hide admin-only buttons for field officers
+    document.getElementById('bottom-panel').classList.add('visible');
     if (userRole === 'field_officer') {
       document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
     }
-    console.log('Panel shown for role:', userRole);
   }
 
-  buildCrimeToggles();
+  // Draw tools
+  if (userRole === 'admin' || userRole === 'field_officer') {
+    document.getElementById('draw-section').style.display = 'block';
+  }
+
+  // Add crime type options
+  const sel = document.getElementById('add-type');
+  Object.keys(CRIMES).forEach(t => { sel.innerHTML += `<option value="${t}">${t}</option>`; });
+
+  buildToggles();
   initMap();
 }
 
 // ══════════════════════════════════════════════════════════════════
-// CRIME TYPE TOGGLES
+// MAP INIT — Leaflet
 // ══════════════════════════════════════════════════════════════════
-function buildCrimeToggles() {
-  const container = document.getElementById('crime-toggles');
-  Object.entries(CRIME_CONFIG).forEach(([type, cfg]) => {
-    activeCrimeTypes.add(type);
-    const iconPath = CRIME_ICONS[cfg.icon] || '';
-    container.innerHTML += `
-      <div class="toggle-row" onclick="toggleCrimeType('${type}', this)">
-        <div class="toggle-icon" style="background:${cfg.color}22">
-          <svg viewBox="0 0 24 24" fill="none" stroke="${cfg.color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="${iconPath}"/>
-          </svg>
-        </div>
-        <span class="toggle-label" style="font-size:11px">${type}</span>
-        <span class="toggle-count" id="count-${type.replace(/\s/g,'_')}">0</span>
-        <div class="toggle-switch on" id="sw-${type.replace(/\s/g,'_')}"></div>
-      </div>`;
-  });
+const TILE_STREET = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap contributors', maxZoom: 19
+});
+const TILE_SAT = L.tileLayer(
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  { attribution: 'Esri, Maxar, Earthstar Geographics', maxZoom: 19 }
+);
 
-  // Populate add crime type select
-  const sel = document.getElementById('add-type');
-  Object.keys(CRIME_CONFIG).forEach(t => {
-    sel.innerHTML += `<option value="${t}">${t}</option>`;
-  });
-}
-
-function toggleCrimeType(type, row) {
-  const sw = row.querySelector('.toggle-switch');
-  if (activeCrimeTypes.has(type)) {
-    activeCrimeTypes.delete(type);
-    sw.classList.remove('on');
-  } else {
-    activeCrimeTypes.add(type);
-    sw.classList.add('on');
-  }
-  filterAndRender();
-}
-
-// ══════════════════════════════════════════════════════════════════
-// MAP INIT
-// ══════════════════════════════════════════════════════════════════
 function initMap() {
-  map = new maplibregl.Map({
-    container: 'map',
-    style: streetStyle(),
-    center: [-118.3340, 34.0280],
+  map = L.map('map', {
+    center: [34.028, -118.334],
     zoom: 14,
+    layers: [TILE_STREET],
+    zoomControl: true,
   });
 
-  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
-  map.addControl(new maplibregl.ScaleControl({ unit: 'imperial' }), 'bottom-left');
-
-  map.on('load', async () => {
-    document.getElementById('map-loading').style.display = 'none';
-    await loadBoundaries();
-    await loadCrimes();
-    setupRealtimeSubscription();
-    setupMapIcons();
-    if (userRole === 'admin' || userRole === 'field_officer') {
-      initDrawTools();
+  // Layer groups
+  clusterGroup = L.markerClusterGroup({
+    maxClusterRadius: 40,
+    showCoverageOnHover: false,
+    iconCreateFunction: function(cluster) {
+      const count = cluster.getChildCount();
+      const size = count < 10 ? 36 : count < 50 ? 44 : 52;
+      return L.divIcon({
+        html: `<div style="
+          width:${size}px;height:${size}px;
+          background:#00c2a8;
+          border:3px solid white;
+          border-radius:50%;
+          display:flex;align-items:center;justify-content:center;
+          font-family:var(--mono);font-size:13px;font-weight:600;color:#000;
+          box-shadow:0 0 0 4px rgba(0,194,168,0.25);
+        ">${count}</div>`,
+        className: '',
+        iconSize: [size, size],
+        iconAnchor: [size/2, size/2],
+      });
     }
   });
-}
+  clusterGroup.addTo(map);
 
-function streetStyle() {
-  return {
-    version: 8,
-    sources: {
-      osm: {
-        type: 'raster',
-        tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-        tileSize: 256,
-        attribution: '© OpenStreetMap contributors',
+  sloLayerGroup  = L.layerGroup();
+  unncLayerGroup = L.layerGroup();
+
+  // Draw controls
+  if (userRole === 'admin' || userRole === 'field_officer') {
+    const drawnItems = new L.FeatureGroup();
+    map.addLayer(drawnItems);
+
+    const drawControl = new L.Control.Draw({
+      edit: { featureGroup: drawnItems },
+      draw: {
+        polygon:   { shapeOptions: { color:'#00c2a8', weight:2, fillOpacity:0.1 } },
+        polyline:  { shapeOptions: { color:'#ffaa00', weight:2.5 } },
+        marker:    true,
+        rectangle: false,
+        circle:    false,
+        circlemarker: false,
       }
-    },
-    layers: [{ id: 'osm', type: 'raster', source: 'osm' }]
-  };
+    });
+    map.addControl(drawControl);
+
+    map.on(L.Draw.Event.CREATED, async (e) => {
+      const layer = e.layer;
+      drawnItems.addLayer(layer);
+      const geojson = layer.toGeoJSON().geometry;
+      pendingGeometry = geojson;
+      openModal('ann-modal');
+    });
+  }
+
+  loadBoundaries().then(() => loadCrimes());
+  setupRealtime();
 }
 
-function satelliteStyle() {
-  return {
-    version: 8,
-    sources: {
-      esri: {
-        type: 'raster',
-        tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
-        tileSize: 256,
-        attribution: 'Esri, Maxar, Earthstar Geographics',
-      }
-    },
-    layers: [{ id: 'esri', type: 'raster', source: 'esri' }]
-  };
-}
-
+// ══════════════════════════════════════════════════════════════════
+// BASEMAP SWITCH
+// ══════════════════════════════════════════════════════════════════
 function setBasemap(type) {
-  const center = map.getCenter();
-  const zoom   = map.getZoom();
-  // Reset draw source flag since style wipe removes all sources
-  drawSourceReady = false;
-  map.setStyle(type === 'street' ? streetStyle() : satelliteStyle());
-  map.once('style.load', () => {
-    map.setCenter(center);
-    map.setZoom(zoom);
-    // Wait for style to fully settle before adding layers
-    setTimeout(() => {
-      setupMapIcons();
-      renderBoundaries();
-      renderCrimes();
-      if (userRole === 'admin' || userRole === 'field_officer') {
-        initDrawTools();
-      }
-    }, 500);
-  });
-  document.getElementById('btn-street').classList.toggle('active', type === 'street');
-  document.getElementById('btn-satellite').classList.toggle('active', type === 'satellite');
-}
-
-// ══════════════════════════════════════════════════════════════════
-// DRAW TOOLS — Custom MapLibre implementation (no external library)
-// ══════════════════════════════════════════════════════════════════
-let drawMode = null; // 'polygon' | 'line' | 'point' | null
-let drawPoints = [];
-let drawSourceReady = false;
-
-function initDrawTools() {
-  console.log('initDrawTools called for role:', userRole);
-  // Show draw toolbar in sidebar
-  const toolbar = document.getElementById('draw-toolbar');
-  if (toolbar) toolbar.style.display = 'block';
-  console.log('Draw toolbar element:', toolbar ? 'found' : 'NOT FOUND');
-
-  // Init draw source and layers on map
-  if (!map.isStyleLoaded()) {
-    console.warn('Style not loaded yet, deferring draw init');
-    map.once('style.load', () => setTimeout(initDrawTools, 200));
-    return;
-  }
-  if (!map.getSource('draw-source')) {
-    map.addSource('draw-source', {
-      type: 'geojson',
-      data: { type: 'FeatureCollection', features: [] }
-    });
-    map.addLayer({ id: 'draw-polygons', type: 'fill', source: 'draw-source',
-      filter: ['==', ['geometry-type'], 'Polygon'],
-      paint: { 'fill-color': '#00c2a8', 'fill-opacity': 0.15 }
-    });
-    map.addLayer({ id: 'draw-polygon-outline', type: 'line', source: 'draw-source',
-      filter: ['==', ['geometry-type'], 'Polygon'],
-      paint: { 'line-color': '#00c2a8', 'line-width': 2 }
-    });
-    map.addLayer({ id: 'draw-lines', type: 'line', source: 'draw-source',
-      filter: ['==', ['geometry-type'], 'LineString'],
-      paint: { 'line-color': '#ffaa00', 'line-width': 2.5, 'line-dasharray': [2,1] }
-    });
-    map.addLayer({ id: 'draw-points-layer', type: 'circle', source: 'draw-source',
-      filter: ['==', ['geometry-type'], 'Point'],
-      paint: { 'circle-radius': 7, 'circle-color': '#00c2a8', 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' }
-    });
-    map.addLayer({ id: 'draw-vertices', type: 'circle', source: 'draw-source',
-      filter: ['all', ['==', ['geometry-type'], 'Point'], ['==', ['get', '_vertex'], true]],
-      paint: { 'circle-radius': 5, 'circle-color': '#fff', 'circle-stroke-width': 2, 'circle-stroke-color': '#00c2a8' }
-    });
-    drawSourceReady = true;
-  }
-
-  map.on('click', onDrawClick);
-  map.on('dblclick', onDrawDoubleClick);
-  console.log('✅ Custom draw tools initialized');
-}
-
-function setDrawMode(mode) {
-  drawMode = mode;
-  drawPoints = [];
-  updateDrawPreview();
-
-  // Update button states
-  ['draw-polygon-btn','draw-line-btn','draw-point-btn'].forEach(id => {
-    const btn = document.getElementById(id);
-    if (btn) btn.style.background = 'var(--panel2)';
-  });
-  const activeId = mode === 'polygon' ? 'draw-polygon-btn'
-                 : mode === 'line'    ? 'draw-line-btn'
-                 : mode === 'point'   ? 'draw-point-btn' : null;
-  if (activeId) {
-    const btn = document.getElementById(activeId);
-    if (btn) btn.style.background = 'rgba(0,194,168,0.2)';
-  }
-
-  map.getCanvas().style.cursor = mode ? 'crosshair' : '';
-  if (mode) showToast(
-    mode === 'point' ? 'Click map to place point' :
-    mode === 'polygon' ? 'Click to draw polygon, double-click to finish' :
-    'Click to draw line, double-click to finish', 'success'
-  );
-}
-
-function onDrawClick(e) {
-  if (!drawMode) return;
-  e.preventDefault();
-  // Stop map click from also triggering crime popups
-  map.once('click', function(ev) { ev.originalEvent.stopPropagation(); });
-  const pt = [e.lngLat.lng, e.lngLat.lat];
-
-  if (drawMode === 'point') {
-    drawPoints = [pt];
-    finishDraw();
-    return;
-  }
-  drawPoints.push(pt);
-  updateDrawPreview();
-}
-
-function onDrawDoubleClick(e) {
-  if (!drawMode || drawMode === 'point') return;
-  e.preventDefault();
-  if (drawMode === 'polygon' && drawPoints.length < 3) {
-    showToast('Need at least 3 points for a polygon', 'error'); return;
-  }
-  if (drawMode === 'line' && drawPoints.length < 2) {
-    showToast('Need at least 2 points for a line', 'error'); return;
-  }
-  finishDraw();
-}
-
-function updateDrawPreview() {
-  if (!drawSourceReady || !map.getSource('draw-source')) return;
-  const features = [];
-  if (drawPoints.length >= 2) {
-    if (drawMode === 'polygon' && drawPoints.length >= 3) {
-      features.push({ type: 'Feature', geometry: {
-        type: 'Polygon', coordinates: [[...drawPoints, drawPoints[0]]]
-      }, properties: {} });
-    } else {
-      features.push({ type: 'Feature', geometry: {
-        type: 'LineString', coordinates: drawPoints
-      }, properties: {} });
-    }
-  }
-  // Show vertex dots
-  drawPoints.forEach(pt => {
-    features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: pt },
-      properties: { _vertex: true } });
-  });
-  map.getSource('draw-source').setData({ type: 'FeatureCollection', features });
-}
-
-async function finishDraw() {
-  if (!drawPoints.length) return;
-
-  let geometry;
-  if (drawMode === 'point') {
-    geometry = { type: 'Point', coordinates: drawPoints[0] };
-  } else if (drawMode === 'line') {
-    geometry = { type: 'LineString', coordinates: drawPoints };
+  if (type === 'street') {
+    map.removeLayer(TILE_SAT);
+    map.addLayer(TILE_STREET);
+    TILE_STREET.bringToBack();
   } else {
-    geometry = { type: 'Polygon', coordinates: [[...drawPoints, drawPoints[0]]] };
+    map.removeLayer(TILE_STREET);
+    map.addLayer(TILE_SAT);
+    TILE_SAT.bringToBack();
   }
-
-  // Show annotation dialog
-  showAnnotationDialog(geometry);
-  drawPoints = [];
-  setDrawMode(null);
-}
-
-function showAnnotationDialog(geometry) {
-  const modal = document.getElementById('annotation-modal');
-  if (modal) {
-    modal.classList.add('visible');
-    modal._geometry = geometry;
-  }
-}
-
-async function submitAnnotation() {
-  const modal = document.getElementById('annotation-modal');
-  const geometry = modal._geometry;
-  const label = document.getElementById('ann-label').value.trim();
-  const notes = document.getElementById('ann-notes').value.trim();
-  const annType = geometry.type === 'Polygon' ? 'polygon'
-                : geometry.type === 'LineString' ? 'line' : 'point';
-
-  const { error } = await sb.rpc('insert_annotation', {
-    p_created_by: currentUser.id,
-    p_label:      label || null,
-    p_type:       annType,
-    p_geojson:    JSON.stringify(geometry),
-    p_notes:      notes || null,
-  });
-
-  if (error) showToast('Error saving: ' + error.message, 'error');
-  else {
-    showToast('Annotation saved', 'success');
-    // Keep drawn shape visible on map
-    updateDrawPreview();
-  }
-  closeAnnotationModal();
-}
-
-function clearDrawings() {
-  drawPoints = [];
-  if (map.getSource('draw-source')) {
-    map.getSource('draw-source').setData({ type: 'FeatureCollection', features: [] });
-  }
-  showToast('Drawings cleared', 'success');
-}
-
-function closeAnnotationModal() {
-  const modal = document.getElementById('annotation-modal');
-  if (modal) {
-    modal.classList.remove('visible');
-    document.getElementById('ann-label').value = '';
-    document.getElementById('ann-notes').value = '';
-  }
-}
-
-function geojsonToWKT(geometry) {
-  if (geometry.type === 'Point') {
-    return 'POINT(' + geometry.coordinates[0] + ' ' + geometry.coordinates[1] + ')';
-  } else if (geometry.type === 'LineString') {
-    const coords = geometry.coordinates.map(c => c.join(' ')).join(',');
-    return 'LINESTRING(' + coords + ')';
-  } else if (geometry.type === 'Polygon') {
-    const rings = geometry.coordinates.map(ring => '(' + ring.map(c => c.join(' ')).join(',') + ')');
-    return 'POLYGON(' + rings.join(',') + ')';
-  }
-  return '';
-}
-
-// ══════════════════════════════════════════════════════════════════
-// CRIME ICONS — register custom SVG images with MapLibre
-// ══════════════════════════════════════════════════════════════════
-function setupMapIcons() {
-  Object.entries(CRIME_CONFIG).forEach(([type, cfg]) => {
-    const iconKey = 'crime-' + type.toLowerCase().replace(/\s+/g,'-');
-    if (map.hasImage(iconKey)) return;
-    const img = createCrimeMarkerImage(cfg.color, CRIME_ICONS[cfg.icon] || '');
-    map.addImage(iconKey, img);
-  });
-  // Cluster image
-  if (!map.hasImage('cluster-bg')) {
-    const img = createClusterImage();
-    map.addImage('cluster-bg', img);
-  }
-}
-
-function createCrimeMarkerImage(color, iconPath) {
-  const size = 40;
-  const canvas = document.createElement('canvas');
-  canvas.width = size; canvas.height = size + 8;
-  const ctx = canvas.getContext('2d');
-
-  // Circle
-  ctx.beginPath();
-  ctx.arc(size/2, size/2, 17, 0, Math.PI*2);
-  ctx.fillStyle = color;
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,0.9)';
-  ctx.lineWidth = 2.5;
-  ctx.stroke();
-
-  // Pin tail
-  ctx.beginPath();
-  ctx.moveTo(size/2 - 5, size/2 + 14);
-  ctx.lineTo(size/2 + 5, size/2 + 14);
-  ctx.lineTo(size/2, size/2 + 22);
-  ctx.closePath();
-  ctx.fillStyle = color;
-  ctx.fill();
-
-  // SVG icon via path2D approximation — draw a white dot for now
-  // (full SVG path rendering handled separately)
-  ctx.fillStyle = 'rgba(255,255,255,0.9)';
-  ctx.beginPath();
-  ctx.arc(size/2, size/2, 5, 0, Math.PI*2);
-  ctx.fill();
-
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  return { width: canvas.width, height: canvas.height, data: imageData.data };
-}
-
-function createClusterImage() {
-  const size = 44;
-  const canvas = document.createElement('canvas');
-  canvas.width = size; canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  ctx.beginPath();
-  ctx.arc(size/2, size/2, 20, 0, Math.PI*2);
-  ctx.fillStyle = '#1a1d27';
-  ctx.fill();
-  ctx.strokeStyle = '#00c2a8';
-  ctx.lineWidth = 2.5;
-  ctx.stroke();
-  const imageData = ctx.getImageData(0, 0, size, size);
-  return { width: size, height: size, data: imageData.data };
+  // Keep crime markers on top
+  if (clusterGroup) clusterGroup.bringToFront();
+  document.getElementById('bm-street').classList.toggle('active', type === 'street');
+  document.getElementById('bm-sat').classList.toggle('active', type === 'satellite');
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -1336,12 +752,11 @@ async function loadCrimes() {
   const { data, error } = await sb.rpc('get_crimes', {
     p_exclude_closed: !showClosed,
     p_date_from: null,
-    p_date_to:   null,
+    p_date_to: null,
   });
-  if (error) { console.error('Crimes load error:', error); return; }
+  if (error) { console.error('Crimes error:', error); return; }
   crimesData = (data || []).filter(c => c.lng && c.lat);
   console.log('Crimes loaded:', crimesData.length);
-  updateStats();
   renderCrimes();
 }
 
@@ -1354,958 +769,584 @@ async function loadBoundaries() {
 }
 
 // ══════════════════════════════════════════════════════════════════
-// RENDER BOUNDARIES
-// ══════════════════════════════════════════════════════════════════
-function renderBoundaries() {
-  ['slo-fill','slo-line','slo-labels','unnc-fill','unnc-line','unnc-labels'].forEach(id => {
-    if (map.getLayer(id)) map.removeLayer(id);
-  });
-  ['slo-source','unnc-source'].forEach(id => {
-    if (map.getSource(id)) map.removeSource(id);
-  });
-
-  const sloFeatures  = boundariesData.filter(b => b.boundary_type === 'slo');
-  const unncFeatures = boundariesData.filter(b => b.boundary_type === 'unnc');
-
-  if (sloFeatures.length > 0) {
-    map.addSource('slo-source', {
-      type: 'geojson',
-      data: {
-        type: 'FeatureCollection',
-        features: sloFeatures.map(b => ({
-          type: 'Feature',
-          geometry: b.geometry,
-          properties: { ...b.properties, name: b.name, id: b.id }
-        }))
-      }
-    });
-    map.addLayer({ id: 'slo-fill', type: 'fill', source: 'slo-source',
-      paint: { 'fill-color': '#00c2a8', 'fill-opacity': boundaryVisible.slo ? 0.12 : 0 }
-    });
-    map.addLayer({ id: 'slo-line', type: 'line', source: 'slo-source',
-      paint: { 'line-color': '#00c2a8', 'line-width': 2.5, 'line-opacity': boundaryVisible.slo ? 1.0 : 0 }
-    });
-    map.addLayer({ id: 'slo-labels', type: 'symbol', source: 'slo-source',
-      layout: {
-        'text-field': ['get', 'rd'],
-        'text-size': 10, 'text-font': ['Open Sans Regular','Arial Unicode MS Regular'],
-        'visibility': boundaryVisible.slo ? 'visible' : 'none'
-      },
-      paint: { 'text-color': '#00c2a8', 'text-opacity': 0.8, 'text-halo-color': '#0f1117', 'text-halo-width': 1 }
-    });
-
-    let sloPopup = null;
-    map.on('click', 'slo-fill', (e) => {
-      if (!boundaryVisible.slo) return;
-      if (sloPopup) sloPopup.remove();
-      const p = e.features[0].properties;
-      sloPopup = new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: '260px' })
-        .setLngLat(e.lngLat)
-        .setHTML(`<div style="background:#1a1d27;border-radius:8px;padding:12px 14px;font-family:system-ui,sans-serif;color:#e8eaf0">
-            <div style="font-weight:600;font-size:13px;margin-bottom:8px;color:#00c2a8">RD ${p.rd}</div>
-            <div style="font-size:12px;margin-bottom:4px">${p.slo_name || '—'}</div>
-            <div style="font-size:11px;color:#7b82a0;margin-bottom:2px">${p.email || ''}</div>
-            <div style="font-size:11px;color:#7b82a0">${p.cell || ''}</div>
-          </div>`)
-        .addTo(map);
-    });
-    map.on('mouseenter', 'slo-fill', () => {
-      if (boundaryVisible.slo) map.getCanvas().style.cursor = 'pointer';
-    });
-    map.on('mouseleave', 'slo-fill', () => map.getCanvas().style.cursor = '');
-  }
-
-  if (unncFeatures.length > 0) {
-    map.addSource('unnc-source', {
-      type: 'geojson',
-      data: {
-        type: 'FeatureCollection',
-        features: unncFeatures.map(b => ({
-          type: 'Feature',
-          geometry: b.geometry,
-          properties: { ...b.properties, name: b.name, id: b.id }
-        }))
-      }
-    });
-    map.addLayer({ id: 'unnc-fill', type: 'fill', source: 'unnc-source',
-      paint: { 'fill-color': '#2d8bff', 'fill-opacity': boundaryVisible.unnc ? 0.12 : 0 }
-    });
-    map.addLayer({ id: 'unnc-line', type: 'line', source: 'unnc-source',
-      paint: { 'line-color': '#2d8bff', 'line-width': 2.5, 'line-dasharray': [6,2], 'line-opacity': boundaryVisible.unnc ? 1.0 : 0 }
-    });
-
-    // UNNC click popup
-    let unncPopup = null;
-    map.on('click', 'unnc-fill', (e) => {
-      if (!boundaryVisible.unnc) return;
-      if (unncPopup) { unncPopup.remove(); unncPopup = null; }
-      const p = e.features[0].properties;
-      // Properties from MapLibre may be stringified
-      let props = e.features[0].properties;
-      if (typeof props.region === 'string' && props.region.startsWith('{')) {
-        try { props = JSON.parse(props.region); } catch(e2) {}
-      }
-      const unncName = e.features[0].properties.name || '—';
-      const unncRegion = props.region || e.features[0].properties.region || '';
-      unncPopup = new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: '280px' })
-        .setLngLat(e.lngLat)
-        .setHTML(`<div style="background:#1a1d27;border-radius:8px;padding:14px 16px;font-family:system-ui,sans-serif;color:#e8eaf0;min-width:200px">
-            <div style="font-weight:600;font-size:13px;margin-bottom:6px;color:#2d8bff">UNNC Region ${unncRegion}</div>
-            <div style="font-size:12px;line-height:1.5">${unncName}</div>
-          </div>`)
-        .addTo(map);
-    });
-    map.on('mouseenter', 'unnc-fill', () => { if (boundaryVisible.unnc) map.getCanvas().style.cursor = 'pointer'; });
-    map.on('mouseleave', 'unnc-fill', () => map.getCanvas().style.cursor = '');
-  }
-}
-
-function toggleBoundary(type) {
-  boundaryVisible[type] = !boundaryVisible[type];
-  document.getElementById('sw-' + type).classList.toggle('on', boundaryVisible[type]);
-
-  if (type === 'slo') {
-    if (map.getLayer('slo-fill')) map.setPaintProperty('slo-fill', 'fill-opacity', boundaryVisible.slo ? 0.12 : 0);
-    if (map.getLayer('slo-line')) map.setPaintProperty('slo-line', 'line-opacity', boundaryVisible.slo ? 1.0 : 0);
-    if (map.getLayer('slo-labels')) map.setLayoutProperty('slo-labels', 'visibility', boundaryVisible.slo ? 'visible' : 'none');
-  } else {
-    if (map.getLayer('unnc-fill')) map.setPaintProperty('unnc-fill', 'fill-opacity', boundaryVisible.unnc ? 0.12 : 0);
-    if (map.getLayer('unnc-line')) map.setPaintProperty('unnc-line', 'line-opacity', boundaryVisible.unnc ? 1.0 : 0);
-  }
-}
-
-// ══════════════════════════════════════════════════════════════════
 // RENDER CRIMES
 // ══════════════════════════════════════════════════════════════════
+function makeCrimeIcon(type) {
+  const color = CRIMES[type]?.color || '#888';
+  return L.divIcon({
+    html: `<div style="
+      width:20px;height:20px;
+      background:${color};
+      border:2.5px solid rgba(255,255,255,0.9);
+      border-radius:50%;
+      box-shadow:0 0 0 3px ${color}44;
+    "></div>`,
+    className: '',
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+    popupAnchor: [0, -12],
+  });
+}
+
 function renderCrimes() {
-  if (map.getLayer('cluster-ring'))   map.removeLayer('cluster-ring');
-  if (map.getLayer('clusters'))       map.removeLayer('clusters');
-  if (map.getLayer('cluster-count')) map.removeLayer('cluster-count');
-  if (map.getLayer('unclustered-glow')) map.removeLayer('unclustered-glow');
-  if (map.getLayer('unclustered'))   map.removeLayer('unclustered');
-  if (map.getSource('crimes'))       map.removeSource('crimes');
+  clusterGroup.clearLayers();
 
   const filtered = crimesData.filter(c => {
     if (!activeCrimeTypes.has(c.crime_type)) return false;
     if (!showClosed && c.status === 'closed') return false;
-    // Date filter — parse incident_date (stored as M/D/YY or MM/DD/YYYY)
     if (dateFrom || dateTo) {
       if (!c.incident_date) return false;
       try {
-        const parts = c.incident_date.replace(/\//g, '-').split('-');
-        let yr = parseInt(parts[2]);
-        if (yr < 100) yr += 2000;
+        const parts = c.incident_date.replace(/\//g,'-').split('-');
+        let yr = parseInt(parts[2]); if (yr < 100) yr += 2000;
         const d = new Date(yr, parseInt(parts[0])-1, parseInt(parts[1]));
-        if (dateFrom) {
-          const from = new Date(dateFrom);
-          if (d < from) return false;
-        }
-        if (dateTo) {
-          const to = new Date(dateTo);
-          if (d > to) return false;
-        }
-      } catch(e) { return true; }
+        if (dateFrom && d < new Date(dateFrom)) return false;
+        if (dateTo   && d > new Date(dateTo))   return false;
+      } catch(e) {}
     }
     return true;
   });
 
-  const geojson = {
-    type: 'FeatureCollection',
-    features: filtered.map(c => ({
-      type: 'Feature',
-      geometry: { type: 'Point', coordinates: [c.lng, c.lat] },
-      properties: {
-        id:          c.id,
-        crime_type:  c.crime_type,
-        status:      c.status,
-        address:     c.address,
-        date:        c.incident_date,
-        time:        c.incident_time,
-        description: c.description,
-        notes:       c.notes,
-        color:       CRIME_CONFIG[c.crime_type]?.color || '#888',
-        icon:        'crime-' + (c.crime_type || '').toLowerCase().replace(/\s+/g,'-'),
-      }
-    }))
-  };
-
-  map.addSource('crimes', {
-    type: 'geojson', data: geojson,
-    cluster: true, clusterMaxZoom: 15, clusterRadius: 40
-  });
-
-  // Cluster outer glow
-  map.addLayer({
-    id: 'cluster-ring', type: 'circle', source: 'crimes',
-    filter: ['has', 'point_count'],
-    paint: {
-      'circle-color': 'rgba(0,194,168,0.2)',
-      'circle-radius': ['step', ['get', 'point_count'], 26, 10, 34, 50, 44],
-      'circle-stroke-width': 0,
-    }
-  });
-
-  // Cluster filled circle
-  map.addLayer({
-    id: 'clusters', type: 'circle', source: 'crimes',
-    filter: ['has', 'point_count'],
-    paint: {
-      'circle-color': '#00c2a8',
-      'circle-radius': ['step', ['get', 'point_count'], 18, 10, 24, 50, 32],
-      'circle-stroke-width': 3,
-      'circle-stroke-color': 'white',
-    }
-  });
-
-  // Cluster count labels — black on teal
-  map.addLayer({
-    id: 'cluster-count', type: 'symbol', source: 'crimes',
-    filter: ['has', 'point_count'],
-    layout: {
-      'text-field': ['concat', ['get', 'point_count_abbreviated']],
-      'text-size': 13,
-      'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
-      'text-allow-overlap': true,
-      'text-ignore-placement': true,
-      'text-anchor': 'center',
-      'text-offset': [0, 0],
-    },
-    paint: {
-      'text-color': '#000000',
-      'text-halo-color': 'rgba(255,255,255,0.6)',
-      'text-halo-width': 1,
-    }
-  });
-
-  // Individual crime dots — outer glow
-  map.addLayer({
-    id: 'unclustered-glow', type: 'circle', source: 'crimes',
-    filter: ['!', ['has', 'point_count']],
-    paint: {
-      'circle-color': ['get', 'color'],
-      'circle-radius': 16,
-      'circle-opacity': 0.15,
-      'circle-stroke-width': 0,
-    }
-  });
-
-  // Individual crime circles (unclustered)
-  map.addLayer({
-    id: 'unclustered', type: 'circle', source: 'crimes',
-    filter: ['!', ['has', 'point_count']],
-    paint: {
-      'circle-color': ['get', 'color'],
-      'circle-radius': 9,
-      'circle-stroke-width': 2.5,
-      'circle-stroke-color': 'rgba(255,255,255,0.95)',
-      'circle-pitch-alignment': 'map',
-    }
-  });
-
-  // Click cluster → zoom in
-  map.on('click', 'clusters', (e) => {
-    const features = map.queryRenderedFeatures(e.point, { layers: ['clusters'] });
-    const clusterId = features[0].properties.cluster_id;
-    map.getSource('crimes').getClusterExpansionZoom(clusterId, (err, zoom) => {
-      if (!err) map.easeTo({ center: features[0].geometry.coordinates, zoom });
+  filtered.forEach(c => {
+    const marker = L.marker([c.lat, c.lng], { icon: makeCrimeIcon(c.crime_type) });
+    marker.bindPopup(() => buildPopupHTML(c), { maxWidth: 340, minWidth: 300, closeButton: true });
+    marker.on('popupopen', () => {
+      // Bind save button after popup renders
+      setTimeout(() => {
+        const btn = document.getElementById('pop-save-' + c.id);
+        if (btn) btn.onclick = () => saveRecord(c.id);
+        const pbtn = document.getElementById('pop-photo-' + c.id);
+        if (pbtn) pbtn.onclick = () => { currentPhotoCtx = { id: c.id, type:'crime' }; document.getElementById('photo-input').click(); };
+      }, 50);
     });
+    clusterGroup.addLayer(marker);
   });
-
-  // Click individual crime → popup
-  map.on('click', 'unclustered', (e) => {
-    const props = e.features[0].properties;
-    const coords = e.features[0].geometry.coordinates.slice();
-    showCrimePopup(props, coords);
-  });
-
-  map.on('mouseenter', 'cluster-ring', () => map.getCanvas().style.cursor = 'pointer');
-  map.on('mouseleave', 'cluster-ring', () => map.getCanvas().style.cursor = '');
-  map.on('mouseenter', 'clusters',    () => map.getCanvas().style.cursor = 'pointer');
-  map.on('mouseleave', 'clusters',    () => map.getCanvas().style.cursor = '');
-  map.on('mouseenter', 'unclustered', () => map.getCanvas().style.cursor = 'pointer');
-  map.on('mouseleave', 'unclustered', () => map.getCanvas().style.cursor = '');
 
   updateStats(filtered);
-
-  // Add cluster-ring click handler
-  map.on('click', 'cluster-ring', (e) => {
-    const features = map.queryRenderedFeatures(e.point, { layers: ['clusters','cluster-ring'] });
-    if (features.length) {
-      const clusterId = features[0].properties.cluster_id;
-      if (clusterId) {
-        map.getSource('crimes').getClusterExpansionZoom(clusterId, (err, zoom) => {
-          if (!err) map.easeTo({ center: features[0].geometry.coordinates, zoom });
-        });
-      }
-    }
-  });
 }
 
-function filterAndRender() {
-  renderCrimes();
-}
-
-// ══════════════════════════════════════════════════════════════════
-// CRIME POPUP
-// ══════════════════════════════════════════════════════════════════
-function showCrimePopup(props, coords) {
-  currentPopupCrimeId = props.id;
-  const cfg  = CRIME_CONFIG[props.crime_type] || {};
-  const color = cfg.color || '#888';
+function buildPopupHTML(c) {
+  const color  = CRIMES[c.crime_type]?.color || '#888';
   const canEdit = userRole === 'admin' || userRole === 'field_officer';
-  const iconPath = CRIME_ICONS[cfg.icon] || '';
-
-  const statusBadge = `<span class="popup-status-badge status-${props.status}">${props.status?.replace('_',' ')}</span>`;
+  const statusBadge = `<span class="status-badge s-${c.status}">${(c.status||'').replace('_',' ')}</span>`;
 
   const editFields = canEdit ? `
-    <div class="popup-field">
-      <label>Status</label>
-      <select class="popup-status-select" id="popup-status">
-        <option value="open" ${props.status==='open'?'selected':''}>Open</option>
-        <option value="in_progress" ${props.status==='in_progress'?'selected':''}>In Progress</option>
-        <option value="closed" ${props.status==='closed'?'selected':''}>Closed</option>
+    <div class="pop-field"><label>Status</label>
+      <select class="pop-select" id="pop-status-${c.id}">
+        <option value="open" ${c.status==='open'?'selected':''}>Open</option>
+        <option value="in_progress" ${c.status==='in_progress'?'selected':''}>In Progress</option>
+        <option value="closed" ${c.status==='closed'?'selected':''}>Closed</option>
       </select>
     </div>
-    <div class="popup-field">
-      <label>Field Notes</label>
-      <textarea class="popup-notes" id="popup-notes" placeholder="Add notes…">${props.notes || ''}</textarea>
-    </div>
-  ` : `
-    <div class="popup-field">
-      <label>Status</label>
-      <div style="font-size:12px;padding:4px 0">${statusBadge}</div>
-    </div>
-    ${props.notes ? `<div class="popup-field"><label>Notes</label><div style="font-size:12px;line-height:1.5">${props.notes}</div></div>` : ''}
-  `;
+    <div class="pop-field"><label>Field Notes</label>
+      <textarea class="pop-notes" id="pop-notes-${c.id}" placeholder="Add notes…">${c.notes||''}</textarea>
+    </div>` : `
+    <div class="pop-field"><label>Status</label><div style="padding:4px 0">${statusBadge}</div></div>
+    ${c.notes ? `<div class="pop-field"><label>Notes</label><div style="font-size:12px;line-height:1.5">${c.notes}</div></div>` : ''}`;
 
   const footer = canEdit ? `
-    <div class="popup-footer">
-      <button class="popup-save" onclick="savePopup('${props.id}')">Save Changes</button>
-      <button class="popup-photo-btn" onclick="triggerPhotoUpload('${props.id}','crime')">
-        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-        Photo
+    <div class="pop-footer">
+      <button class="pop-save" id="pop-save-${c.id}">Save Changes</button>
+      <button class="pop-photo" id="pop-photo-${c.id}">
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>Photo
       </button>
-    </div>
-  ` : '';
+    </div>` : '';
 
-  const html = `
-    <div class="popup-header">
-      <div class="popup-crime-icon" style="background:${color}22">
-        <svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="${iconPath}"/>
-        </svg>
+  return `
+    <div class="pop-head">
+      <div class="pop-icon" style="background:${color}22">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="${color}" stroke-width="2"><circle cx="12" cy="12" r="8"/></svg>
       </div>
       <div style="flex:1">
-        <div class="popup-type">${props.crime_type}</div>
-        <div class="popup-date">${props.date || '—'} ${props.time ? '· ' + props.time : ''}</div>
+        <div class="pop-type">${c.crime_type}</div>
+        <div class="pop-date">${c.incident_date||'—'} ${c.incident_time ? '· '+c.incident_time : ''}</div>
       </div>
       ${!canEdit ? statusBadge : ''}
     </div>
-    <div class="popup-body">
-      <div class="popup-address">
-        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-        ${props.address || 'Unknown location'}
-      </div>
-      <div class="popup-desc">${props.description || 'No description available.'}</div>
+    <div class="pop-body">
+      <div class="pop-addr">📍 ${c.address||'Unknown location'}</div>
+      <div class="pop-desc">${c.description||'No description available.'}</div>
       ${editFields}
     </div>
-    <div class="popup-msg" id="popup-msg"></div>
-    ${footer}
-  `;
-
-  // Remove any existing crime popup
-  if (window._crimePopup) window._crimePopup.remove();
-  window._crimePopup = new maplibregl.Popup({
-    maxWidth: '360px', offset: 12,
-    closeButton: true,
-    closeOnClick: false,
-  })
-    .setLngLat(coords)
-    .setHTML(html)
-    .addTo(map);
+    <div class="pop-msg" id="pop-msg-${c.id}"></div>
+    ${footer}`;
 }
 
-async function savePopup(crimeId) {
-  const status = document.getElementById('popup-status')?.value;
-  const notes  = document.getElementById('popup-notes')?.value;
-  const btn    = document.querySelector('.popup-save');
+async function saveRecord(id) {
+  const status = document.getElementById('pop-status-' + id)?.value;
+  const notes  = document.getElementById('pop-notes-'  + id)?.value;
+  const btn    = document.getElementById('pop-save-' + id);
+  const msg    = document.getElementById('pop-msg-' + id);
   if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
 
-  const { data: saveData, error } = await sb.from('crimes').update({
-    status, notes,
-    updated_by: currentUser?.id,
-  }).eq('id', crimeId).select('id, status, notes, updated_at');
+  const { error } = await sb.from('crimes')
+    .update({ status, notes, updated_by: currentUser?.id })
+    .eq('id', id);
 
-  if (error) {
-    console.error('Save error:', error);
-    showToast('Error saving: ' + error.message, 'error');
-  } else {
-    console.log('✅ Crime saved:', saveData);
-    const msg = document.getElementById('popup-msg');
-    if (msg) msg.textContent = '✓ Saved successfully';
-    showToast('Crime record updated', 'success');
+  if (error) { showToast('Error: ' + error.message, 'err'); }
+  else {
+    if (msg) msg.textContent = '✓ Saved';
+    showToast('Crime record updated', 'ok');
     await loadCrimes();
   }
   if (btn) { btn.disabled = false; btn.textContent = 'Save Changes'; }
 }
 
 // ══════════════════════════════════════════════════════════════════
+// RENDER BOUNDARIES
+// ══════════════════════════════════════════════════════════════════
+function renderBoundaries() {
+  sloLayerGroup.clearLayers();
+  unncLayerGroup.clearLayers();
+
+  boundariesData.forEach(b => {
+    if (!b.geometry) return;
+    if (b.boundary_type === 'slo') {
+      const layer = L.geoJSON(b.geometry, {
+        style: { color:'#00c2a8', weight:2, fillColor:'#00c2a8', fillOpacity:0.06, dashArray:null }
+      });
+      layer.bindPopup(`
+        <div style="padding:12px;font-family:var(--font);color:var(--text);background:var(--panel);border-radius:8px;min-width:180px">
+          <div style="font-weight:600;font-size:13px;color:var(--accent);margin-bottom:6px">RD ${b.properties?.rd||''}</div>
+          <div style="font-size:12px;margin-bottom:3px">${b.properties?.slo_name||'—'}</div>
+          <div style="font-size:11px;color:var(--muted)">${b.properties?.email||''}</div>
+          <div style="font-size:11px;color:var(--muted)">${b.properties?.cell||''}</div>
+        </div>`, { closeButton: true }
+      );
+      sloLayerGroup.addLayer(layer);
+    } else if (b.boundary_type === 'unnc') {
+      const layer = L.geoJSON(b.geometry, {
+        style: { color:'#2d8bff', weight:2, fillColor:'#2d8bff', fillOpacity:0.06, dashArray:'6 3' }
+      });
+      layer.bindPopup(`
+        <div style="padding:12px;font-family:var(--font);color:var(--text);background:var(--panel);border-radius:8px;min-width:180px">
+          <div style="font-weight:600;font-size:13px;color:#2d8bff;margin-bottom:6px">UNNC Region ${b.properties?.region||''}</div>
+          <div style="font-size:12px">${b.name||'—'}</div>
+        </div>`, { closeButton: true }
+      );
+      unncLayerGroup.addLayer(layer);
+    }
+  });
+}
+
+function toggleLayer(type) {
+  layerVisible[type] = !layerVisible[type];
+  document.getElementById('sw-' + type).classList.toggle('on', layerVisible[type]);
+  const grp = type === 'slo' ? sloLayerGroup : unncLayerGroup;
+  if (layerVisible[type]) grp.addTo(map);
+  else map.removeLayer(grp);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// CRIME TYPE TOGGLES
+// ══════════════════════════════════════════════════════════════════
+function buildToggles() {
+  const el = document.getElementById('crime-toggles');
+  Object.entries(CRIMES).forEach(([type, cfg]) => {
+    activeCrimeTypes.add(type);
+    el.innerHTML += `
+      <div class="tog-row" onclick="toggleCrime('${type}',this)">
+        <div class="tog-icon" style="background:${cfg.color}22">
+          <div style="width:10px;height:10px;border-radius:50%;background:${cfg.color}"></div>
+        </div>
+        <span class="tog-label" style="font-size:11px">${type}</span>
+        <span class="tog-count" id="ct-${type.replace(/\W/g,'_')}">0</span>
+        <div class="tog-sw on" id="sw-${type.replace(/\W/g,'_')}"></div>
+      </div>`;
+  });
+}
+
+function toggleCrime(type, row) {
+  const sw = document.getElementById('sw-' + type.replace(/\W/g,'_'));
+  if (activeCrimeTypes.has(type)) { activeCrimeTypes.delete(type); sw.classList.remove('on'); }
+  else { activeCrimeTypes.add(type); sw.classList.add('on'); }
+  renderCrimes();
+}
+
+// ══════════════════════════════════════════════════════════════════
 // STATS
 // ══════════════════════════════════════════════════════════════════
 function updateStats(filtered) {
-  const data = filtered || crimesData;
-  document.getElementById('stats-total').textContent = data.length;
-
+  document.getElementById('stats-total').textContent = filtered.length;
   const counts = {};
-  data.forEach(c => { counts[c.crime_type] = (counts[c.crime_type] || 0) + 1; });
+  filtered.forEach(c => { counts[c.crime_type] = (counts[c.crime_type]||0) + 1; });
 
-  // Update per-type counts in sidebar
-  Object.entries(counts).forEach(([type, count]) => {
-    const el = document.getElementById('count-' + type.replace(/\s/g,'_'));
-    if (el) el.textContent = count;
+  // Update per-type counts
+  Object.entries(counts).forEach(([t,n]) => {
+    const el = document.getElementById('ct-' + t.replace(/\W/g,'_'));
+    if (el) el.textContent = n;
+  });
+  // Reset zeros
+  Object.keys(CRIMES).forEach(t => {
+    if (!counts[t]) { const el = document.getElementById('ct-' + t.replace(/\W/g,'_')); if (el) el.textContent = 0; }
   });
 
-  // Stats breakdown pills (top 3)
-  const top3 = Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0,3);
-  const breakdown = document.getElementById('stats-breakdown');
-  breakdown.innerHTML = top3.map(([type, count]) => {
-    const color = CRIME_CONFIG[type]?.color || '#888';
-    return `<div class="stat-pill" style="background:${color}18">
-      <div class="stat-dot" style="background:${color}"></div>
-      <span style="color:${color};font-size:10px">${count} ${type}</span>
-    </div>`;
+  const top3 = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,3);
+  document.getElementById('stats-pills').innerHTML = top3.map(([t,n]) => {
+    const c = CRIMES[t]?.color || '#888';
+    return `<div class="pill" style="background:${c}18"><div class="pill-dot" style="background:${c}"></div><span style="color:${c}">${n} ${t}</span></div>`;
   }).join('');
 
-  if (dateFrom || dateTo) {
-    document.getElementById('stats-range').textContent =
-      `${dateFrom || '—'} → ${dateTo || '—'}`;
-  } else {
-    document.getElementById('stats-range').textContent = 'All dates';
-  }
+  document.getElementById('stats-range').textContent =
+    (dateFrom||dateTo) ? `${dateFrom||'—'} → ${dateTo||'—'}` : 'All dates';
 }
 
 // ══════════════════════════════════════════════════════════════════
 // DATE FILTER
 // ══════════════════════════════════════════════════════════════════
-function applyDateFilter() {
-  dateFrom = document.getElementById('date-from').value || null;
-  dateTo   = document.getElementById('date-to').value   || null;
-  loadCrimes();
+function applyDate() {
+  dateFrom = document.getElementById('df-from').value || null;
+  dateTo   = document.getElementById('df-to').value   || null;
+  renderCrimes();
 }
-
-function clearDateFilter() {
+function clearDate() {
   dateFrom = dateTo = null;
-  document.getElementById('date-from').value = '';
-  document.getElementById('date-to').value   = '';
-  loadCrimes();
+  document.getElementById('df-from').value = '';
+  document.getElementById('df-to').value   = '';
+  renderCrimes();
 }
 
 // ══════════════════════════════════════════════════════════════════
-// SEARCH (Nominatim geocoder)
+// SEARCH
 // ══════════════════════════════════════════════════════════════════
-let searchTimer = null;
-function onSearchInput() {
+let searchTimer;
+function onSearch() {
   clearTimeout(searchTimer);
   const q = document.getElementById('search-input').value.trim();
-  if (q.length < 3) { document.getElementById('search-results').style.display = 'none'; return; }
-  searchTimer = setTimeout(() => runSearch(q), 400);
+  if (q.length < 3) { document.getElementById('search-results').style.display='none'; return; }
+  searchTimer = setTimeout(async () => {
+    try {
+      const res  = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q+', Los Angeles, CA')}&format=json&limit=5`, { headers:{'Accept-Language':'en'} });
+      const data = await res.json();
+      const box  = document.getElementById('search-results');
+      if (!data.length) { box.style.display='none'; return; }
+      box.innerHTML = data.map(r =>
+        `<div class="s-result" onclick="flyTo(${r.lon},${r.lat},'${r.display_name.replace(/'/g,"\\'")}')">${r.display_name.split(',').slice(0,3).join(',')}</div>`
+      ).join('');
+      box.style.display = 'block';
+    } catch(e) {}
+  }, 400);
 }
-
-async function runSearch(q) {
-  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q + ', Los Angeles, CA')}&format=json&limit=5`;
-  try {
-    const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
-    const results = await res.json();
-    const box = document.getElementById('search-results');
-    if (!results.length) { box.style.display = 'none'; return; }
-    box.innerHTML = results.map(r =>
-      `<div class="search-result" onclick="flyToResult(${r.lon},${r.lat},'${r.display_name.replace(/'/g,"\\'")}')">
-        ${r.display_name.split(',').slice(0,3).join(',')}
-      </div>`
-    ).join('');
-    box.style.display = 'block';
-  } catch(e) { console.warn('Search error', e); }
-}
-
-function flyToResult(lng, lat, name) {
-  map.flyTo({ center: [parseFloat(lng), parseFloat(lat)], zoom: 17 });
+function flyTo(lng, lat, name) {
+  map.flyTo([parseFloat(lat), parseFloat(lng)], 17);
   document.getElementById('search-input').value = name.split(',').slice(0,2).join(',');
   document.getElementById('search-results').style.display = 'none';
 }
-
-function onSearchKey(e) {
-  if (e.key === 'Escape') document.getElementById('search-results').style.display = 'none';
-}
+function onSearchKey(e) { if (e.key==='Escape') document.getElementById('search-results').style.display='none'; }
 
 // ══════════════════════════════════════════════════════════════════
-// LOCATE USER
+// LOCATE ME
 // ══════════════════════════════════════════════════════════════════
-function locateUser() {
-  if (!navigator.geolocation) { showToast('Geolocation not supported', 'error'); return; }
+function locateMe() {
+  if (!navigator.geolocation) { showToast('Geolocation not supported','err'); return; }
   navigator.geolocation.getCurrentPosition(pos => {
-    const { longitude, latitude } = pos.coords;
-    map.flyTo({ center: [longitude, latitude], zoom: 16 });
-    // Add/update user dot
-    if (map.getLayer('user-loc')) map.removeLayer('user-loc');
-    if (map.getSource('user-loc')) map.removeSource('user-loc');
-    map.addSource('user-loc', {
-      type: 'geojson',
-      data: { type: 'Feature', geometry: { type: 'Point', coordinates: [longitude, latitude] } }
-    });
-    map.addLayer({
-      id: 'user-loc', type: 'circle', source: 'user-loc',
-      paint: {
-        'circle-color': '#0088ff', 'circle-radius': 8,
-        'circle-stroke-width': 3, 'circle-stroke-color': 'white',
-      }
-    });
-  }, () => showToast('Could not get your location', 'error'));
+    const { latitude:lat, longitude:lng } = pos.coords;
+    map.flyTo([lat,lng], 17);
+    L.circleMarker([lat,lng], { radius:8, color:'white', weight:3, fillColor:'#0088ff', fillOpacity:1 })
+      .addTo(map).bindPopup('Your location').openPopup();
+  }, () => showToast('Could not get your location','err'));
 }
 
 // ══════════════════════════════════════════════════════════════════
-// ADMIN — TOGGLE CLOSED
+// DRAW TOOLS — Leaflet.Draw sidebar buttons
 // ══════════════════════════════════════════════════════════════════
-function toggleClosedCases() {
+function startDraw(type) {
+  // Trigger Leaflet.Draw programmatically
+  const hints = {
+    polygon: 'Click to place points, double-click to finish',
+    line:    'Click to place points, double-click to finish',
+    point:   'Click map to place marker',
+  };
+  document.getElementById('draw-hint').textContent = hints[type] || '';
+  ['polygon','line','point'].forEach(t => {
+    document.getElementById('db-' + t).classList.toggle('active', t === type);
+  });
+
+  // Trigger the appropriate Leaflet.Draw handler
+  map.eachLayer(layer => {
+    if (layer instanceof L.Control.Draw) return;
+  });
+
+  // Find and trigger the draw button in Leaflet.Draw toolbar
+  const drawMap = {
+    polygon: '.leaflet-draw-draw-polygon',
+    line:    '.leaflet-draw-draw-polyline',
+    point:   '.leaflet-draw-draw-marker',
+  };
+  const btn = document.querySelector(drawMap[type]);
+  if (btn) {
+    btn.click();
+  } else {
+    showToast('Draw toolbar not ready', 'err');
+  }
+}
+
+function cancelDraw() {
+  document.getElementById('draw-hint').textContent = '';
+  ['polygon','line','point'].forEach(t => {
+    document.getElementById('db-' + t).classList.remove('active');
+  });
+  // Press escape to cancel active draw
+  document.dispatchEvent(new KeyboardEvent('keydown', { key:'Escape', keyCode:27, bubbles:true }));
+}
+
+// ══════════════════════════════════════════════════════════════════
+// ANNOTATIONS
+// ══════════════════════════════════════════════════════════════════
+async function saveAnnotation() {
+  if (!pendingGeometry) { closeModal('ann-modal'); return; }
+  const label = document.getElementById('ann-label').value.trim();
+  const notes = document.getElementById('ann-notes').value.trim();
+  const type  = pendingGeometry.type === 'Polygon' ? 'polygon'
+              : pendingGeometry.type === 'LineString' ? 'line' : 'point';
+
+  const { error } = await sb.rpc('insert_annotation', {
+    p_created_by: currentUser.id,
+    p_label:      label || null,
+    p_type:       type,
+    p_geojson:    JSON.stringify(pendingGeometry),
+    p_notes:      notes || null,
+  });
+
+  if (error) showToast('Error: ' + error.message, 'err');
+  else showToast('Annotation saved', 'ok');
+
+  pendingGeometry = null;
+  closeModal('ann-modal');
+  cancelDraw();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// ADD CRIME
+// ══════════════════════════════════════════════════════════════════
+function openAddCrime() {
+  document.getElementById('add-date').value = new Date().toISOString().split('T')[0];
+  geocodeLng = geocodeLat = null;
+  document.getElementById('geocode-status').textContent = '';
+  document.getElementById('add-coords').textContent = '';
+  openModal('add-modal');
+}
+
+function geocodeAddr() {
+  clearTimeout(geocodeTimer);
+  const addr = document.getElementById('add-addr').value.trim();
+  if (addr.length < 5) return;
+  document.getElementById('geocode-status').textContent = 'Geocoding…';
+  geocodeTimer = setTimeout(async () => {
+    const clean = addr.replace(/\*\*/g,'50') + ', Los Angeles, CA';
+    try {
+      const res  = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(clean)}&format=json&limit=1`, { headers:{'Accept-Language':'en'} });
+      const data = await res.json();
+      if (data.length) {
+        geocodeLng = parseFloat(data[0].lon);
+        geocodeLat = parseFloat(data[0].lat);
+        document.getElementById('geocode-status').textContent = '✓ ' + data[0].display_name.split(',').slice(0,3).join(',');
+        document.getElementById('add-coords').textContent = geocodeLat.toFixed(6) + ', ' + geocodeLng.toFixed(6);
+      } else {
+        document.getElementById('geocode-status').textContent = '⚠ Address not found';
+      }
+    } catch(e) { document.getElementById('geocode-status').textContent = 'Geocoding failed'; }
+  }, 700);
+}
+
+async function submitCrime() {
+  const type  = document.getElementById('add-type').value;
+  const status= document.getElementById('add-status').value;
+  const addr  = document.getElementById('add-addr').value.trim();
+  const date  = document.getElementById('add-date').value;
+  const time  = document.getElementById('add-time').value;
+  const desc  = document.getElementById('add-desc').value.trim();
+
+  if (!type || !addr || !geocodeLng) { showToast('Fill address and wait for geocoding','err'); return; }
+
+  const { error } = await sb.rpc('insert_crime', {
+    p_crime_type: type, p_status: status, p_address: addr,
+    p_description: desc, p_incident_date: date||null, p_incident_time: time||null,
+    p_lng: geocodeLng, p_lat: geocodeLat,
+    p_source: 'manual', p_updated_by: currentUser?.id||null,
+  });
+  if (error) { showToast('Error: '+error.message,'err'); return; }
+  showToast('Crime added','ok');
+  closeModal('add-modal');
+  await loadCrimes();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// SHOW/HIDE CLOSED
+// ══════════════════════════════════════════════════════════════════
+function toggleClosed() {
   showClosed = !showClosed;
-  document.getElementById('closed-btn-label').textContent = showClosed ? 'Hide Closed' : 'Show Closed';
+  document.getElementById('closed-lbl').textContent = showClosed ? 'Hide Closed' : 'Show Closed';
   loadCrimes();
 }
 
 // ══════════════════════════════════════════════════════════════════
-// ADD CRIME MODAL
+// PHOTO UPLOAD
 // ══════════════════════════════════════════════════════════════════
-function openAddCrime() {
-  document.getElementById('add-crime-modal').classList.add('visible');
-  document.getElementById('add-date').value = new Date().toISOString().split('T')[0];
-}
-function closeAddCrime() {
-  document.getElementById('add-crime-modal').classList.remove('visible');
-  geocodedLng = geocodedLat = null;
-}
-
-function geocodeAddress() {
-  clearTimeout(geocodeTimer);
-  const addr = document.getElementById('add-address').value.trim();
-  if (addr.length < 6) return;
-  document.getElementById('geocode-status').textContent = 'Geocoding…';
-  geocodeTimer = setTimeout(async () => {
-    // Replace ** with midblock number for geocoding
-    const cleanAddr = addr.replace(/\*\*/g, '50') + ', Los Angeles, CA';
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cleanAddr)}&format=json&limit=1`;
-    try {
-      const res  = await fetch(url, { headers: { 'Accept-Language': 'en' } });
-      const data = await res.json();
-      if (data.length) {
-        geocodedLng = parseFloat(data[0].lon);
-        geocodedLat = parseFloat(data[0].lat);
-        document.getElementById('geocode-status').textContent = `✓ ${data[0].display_name.split(',').slice(0,3).join(',')}`;
-        document.getElementById('add-coords').textContent = `${geocodedLat.toFixed(6)}, ${geocodedLng.toFixed(6)}`;
-      } else {
-        document.getElementById('geocode-status').textContent = '⚠ Address not found — check spelling';
-      }
-    } catch(e) {
-      document.getElementById('geocode-status').textContent = 'Geocoding failed';
-    }
-  }, 700);
-}
-
-async function submitAddCrime() {
-  const type   = document.getElementById('add-type').value;
-  const status = document.getElementById('add-status').value;
-  const addr   = document.getElementById('add-address').value.trim();
-  const date   = document.getElementById('add-date').value;
-  const time   = document.getElementById('add-time').value;
-  const desc   = document.getElementById('add-desc').value.trim();
-
-  if (!type || !addr || !geocodedLng) {
-    showToast('Please fill address and wait for geocoding', 'error'); return;
-  }
-
-  const { error } = await sb.rpc('insert_crime', {
-    p_crime_type:    type,
-    p_status:        status,
-    p_address:       addr,
-    p_description:   desc,
-    p_incident_date: date || null,
-    p_incident_time: time || null,
-    p_lng:           geocodedLng,
-    p_lat:           geocodedLat,
-    p_source:        'manual',
-    p_updated_by:    currentUser?.id || null,
+async function uploadPhoto(e) {
+  const file = e.target.files[0];
+  if (!file || !currentPhotoCtx || !currentUser) return;
+  const ext  = file.name.split('.').pop().toLowerCase() || 'jpg';
+  const path = `crimes/${currentPhotoCtx.id}/${Date.now()}.${ext}`;
+  showToast('Uploading…','ok');
+  const { error: ue } = await sb.storage.from('crime-photos').upload(path, file, { contentType: file.type||'image/jpeg', upsert:false });
+  if (ue) { showToast('Upload failed: '+ue.message,'err'); e.target.value=''; return; }
+  const { error: de } = await sb.from('photos').insert({
+    uploaded_by: currentUser.id, storage_path: path,
+    crime_id: currentPhotoCtx.type==='crime' ? currentPhotoCtx.id : null,
+    annotation_id: currentPhotoCtx.type==='annotation' ? currentPhotoCtx.id : null,
   });
-
-  if (error) { showToast('Error: ' + error.message, 'error'); return; }
-  showToast('Crime added successfully', 'success');
-  closeAddCrime();
-  await loadCrimes();
+  if (de) showToast('Photo DB error: '+de.message,'err');
+  else showToast('Photo uploaded','ok');
+  e.target.value=''; currentPhotoCtx=null;
 }
 
 // ══════════════════════════════════════════════════════════════════
 // PDF IMPORT
 // ══════════════════════════════════════════════════════════════════
-let pdfRecords = [];
+function openPDF() { openModal('pdf-modal'); }
+function onDrop(e) { e.preventDefault(); const f=e.dataTransfer.files[0]; if(f?.type==='application/pdf') processPDFFile(f); }
+function processPDF(e) { const f=e.target.files[0]; if(f) processPDFFile(f); }
 
-function openPDFImport() { document.getElementById('pdf-modal').classList.add('visible'); }
-function closePDFModal() {
-  document.getElementById('pdf-modal').classList.remove('visible');
-  document.getElementById('pdf-preview').style.display = 'none';
-  document.getElementById('pdf-status').textContent = '';
-  pdfRecords = [];
-}
-
-function onDragOver(e) { e.preventDefault(); e.currentTarget.classList.add('drag'); }
-function onDrop(e) {
-  e.preventDefault(); e.currentTarget.classList.remove('drag');
-  const file = e.dataTransfer.files[0];
-  if (file?.type === 'application/pdf') processPDF(file);
-}
-function onPDFSelect(e) { const file = e.target.files[0]; if (file) processPDF(file); }
-
-async function processPDF(file) {
+async function processPDFFile(file) {
   document.getElementById('pdf-status').textContent = '⏳ Reading PDF with AI…';
   const reader = new FileReader();
   reader.onload = async (e) => {
-    const base64 = e.target.result.split(',')[1];
+    const b64 = e.target.result.split(',')[1];
     try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': CLAUDE_API_KEY,
-          'anthropic-version': '2023-06-01',
-        },
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', 'x-api-key':CLAUDE_API_KEY, 'anthropic-version':'2023-06-01' },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 2000,
-          messages: [{
-            role: 'user',
-            content: [
-              {
-                type: 'document',
-                source: { type: 'base64', media_type: 'application/pdf', data: base64 }
-              },
-              {
-                type: 'text',
-                text: `Extract ALL crime incidents from this LAPD Basic Car Update PDF. Return ONLY a JSON array, no other text, no markdown. Each item should have these exact fields:
-{
-  "crime_type": one of: Aggravated Assault|Attempt GTA|Battery|BFMV|BTFV|Burglary|Criminal Threat|GTA|Homicide|Robbery|Shots Fired|Theft|TFMV|Vandalism,
-  "date": "MM/DD/YY or MM/DD/YYYY as written",
-  "time": "time as written",
-  "address": "address as written",
-  "description": "remarks/description as written",
-  "report_period": "coverage period from header e.g. 03/22/26-03/28/26"
-}
-For crime types not in the list, use the closest match. Map "Theft From Vehicle" to TFMV, "Vehicle Theft" to GTA, "Burglary/Theft from Vehicle" to BTFV. Ignore the summary table at the top, only extract from the detail rows.`
-              }
-            ]
-          }]
+          model:'claude-sonnet-4-20250514', max_tokens:2000,
+          messages:[{ role:'user', content:[
+            { type:'document', source:{ type:'base64', media_type:'application/pdf', data:b64 } },
+            { type:'text', text:`Extract ALL crime incidents from this LAPD Basic Car Update PDF. Return ONLY a JSON array. Each item: {"crime_type":"one of Aggravated Assault|Attempt GTA|Battery|BFMV|BTFV|Burglary|Criminal Threat|GTA|Homicide|Robbery|Shots Fired|Theft|TFMV|Vandalism","date":"as written","time":"as written","address":"as written","description":"remarks as written","report_period":"coverage period from header"}. Map Theft From Vehicle→TFMV, Vehicle Theft→GTA, Burglary/Theft from Vehicle→BTFV. Skip the summary table, only extract detail rows.` }
+          ]}]
         })
       });
+      const d = await res.json();
+      const text = d.content?.[0]?.text || '[]';
+      pdfRecords = JSON.parse(text.replace(/```json|```/g,'').trim());
 
-      const data = await response.json();
-      const text = data.content?.[0]?.text || '[]';
-      const clean = text.replace(/```json|```/g, '').trim();
-      pdfRecords = JSON.parse(clean);
-
-      // Check for duplicates against existing data
-      for (const rec of pdfRecords) {
-        rec._isDuplicate = crimesData.some(c =>
-          c.crime_type === rec.crime_type &&
-          c.incident_date === rec.date &&
-          c.address?.toLowerCase() === rec.address?.toLowerCase()
-        );
-        rec._geocoded = false;
-        rec._lng = null; rec._lat = null;
+      // Check duplicates
+      for (const r of pdfRecords) {
+        r._dup = crimesData.some(c => c.crime_type===r.crime_type && c.incident_date===r.date && c.address?.toLowerCase()===r.address?.toLowerCase());
+        r._lng = null; r._lat = null;
       }
 
-      renderPDFPreview();
+      // Geocode
+      document.getElementById('pdf-status').textContent = `⏳ Geocoding ${pdfRecords.length} addresses…`;
+      for (const r of pdfRecords) {
+        if (r._dup) continue;
+        try {
+          const clean = r.address.replace(/\*\*/g,'50') + ', Los Angeles, CA';
+          const gr = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(clean)}&format=json&limit=1`, { headers:{'Accept-Language':'en'} });
+          const gd = await gr.json();
+          if (gd.length) { r._lng=parseFloat(gd[0].lon); r._lat=parseFloat(gd[0].lat); }
+          await new Promise(resolve => setTimeout(resolve, 300));
+        } catch(e) {}
+      }
+
+      document.getElementById('pdf-status').textContent = '';
+      document.getElementById('pdf-info').textContent = `Found ${pdfRecords.length} records · Report: ${pdfRecords[0]?.report_period||''}`;
+      document.getElementById('pdf-tbody').innerHTML = pdfRecords.map((r,i) => `
+        <tr>
+          <td>${r._dup ? '<span class="tag tag-dup">DUP</span>' : r._lng ? '<span class="tag tag-new">NEW</span>' : '<span class="tag tag-err">NO GPS</span>'}</td>
+          <td style="font-weight:500">${r.crime_type}</td>
+          <td style="font-family:var(--mono);font-size:10px;white-space:nowrap">${r.date}</td>
+          <td style="font-family:var(--mono);font-size:10px;white-space:nowrap">${r.time}</td>
+          <td>${r.address}</td>
+          <td style="color:var(--muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.description}">${r.description}</td>
+        </tr>`).join('');
+      document.getElementById('pdf-preview').style.display = 'block';
     } catch(err) {
-      document.getElementById('pdf-status').textContent = '❌ Error parsing PDF: ' + err.message;
+      document.getElementById('pdf-status').textContent = '❌ Error: ' + err.message;
     }
   };
   reader.readAsDataURL(file);
 }
 
-async function renderPDFPreview() {
-  document.getElementById('pdf-status').textContent = `⏳ Geocoding ${pdfRecords.length} addresses…`;
-
-  // Geocode all addresses
-  for (const rec of pdfRecords) {
-    if (rec._isDuplicate) continue;
-    const cleanAddr = rec.address.replace(/\*\*/g,'50') + ', Los Angeles, CA';
-    try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cleanAddr)}&format=json&limit=1`,
-        { headers: { 'Accept-Language': 'en' } });
-      const data = await res.json();
-      if (data.length) {
-        rec._lng = parseFloat(data[0].lon);
-        rec._lat = parseFloat(data[0].lat);
-        rec._geocoded = true;
-      }
-      await new Promise(r => setTimeout(r, 300)); // Nominatim rate limit
-    } catch(e) { console.warn('Geocode failed for', rec.address); }
-  }
-
-  document.getElementById('pdf-status').textContent = '';
-  const reportPeriod = pdfRecords[0]?.report_period || '';
-  document.getElementById('pdf-report-info').textContent =
-    `Found ${pdfRecords.length} records · Report period: ${reportPeriod}`;
-
-  const tbody = document.getElementById('pdf-table-body');
-  tbody.innerHTML = pdfRecords.map((rec, i) => `
-    <tr class="${rec._isDuplicate ? 'pdf-row-skip' : ''}">
-      <td>
-        ${rec._isDuplicate
-          ? '<span class="tag-dup">DUP</span>'
-          : rec._geocoded
-            ? '<span class="tag-new">NEW</span>'
-            : '<span class="tag-err">NO GPS</span>'}
-      </td>
-      <td style="font-weight:500;font-size:11px">${rec.crime_type}</td>
-      <td style="white-space:nowrap;font-family:var(--mono);font-size:10px">${rec.date}</td>
-      <td style="white-space:nowrap;font-family:var(--mono);font-size:10px">${rec.time}</td>
-      <td style="font-size:11px">${rec.address}</td>
-      <td style="font-size:10px;color:var(--muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${rec.description}">${rec.description}</td>
-    </tr>
-  `).join('');
-
-  document.getElementById('pdf-preview').style.display = 'block';
-}
-
-async function importPDFRecords() {
-  const toImport = pdfRecords.filter(r => !r._isDuplicate && r._geocoded);
-  if (!toImport.length) { showToast('No new records to import', 'error'); return; }
-
+async function importPDF() {
+  const toImport = pdfRecords.filter(r => !r._dup && r._lng);
+  if (!toImport.length) { showToast('No new records to import','err'); return; }
   document.getElementById('pdf-import-btn').disabled = true;
-  document.getElementById('pdf-import-btn').textContent = 'Importing…';
-
-  let success = 0;
-  for (const rec of toImport) {
+  let ok = 0;
+  for (const r of toImport) {
     const { error } = await sb.rpc('insert_crime', {
-      p_crime_type:    rec.crime_type,
-      p_status:        'open',
-      p_address:       rec.address,
-      p_description:   rec.description,
-      p_incident_date: rec.date,
-      p_incident_time: rec.time,
-      p_lng:           rec._lng,
-      p_lat:           rec._lat,
-      p_source:        'pdf_import',
-      p_report_period: rec.report_period || null,
-      p_updated_by:    currentUser?.id || null,
+      p_crime_type:r.crime_type, p_status:'open', p_address:r.address,
+      p_description:r.description, p_incident_date:r.date, p_incident_time:r.time,
+      p_lng:r._lng, p_lat:r._lat, p_source:'pdf_import',
+      p_report_period:r.report_period||null, p_updated_by:currentUser?.id||null,
     });
-    if (!error) success++;
+    if (!error) ok++;
   }
-
-  showToast(`Imported ${success} of ${toImport.length} records`, 'success');
-  closePDFModal();
+  showToast(`Imported ${ok} of ${toImport.length} records`,'ok');
+  closeModal('pdf-modal');
   await loadCrimes();
+  document.getElementById('pdf-import-btn').disabled = false;
 }
 
 // ══════════════════════════════════════════════════════════════════
 // SLO MANAGER
 // ══════════════════════════════════════════════════════════════════
-async function openSLOManager() {
-  document.getElementById('slo-modal').style.display = 'flex';
-  const { data } = await sb.from('boundaries')
-    .select('id, name, properties')
-    .eq('boundary_type', 'slo')
-    .order('name');
-
-  const list = document.getElementById('slo-list');
-  list.innerHTML = (data || []).map(b => `
+async function openSLO() {
+  openModal('slo-modal');
+  const { data } = await sb.from('boundaries').select('id,name,properties').eq('boundary_type','slo').order('name');
+  document.getElementById('slo-list').innerHTML = (data||[]).map(b => `
     <div style="border-bottom:1px solid var(--border);padding:12px 0">
-      <div style="font-size:12px;font-weight:600;font-family:var(--mono);color:var(--accent);margin-bottom:8px">
-        RD ${b.properties?.rd} — ${b.name}
+      <div style="font-size:11px;font-weight:600;font-family:var(--mono);color:var(--accent);margin-bottom:8px">RD ${b.properties?.rd} — ${b.name}</div>
+      <div class="mf-grid">
+        <div class="mf"><label>SLO Name</label><input type="text" id="sn-${b.id}" value="${b.properties?.slo_name||''}"></div>
+        <div class="mf"><label>Cell</label><input type="text" id="sc-${b.id}" value="${b.properties?.cell||''}"></div>
+        <div class="mf" style="grid-column:1/-1"><label>Email</label><input type="text" id="se-${b.id}" value="${b.properties?.email||''}"></div>
       </div>
-      <div class="modal-grid">
-        <div class="modal-field">
-          <label>SLO Name</label>
-          <input type="text" id="slo-name-${b.id}" value="${b.properties?.slo_name || ''}" style="font-size:12px">
-        </div>
-        <div class="modal-field">
-          <label>Cell</label>
-          <input type="text" id="slo-cell-${b.id}" value="${b.properties?.cell || ''}" style="font-size:12px">
-        </div>
-        <div class="modal-field full">
-          <label>Email</label>
-          <input type="text" id="slo-email-${b.id}" value="${b.properties?.email || ''}" style="font-size:12px">
-        </div>
-      </div>
-      <button onclick="saveSLO('${b.id}')" style="background:var(--accent);color:#000;border:none;border-radius:6px;padding:6px 14px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font)">
-        Save
-      </button>
-    </div>
-  `).join('');
+      <button onclick="saveSLO('${b.id}')" style="background:var(--accent);color:#000;border:none;border-radius:6px;padding:6px 14px;font-size:11px;font-weight:600;cursor:pointer;margin-top:4px">Save</button>
+    </div>`).join('');
 }
 
 async function saveSLO(id) {
-  const current = boundariesData.find(b => b.id === id);
-  const props = {
-    ...current?.properties,
-    slo_name: document.getElementById(`slo-name-${id}`).value,
-    cell:     document.getElementById(`slo-cell-${id}`).value,
-    email:    document.getElementById(`slo-email-${id}`).value,
+  const current = boundariesData.find(b => b.id===id);
+  const props = { ...current?.properties,
+    slo_name: document.getElementById('sn-'+id).value,
+    cell:     document.getElementById('sc-'+id).value,
+    email:    document.getElementById('se-'+id).value,
   };
-  const { error } = await sb.from('boundaries')
-    .update({ properties: props, updated_by: currentUser?.id })
-    .eq('id', id);
-  if (error) showToast('Error saving: ' + error.message, 'error');
-  else { showToast('SLO info updated', 'success'); await loadBoundaries(); }
-}
-
-function closeSLOManager() { document.getElementById('slo-modal').style.display = 'none'; }
-
-// ══════════════════════════════════════════════════════════════════
-// PHOTO UPLOAD
-// ══════════════════════════════════════════════════════════════════
-function triggerPhotoUpload(id, type) {
-  currentPhotoContext = { id, type };
-  document.getElementById('photo-upload').click();
-}
-
-async function uploadPhoto(e) {
-  const file = e.target.files[0];
-  if (!file || !currentPhotoContext) { showToast('No file or context', 'error'); return; }
-  if (!currentUser) { showToast('Must be logged in to upload photos', 'error'); return; }
-
-  // Sanitize extension — heic files often come through as jpeg on iOS
-  const rawExt = file.name.split('.').pop().toLowerCase() || 'jpg';
-  const ext = ['jpg','jpeg','png','webp','heic'].includes(rawExt) ? rawExt : 'jpg';
-
-  // Build a clean path: crimes/{crime_id}/{timestamp}.{ext}
-  const folder = currentPhotoContext.type === 'crime' ? 'crimes' : 'annotations';
-  const path   = `${folder}/${currentPhotoContext.id}/${Date.now()}.${ext}`;
-
-  showToast('Uploading photo…', 'success');
-
-  const { data: uploadData, error: uploadErr } = await sb.storage
-    .from('crime-photos')
-    .upload(path, file, {
-      cacheControl: '3600',
-      upsert: false,
-      contentType: file.type || 'image/jpeg',
-    });
-
-  if (uploadErr) {
-    console.error('Storage upload error:', uploadErr);
-    showToast('Upload failed: ' + uploadErr.message, 'error');
-    e.target.value = '';
-    return;
-  }
-
-  // Insert photo record into photos table
-  const insertData = {
-    uploaded_by:   currentUser.id,
-    storage_path:  path,
-    crime_id:      currentPhotoContext.type === 'crime'      ? currentPhotoContext.id : null,
-    annotation_id: currentPhotoContext.type === 'annotation' ? currentPhotoContext.id : null,
-  };
-
-  const { error: dbErr } = await sb.from('photos').insert(insertData);
-  if (dbErr) {
-    console.error('Photo DB error:', dbErr);
-    showToast('Photo saved to storage but DB record failed: ' + dbErr.message, 'error');
-  } else {
-    showToast('Photo uploaded successfully', 'success');
-  }
-
-  e.target.value = '';
-  currentPhotoContext = null;
+  const { error } = await sb.from('boundaries').update({ properties:props, updated_by:currentUser?.id }).eq('id',id);
+  if (error) showToast('Error: '+error.message,'err');
+  else { showToast('SLO updated','ok'); await loadBoundaries(); }
 }
 
 // ══════════════════════════════════════════════════════════════════
 // REALTIME
 // ══════════════════════════════════════════════════════════════════
-function setupRealtimeSubscription() {
-  sb.channel('crimes-changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'crimes' }, () => {
-      loadCrimes();
-    })
+function setupRealtime() {
+  sb.channel('crimes-rt')
+    .on('postgres_changes',{event:'*',schema:'public',table:'crimes'}, () => loadCrimes())
     .subscribe();
 }
 
 // ══════════════════════════════════════════════════════════════════
-// TOAST
+// MODALS & TOAST
 // ══════════════════════════════════════════════════════════════════
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
 let toastTimer;
-function showToast(msg, type = 'success') {
+function showToast(msg, type='ok') {
   const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = type;
-  t.style.display = 'block';
+  t.textContent = msg; t.className = type; t.style.display = 'block';
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.style.display = 'none', 3500);
+  toastTimer = setTimeout(() => t.style.display='none', 3500);
 }
 
 // ══════════════════════════════════════════════════════════════════
-// STARTUP
+// STARTUP — check for existing session
 // ══════════════════════════════════════════════════════════════════
 (async () => {
   const { data: { session } } = await sb.auth.getSession();
-  if (session?.user) {
-    currentUser = session.user;
-    await loadUserRole();
-    launchApp();
-  }
-  // else login overlay stays visible
+  if (session?.user) { currentUser = session.user; await loadRole(); launch(); }
 })();
 </script>
-
-<!-- Supabase helper functions — run these SQL in Supabase first:
-
-Also run:
-CREATE OR REPLACE FUNCTION insert_annotation(
-  p_created_by uuid,
-  p_label      text,
-  p_type       text,
-  p_geojson    text,
-  p_notes      text DEFAULT NULL
-) RETURNS void AS $$
-BEGIN
-  INSERT INTO map_annotations (created_by, label, annotation_type, geometry, notes, is_public)
-  VALUES (
-    p_created_by, p_label, p_type,
-    ST_GeomFromGeoJSON(p_geojson)::geography,
-    p_notes, false
-  );
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-GRANT EXECUTE ON FUNCTION insert_annotation(uuid,text,text,text,text) TO authenticated;
-
-<!-- Original insert_crime function:
-
-CREATE OR REPLACE FUNCTION insert_crime(
-  p_crime_type    text,
-  p_status        text,
-  p_address       text,
-  p_description   text,
-  p_incident_date text,
-  p_incident_time text,
-  p_lng           float,
-  p_lat           float,
-  p_source        text DEFAULT 'manual',
-  p_report_period text DEFAULT NULL,
-  p_updated_by    uuid DEFAULT NULL
-) RETURNS void AS $$
-BEGIN
-  INSERT INTO crimes (crime_type, status, address, description, incident_date, incident_time, location, source, report_period, updated_by)
-  VALUES (
-    p_crime_type::crime_type,
-    p_status::crime_status,
-    p_address,
-    p_description,
-    p_incident_date,
-    p_incident_time,
-    ST_SetSRID(ST_MakePoint(p_lng, p_lat), 4326)::geography,
-    p_source,
-    p_report_period,
-    p_updated_by
-  );
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--->
 </body>
 </html>

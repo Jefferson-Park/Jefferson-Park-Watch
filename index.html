@@ -15,8 +15,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
 
 <!-- Leaflet Draw — polygon/line/point tools -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css">
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
 
 <!-- Supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -189,7 +189,7 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); fon
 .leaflet-draw-toolbar a { background-color:var(--panel) !important; color:var(--text) !important; border-color:var(--border) !important; }
 .leaflet-draw-toolbar a:hover { background-color:var(--panel2) !important; }
 .leaflet-draw-section { background:var(--panel) !important; }
-.leaflet-retina .leaflet-draw-toolbar a { background-image:url('https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/images/spritesheet-2x.png') !important; }
+.leaflet-retina .leaflet-draw-toolbar a { background-image:url('https://unpkg.com/leaflet-draw@1.0.4/dist/images/spritesheet-2x.png') !important; }
 .leaflet-touch .leaflet-draw-toolbar .leaflet-draw-draw-polygon,
 .leaflet-touch .leaflet-draw-toolbar .leaflet-draw-draw-polyline,
 .leaflet-touch .leaflet-draw-toolbar .leaflet-draw-draw-marker { filter:invert(1); }
@@ -590,6 +590,7 @@ async function doLogin() {
   if (error) { err.textContent = error.message; btn.disabled = false; btn.textContent = 'Sign in'; return; }
   currentUser = data.user;
   await loadRole();
+  console.log('Login complete, role:', userRole, 'user:', currentUser.email);
   launch();
 }
 
@@ -597,16 +598,30 @@ async function viewPublic() { currentUser = null; userRole = 'public'; launch();
 
 async function loadRole() {
   if (!currentUser) { userRole = 'public'; return; }
+  console.log('Loading role for:', currentUser.email);
+
+  // Try get_my_role RPC first
   try {
     const { data, error } = await sb.rpc('get_my_role');
-    if (!error && data) { userRole = data; return; }
-  } catch(e) {}
-  // Fallback
+    console.log('get_my_role result:', data, error);
+    if (!error && data) {
+      userRole = data;
+      console.log('Role set via RPC:', userRole);
+      return;
+    }
+  } catch(e) { console.warn('RPC failed:', e); }
+
+  // Fallback: direct profiles query
   try {
-    const { data } = await sb.from('profiles').select('role').eq('id', currentUser.id).single();
+    const { data, error } = await sb.from('profiles')
+      .select('role').eq('id', currentUser.id).single();
+    console.log('profiles query result:', data, error);
     userRole = data?.role || 'field_officer';
-  } catch(e) { userRole = 'field_officer'; }
-  console.log('Role:', userRole);
+  } catch(e) {
+    console.warn('Profile query failed:', e);
+    userRole = 'field_officer';
+  }
+  console.log('Final role:', userRole);
 }
 
 async function doLogout() { await sb.auth.signOut(); location.reload(); }
@@ -654,15 +669,17 @@ function launch() {
 // ══════════════════════════════════════════════════════════════════
 // MAP INIT — Leaflet
 // ══════════════════════════════════════════════════════════════════
-const TILE_STREET = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '© OpenStreetMap contributors', maxZoom: 19
-});
-const TILE_SAT = L.tileLayer(
-  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-  { attribution: 'Esri, Maxar, Earthstar Geographics', maxZoom: 19 }
-);
+let TILE_STREET, TILE_SAT;
 
 function initMap() {
+  TILE_STREET = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors', maxZoom: 19
+  });
+  TILE_SAT = L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    { attribution: 'Esri, Maxar, Earthstar Geographics', maxZoom: 19 }
+  );
+
   map = L.map('map', {
     center: [34.028, -118.334],
     zoom: 14,
@@ -698,31 +715,42 @@ function initMap() {
   sloLayerGroup  = L.layerGroup();
   unncLayerGroup = L.layerGroup();
 
-  // Draw controls
+  // Draw controls — wrapped in try/catch so CDN failure doesn't crash map
   if (userRole === 'admin' || userRole === 'field_officer') {
-    const drawnItems = new L.FeatureGroup();
-    map.addLayer(drawnItems);
-
-    const drawControl = new L.Control.Draw({
-      edit: { featureGroup: drawnItems },
-      draw: {
-        polygon:   { shapeOptions: { color:'#00c2a8', weight:2, fillOpacity:0.1 } },
-        polyline:  { shapeOptions: { color:'#ffaa00', weight:2.5 } },
-        marker:    true,
-        rectangle: false,
-        circle:    false,
-        circlemarker: false,
+    try {
+      if (typeof L.Control.Draw === 'undefined') {
+        throw new Error('Leaflet.draw library not loaded');
       }
-    });
-    map.addControl(drawControl);
+      const drawnItems = new L.FeatureGroup();
+      map.addLayer(drawnItems);
 
-    map.on(L.Draw.Event.CREATED, async (e) => {
-      const layer = e.layer;
-      drawnItems.addLayer(layer);
-      const geojson = layer.toGeoJSON().geometry;
-      pendingGeometry = geojson;
-      openModal('ann-modal');
-    });
+      const drawControl = new L.Control.Draw({
+        edit: { featureGroup: drawnItems },
+        draw: {
+          polygon:      { shapeOptions: { color:'#00c2a8', weight:2, fillOpacity:0.1 } },
+          polyline:     { shapeOptions: { color:'#ffaa00', weight:2.5 } },
+          marker:       true,
+          rectangle:    false,
+          circle:       false,
+          circlemarker: false,
+        }
+      });
+      map.addControl(drawControl);
+
+      map.on(L.Draw.Event.CREATED, async (e) => {
+        const layer = e.layer;
+        drawnItems.addLayer(layer);
+        const geojson = layer.toGeoJSON().geometry;
+        pendingGeometry = geojson;
+        openModal('ann-modal');
+      });
+      console.log('✅ Draw tools loaded');
+    } catch(err) {
+      console.warn('Draw tools unavailable:', err.message);
+      // Hide draw section in sidebar if library failed
+      const ds = document.getElementById('draw-section');
+      if (ds) ds.innerHTML = '<div style="font-size:11px;color:var(--muted);padding:4px">Draw tools unavailable — check connection</div>';
+    }
   }
 
   loadBoundaries().then(() => loadCrimes());
@@ -752,14 +780,20 @@ function setBasemap(type) {
 // LOAD DATA
 // ══════════════════════════════════════════════════════════════════
 async function loadCrimes() {
+  console.log('loadCrimes called, userRole:', userRole);
   const { data, error } = await sb.rpc('get_crimes', {
     p_exclude_closed: !showClosed,
     p_date_from: null,
     p_date_to: null,
   });
-  if (error) { console.error('Crimes error:', error); return; }
+  if (error) {
+    console.error('Crimes RPC error:', error);
+    showToast('Error loading crimes: ' + error.message, 'err');
+    return;
+  }
   crimesData = (data || []).filter(c => c.lng && c.lat);
-  console.log('Crimes loaded:', crimesData.length);
+  console.log('Crimes loaded:', crimesData.length, 'records');
+  if (crimesData.length === 0) console.warn('No crimes returned — check RLS policies');
   renderCrimes();
 }
 
@@ -1054,33 +1088,33 @@ function locateMe() {
 // DRAW TOOLS — Leaflet.Draw sidebar buttons
 // ══════════════════════════════════════════════════════════════════
 function startDraw(type) {
-  // Trigger Leaflet.Draw programmatically
   const hints = {
-    polygon: 'Click to place points, double-click to finish',
-    line:    'Click to place points, double-click to finish',
-    point:   'Click map to place marker',
+    polygon: 'Click to add points • Double-click to finish polygon',
+    line:    'Click to add points • Double-click to finish line',
+    point:   'Click map to place a point marker',
   };
   document.getElementById('draw-hint').textContent = hints[type] || '';
+
+  // Update button active states
   ['polygon','line','point'].forEach(t => {
-    document.getElementById('db-' + t).classList.toggle('active', t === type);
+    const b = document.getElementById('db-' + t);
+    if (b) b.classList.toggle('active', t === type);
   });
 
-  // Trigger the appropriate Leaflet.Draw handler
-  map.eachLayer(layer => {
-    if (layer instanceof L.Control.Draw) return;
-  });
-
-  // Find and trigger the draw button in Leaflet.Draw toolbar
-  const drawMap = {
-    polygon: '.leaflet-draw-draw-polygon',
-    line:    '.leaflet-draw-draw-polyline',
-    point:   '.leaflet-draw-draw-marker',
+  // Leaflet.Draw button class names
+  const classMap = {
+    polygon: 'leaflet-draw-draw-polygon',
+    line:    'leaflet-draw-draw-polyline',
+    point:   'leaflet-draw-draw-marker',
   };
-  const btn = document.querySelector(drawMap[type]);
+  const btn = document.querySelector('.' + classMap[type]);
+  console.log('Draw button found:', btn, 'for type:', type);
   if (btn) {
     btn.click();
   } else {
-    showToast('Draw toolbar not ready', 'err');
+    // Leaflet.Draw toolbar may not have loaded yet
+    console.warn('Leaflet.Draw button not found for:', type);
+    showToast('Draw tool not available — try again in a moment', 'err');
   }
 }
 

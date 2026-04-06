@@ -19,7 +19,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.min.js"></script>
 
 <!-- Supabase -->
-<script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <!-- Google Fonts -->
@@ -533,9 +532,11 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); fon
 // ══════════════════════════════════════════════════════════════════
 // CONFIG — fill in your values
 // ══════════════════════════════════════════════════════════════════
-const SUPABASE_URL   = APP_CONFIG.supabaseUrl;
-const SUPABASE_ANON  = APP_CONFIG.supabaseAnon;
-const CLAUDE_API_KEY = APP_CONFIG.claudeApiKey;
+// ── FILL IN YOUR VALUES HERE ──────────────────────────
+const SUPABASE_URL = 'https://sqiioihssmnqatjrednq.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_3s5kREPGF10ahyWGMT9tBA_v9FUqbit';
+const CLAUDE_API_KEY = '';  // optional — only needed for PDF import
+// ──────────────────────────────────────────────────────
 
 // ══════════════════════════════════════════════════════════════════
 // GLOBALS

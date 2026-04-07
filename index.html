@@ -89,7 +89,33 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); fon
   position:absolute; top:0; left:0; bottom:0; width:var(--sw);
   z-index:1000; background:var(--panel); border-right:1px solid var(--border);
   display:flex; flex-direction:column; overflow:hidden;
+  transition:transform .3s ease;
 }
+#sidebar.collapsed {
+  transform:translateX(calc(-1 * var(--sw)));
+}
+#sidebar.collapsed ~ #topbar,
+#sidebar.collapsed ~ #map,
+#sidebar.collapsed ~ #bottom-panel {
+  left:0 !important;
+}
+/* Sidebar toggle button */
+#sb-toggle {
+  position:absolute; top:12px; z-index:1001;
+  left:var(--sw); transition:left .3s ease;
+  width:28px; height:28px;
+  background:var(--panel); border:1px solid var(--border);
+  border-left:none; border-radius:0 6px 6px 0;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; color:var(--muted);
+}
+#sb-toggle:hover { color:var(--accent); }
+#sidebar.collapsed ~ #sb-toggle { left:0; border-left:1px solid var(--border); border-radius:6px; }
+/* When collapsed, map fills full width */
+#sidebar.collapsed + #topbar { left:0 !important; }
+body.sb-collapsed #topbar { left:0 !important; }
+body.sb-collapsed #map { left:0 !important; }
+body.sb-collapsed #bottom-panel { left:0 !important; }
 .sb-head { padding:14px; border-bottom:1px solid var(--border); flex-shrink:0; }
 .sb-logo { display:flex; align-items:center; gap:10px; }
 .sb-logo-icon { width:36px; height:36px; background:var(--accent); border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
@@ -133,23 +159,13 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); fon
 .tog-sw::after { content:''; position:absolute; top:2px; left:2px; width:12px; height:12px; background:white; border-radius:50%; transition:transform .2s; }
 .tog-sw.on::after { transform:translateX(12px); }
 
-/* draw tools */
-.draw-btns { display:flex; gap:5px; flex-wrap:wrap; padding:4px 0 8px; }
-.draw-btn {
-  flex:1; min-width:56px; background:var(--panel2); border:1px solid var(--border);
-  border-radius:6px; padding:7px 4px; color:var(--text); font-size:11px;
-  cursor:pointer; font-family:var(--font); display:flex; align-items:center;
-  justify-content:center; gap:4px; transition:all .2s;
-}
-.draw-btn:hover { border-color:var(--accent); color:var(--accent); }
-.draw-btn.active { background:rgba(0,194,168,.2); border-color:var(--accent); color:var(--accent); }
-.draw-hint { font-size:10px; color:var(--muted); font-family:var(--mono); padding:0 4px 6px; min-height:14px; }
 
 /* ── Top Bar ───────────────────────────────────────────────────── */
 #topbar {
   position:absolute; top:0; left:var(--sw); right:0; height:var(--tb);
   z-index:1000; background:var(--panel); border-bottom:1px solid var(--border);
   display:flex; align-items:center; gap:8px; padding:0 14px;
+  transition:left .3s ease;
 }
 #search-wrap { flex:1; position:relative; max-width:380px; }
 #search-input { width:100%; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:8px 14px 8px 34px; color:var(--text); font-size:13px; font-family:var(--font); outline:none; transition:border-color .2s; }
@@ -169,7 +185,7 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); fon
 #logout-btn:hover { border-color:var(--danger); color:var(--danger); }
 
 /* ── Map ───────────────────────────────────────────────────────── */
-#map { position:absolute; top:var(--tb); left:var(--sw); right:0; bottom:0; z-index:1; }
+#map { position:absolute; top:var(--tb); left:var(--sw); right:0; bottom:0; z-index:1; transition:left .3s ease; }
 
 /* Leaflet cluster override — match our dark theme */
 .marker-cluster-small,
@@ -186,13 +202,23 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); fon
 }
 
 /* Leaflet Draw toolbar — dark theme */
-.leaflet-draw-toolbar a { background-color:var(--panel) !important; color:var(--text) !important; border-color:var(--border) !important; }
+/* Leaflet draw toolbar — compact dark theme */
+.leaflet-draw-toolbar,
+.leaflet-draw-actions { background:var(--panel) !important; border:1px solid var(--border) !important; border-radius:8px !important; }
+.leaflet-draw-toolbar a {
+  background-color:var(--panel) !important;
+  border-bottom:1px solid var(--border) !important;
+  width:30px !important; height:30px !important;
+  line-height:30px !important;
+}
+.leaflet-draw-toolbar a:last-child { border-bottom:none !important; }
 .leaflet-draw-toolbar a:hover { background-color:var(--panel2) !important; }
-.leaflet-draw-section { background:var(--panel) !important; }
-.leaflet-retina .leaflet-draw-toolbar a { background-image:url('https://unpkg.com/leaflet-draw@1.0.4/dist/images/spritesheet-2x.png') !important; }
-.leaflet-touch .leaflet-draw-toolbar .leaflet-draw-draw-polygon,
-.leaflet-touch .leaflet-draw-toolbar .leaflet-draw-draw-polyline,
-.leaflet-touch .leaflet-draw-toolbar .leaflet-draw-draw-marker { filter:invert(1); }
+.leaflet-draw-toolbar .leaflet-draw-draw-polygon,
+.leaflet-draw-toolbar .leaflet-draw-draw-polyline,
+.leaflet-draw-toolbar .leaflet-draw-draw-marker,
+.leaflet-draw-toolbar .leaflet-draw-edit-edit,
+.leaflet-draw-toolbar .leaflet-draw-edit-remove { filter:invert(0.8) !important; }
+.leaflet-draw-toolbar a.leaflet-draw-toolbar-button-enabled { background-color:rgba(0,194,168,0.2) !important; }
 
 /* Leaflet popup dark theme */
 .leaflet-popup-content-wrapper {
@@ -203,8 +229,26 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); fon
 .leaflet-popup-tip-container { display:none !important; }
 .leaflet-popup-close-button { color:var(--muted) !important; font-size:18px !important; padding:8px 10px !important; }
 .leaflet-popup-close-button:hover { color:var(--danger) !important; }
-.leaflet-popup-content { margin:0 !important; min-width:300px; max-width:340px; }
+.leaflet-popup-content { margin:0 !important; min-width:260px; max-width:300px; }
 .leaflet-container a.leaflet-popup-close-button { top:8px !important; right:8px !important; }
+
+/* Mobile responsive */
+@media (max-width: 640px) {
+  :root { --sw:0px; --tb:48px; }
+  #sidebar { width:260px; transform:translateX(-260px); --sw:260px; }
+  #sidebar.open { transform:translateX(0); }
+  #topbar { left:0 !important; }
+  #map { left:0 !important; }
+  #bottom-panel { left:0 !important; flex-wrap:wrap; }
+  #sb-toggle { left:0; border-radius:6px; border:1px solid var(--border); }
+  body.sb-open #sb-toggle { left:260px; }
+  .leaflet-popup-content { min-width:220px; max-width:260px; }
+  .pop-head { padding:10px 34px 8px 10px; }
+  .pop-body { padding:8px 10px; }
+  .pop-desc { font-size:11px; }
+  /* Keep popup open on mobile — auto-pan */
+  .leaflet-popup { margin-bottom:20px; }
+}
 
 /* Leaflet controls */
 .leaflet-control-zoom a { background:var(--panel) !important; color:var(--text) !important; border-color:var(--border) !important; }
@@ -240,6 +284,7 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); fon
   position:absolute; bottom:0; left:var(--sw); right:0; z-index:1000;
   background:var(--panel); border-top:1px solid var(--border);
   padding:8px 14px; display:none; align-items:center; gap:8px; flex-wrap:wrap;
+  transition:left .3s ease;
 }
 #bottom-panel.visible { display:flex; }
 .bp-label { font-size:10px; color:var(--muted); font-family:var(--mono); }
@@ -315,6 +360,13 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); fon
 <!-- ═══════ APP ═══════ -->
 <div id="app">
 
+  <!-- Sidebar toggle button -->
+  <div id="sb-toggle" onclick="toggleSidebar()" title="Toggle sidebar">
+    <svg id="sb-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+      <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+    </svg>
+  </div>
+
   <!-- Sidebar -->
   <div id="sidebar">
     <div class="sb-head">
@@ -374,24 +426,9 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); fon
         <div class="tog-sw" id="sw-unnc"></div>
       </div>
 
-      <!-- Draw Tools (officers/admin only) -->
-      <div id="draw-section" style="display:none">
-        <div class="sec-label">Draw &amp; Annotate</div>
-        <div class="draw-btns">
-          <button class="draw-btn" id="db-polygon" onclick="startDraw('polygon')">
-            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>Area
-          </button>
-          <button class="draw-btn" id="db-line" onclick="startDraw('line')">
-            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 20 10 14 14 18 22 4"/></svg>Line
-          </button>
-          <button class="draw-btn" id="db-point" onclick="startDraw('point')">
-            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/></svg>Point
-          </button>
-          <button class="draw-btn" onclick="cancelDraw()" style="color:var(--muted)">
-            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Cancel
-          </button>
-        </div>
-        <div class="draw-hint" id="draw-hint"></div>
+      <!-- Draw hint for officers -->
+      <div id="draw-hint-box" style="display:none;font-size:10px;color:var(--muted);padding:4px 4px 8px;font-family:var(--mono);line-height:1.5">
+        ✏️ Draw tools on map →<br>Use toolbar below zoom controls
       </div>
 
       <!-- Crime Types -->
@@ -483,7 +520,7 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); fon
     <div class="mf"><label>Label</label><input type="text" id="ann-label" placeholder="e.g. Hotspot, Patrol route…"></div>
     <div class="mf"><label>Notes</label><textarea id="ann-notes" placeholder="Additional notes…" style="min-height:70px"></textarea></div>
     <div class="modal-footer">
-      <button class="btn-cancel" onclick="closeModal('ann-modal');cancelDraw()">Cancel</button>
+      <button class="btn-cancel" onclick="closeModal('ann-modal')">Cancel</button>
       <button class="btn-submit" onclick="saveAnnotation()">Save</button>
     </div>
   </div>
@@ -533,8 +570,8 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); fon
 // CONFIG — fill in your values
 // ══════════════════════════════════════════════════════════════════
 // ── FILL IN YOUR VALUES HERE ──────────────────────────
-const SUPABASE_URL = 'https://sqiioihssmnqatjrednq.supabase.co';
-const SUPABASE_ANON = 'sb_publishable_3s5kREPGF10ahyWGMT9tBA_v9FUqbit';
+const SUPABASE_URL   = 'https://sqiioihssmnqatjrednq.supabase.co';
+const SUPABASE_ANON  = 'sb_publishable_3s5kREPGF10ahyWGMT9tBA_v9FUqbit';
 const CLAUDE_API_KEY = '';  // optional — only needed for PDF import
 // ──────────────────────────────────────────────────────
 
@@ -653,14 +690,14 @@ function launch() {
     }
   }
 
-  // Draw tools
-  if (userRole === 'admin' || userRole === 'field_officer') {
-    document.getElementById('draw-section').style.display = 'block';
-  }
-
   // Add crime type options
   const sel = document.getElementById('add-type');
   Object.keys(CRIMES).forEach(t => { sel.innerHTML += `<option value="${t}">${t}</option>`; });
+
+  if (userRole === 'admin' || userRole === 'field_officer') {
+    const hint = document.getElementById('draw-hint-box');
+    if (hint) hint.style.display = 'block';
+  }
 
   buildToggles();
   initMap();
@@ -846,7 +883,7 @@ function renderCrimes() {
 
   filtered.forEach(c => {
     const marker = L.marker([c.lat, c.lng], { icon: makeCrimeIcon(c.crime_type) });
-    marker.bindPopup(() => buildPopupHTML(c), { maxWidth: 340, minWidth: 300, closeButton: true });
+    marker.bindPopup(() => buildPopupHTML(c), { maxWidth: 300, minWidth: 260, closeButton: true, autoClose: false, closeOnClick: false });
     marker.on('popupopen', () => {
       // Bind save button after popup renders
       setTimeout(() => {
@@ -1087,44 +1124,36 @@ function locateMe() {
 // ══════════════════════════════════════════════════════════════════
 // DRAW TOOLS — Leaflet.Draw sidebar buttons
 // ══════════════════════════════════════════════════════════════════
-function startDraw(type) {
-  const hints = {
-    polygon: 'Click to add points • Double-click to finish polygon',
-    line:    'Click to add points • Double-click to finish line',
-    point:   'Click map to place a point marker',
-  };
-  document.getElementById('draw-hint').textContent = hints[type] || '';
-
-  // Update button active states
-  ['polygon','line','point'].forEach(t => {
-    const b = document.getElementById('db-' + t);
-    if (b) b.classList.toggle('active', t === type);
-  });
-
-  // Leaflet.Draw button class names
-  const classMap = {
-    polygon: 'leaflet-draw-draw-polygon',
-    line:    'leaflet-draw-draw-polyline',
-    point:   'leaflet-draw-draw-marker',
-  };
-  const btn = document.querySelector('.' + classMap[type]);
-  console.log('Draw button found:', btn, 'for type:', type);
-  if (btn) {
-    btn.click();
-  } else {
-    // Leaflet.Draw toolbar may not have loaded yet
-    console.warn('Leaflet.Draw button not found for:', type);
-    showToast('Draw tool not available — try again in a moment', 'err');
-  }
+function cancelDraw() {
+  document.dispatchEvent(new KeyboardEvent('keydown', { key:'Escape', keyCode:27, bubbles:true }));
 }
 
-function cancelDraw() {
-  document.getElementById('draw-hint').textContent = '';
-  ['polygon','line','point'].forEach(t => {
-    document.getElementById('db-' + t).classList.remove('active');
-  });
-  // Press escape to cancel active draw
-  document.dispatchEvent(new KeyboardEvent('keydown', { key:'Escape', keyCode:27, bubbles:true }));
+function toggleSidebar() {
+  const sb    = document.getElementById('sidebar');
+  const tb    = document.getElementById('topbar');
+  const mp    = document.getElementById('map');
+  const bp    = document.getElementById('bottom-panel');
+  const tog   = document.getElementById('sb-toggle');
+  const isMobile = window.innerWidth <= 640;
+  const sw    = isMobile ? '260px' : 'var(--sw)';
+
+  if (isMobile) {
+    // Mobile: slide sidebar over map
+    sb.classList.toggle('open');
+    const isOpen = sb.classList.contains('open');
+    tog.style.left = isOpen ? '260px' : '0';
+  } else {
+    // Desktop: push map content
+    sb.classList.toggle('collapsed');
+    const collapsed = sb.classList.contains('collapsed');
+    const offset = collapsed ? '0px' : 'var(--sw)';
+    tb.style.left = offset;
+    mp.style.left = offset;
+    bp.style.left = offset;
+    tog.style.left = collapsed ? '0' : 'var(--sw)';
+    // Invalidate map size after transition
+    setTimeout(() => { if (map) map.invalidateSize(); }, 320);
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════

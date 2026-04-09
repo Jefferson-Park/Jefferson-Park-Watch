@@ -4,397 +4,279 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Jefferson Park — Admin Portal</title>
-
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-
 <style>
-*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
-:root {
-  --bg:#0f1117; --panel:#1a1d27; --panel2:#22263a; --border:#2e3350;
-  --accent:#00c2a8; --blue:#2d8bff; --text:#e8eaf0; --muted:#7b82a0;
-  --danger:#ff4444; --amber:#f0a500; --red:#e8453c; --green:#22c55e;
-  --font:'DM Sans',system-ui,sans-serif; --mono:'DM Mono',monospace;
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1117;--panel:#1a1d27;--panel2:#22263a;--border:#2e3350;
+  --accent:#00c2a8;--blue:#2d8bff;--text:#e8eaf0;--muted:#7b82a0;
+  --danger:#ff4444;--amber:#f0a500;--red:#e8453c;--green:#22c55e;
+  --font:'DM Sans',system-ui,sans-serif;--mono:'DM Mono',monospace;
+  --nav:48px;--map-h:55vh;--panel-h:calc(100vh - var(--nav) - var(--map-h));
 }
-html,body { width:100%; height:100%; overflow:hidden; background:var(--bg); font-family:var(--font); color:var(--text); font-size:14px; }
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:var(--font);color:var(--text);font-size:13px}
 
-/* ── Layout ─────────────────────────────────────────────────────── */
-#app { display:none; width:100%; height:100%; flex-direction:column; }
-#app.ready { display:flex; }
+/* ── Login ── */
+#login{position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#0a0d16,#0f1525);display:flex;align-items:center;justify-content:center}
+.li-box{width:340px;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:36px;position:relative;overflow:hidden}
+.li-box::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--blue))}
+.li-title{font-size:20px;font-weight:600;margin-bottom:4px}
+.li-sub{font-size:12px;color:var(--muted);margin-bottom:22px}
+.li-f{margin-bottom:14px}
+.li-f label{display:block;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
+.li-f input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:14px;font-family:var(--font);outline:none}
+.li-f input:focus{border-color:var(--accent)}
+.li-btn{width:100%;background:var(--accent);color:#000;font-weight:600;font-size:14px;border:none;border-radius:8px;padding:12px;cursor:pointer;font-family:var(--font)}
+.li-err{color:var(--danger);font-size:12px;margin-top:8px;text-align:center;min-height:16px}
 
-/* Top nav */
-#nav {
-  height:52px; background:var(--panel); border-bottom:1px solid var(--border);
-  display:flex; align-items:center; padding:0 20px; gap:0; flex-shrink:0;
-}
-.nav-brand { display:flex; align-items:center; gap:10px; margin-right:24px; }
-.nav-icon { width:32px; height:32px; background:var(--accent); border-radius:8px; display:flex; align-items:center; justify-content:center; }
-.nav-title { font-size:14px; font-weight:600; }
-.nav-sub { font-size:10px; color:var(--muted); font-family:var(--mono); }
-.nav-tabs { display:flex; height:100%; }
-.nav-tab {
-  padding:0 18px; height:100%; display:flex; align-items:center; gap:7px;
-  font-size:13px; cursor:pointer; color:var(--muted); border-bottom:2px solid transparent;
-  transition:all .2s; white-space:nowrap;
-}
-.nav-tab:hover { color:var(--text); }
-.nav-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
-.nav-tab svg { width:14px; height:14px; }
-.nav-right { margin-left:auto; display:flex; align-items:center; gap:10px; }
-.nav-user { font-size:12px; color:var(--muted); }
-.nav-map-link {
-  padding:6px 12px; background:var(--panel2); border:1px solid var(--border);
-  border-radius:6px; color:var(--text); font-size:12px; cursor:pointer;
-  text-decoration:none; display:flex; align-items:center; gap:5px; transition:all .2s;
-}
-.nav-map-link:hover { border-color:var(--accent); color:var(--accent); }
-.btn-logout { padding:6px 12px; background:transparent; border:1px solid var(--border); border-radius:6px; color:var(--muted); font-size:12px; cursor:pointer; font-family:var(--font); transition:all .2s; }
-.btn-logout:hover { border-color:var(--danger); color:var(--danger); }
+/* ── App shell ── */
+#app{display:none;width:100%;height:100%;flex-direction:column}
+#app.ready{display:flex}
 
-/* Main content area */
-#content { flex:1; overflow:hidden; position:relative; }
-.tab-pane { display:none; width:100%; height:100%; }
-.tab-pane.active { display:flex; }
+/* ── Nav ── */
+#nav{height:var(--nav);background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:0;flex-shrink:0;z-index:1000}
+.brand{display:flex;align-items:center;gap:8px;margin-right:20px}
+.brand-icon{width:30px;height:30px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.brand-name{font-size:13px;font-weight:600}
+.brand-sub{font-size:9px;color:var(--muted);font-family:var(--mono)}
+.nav-tabs{display:flex;height:100%}
+.ntab{padding:0 14px;height:100%;display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap}
+.ntab:hover{color:var(--text)}
+.ntab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.ntab svg{width:13px;height:13px}
+.ntab .cnt{font-family:var(--mono);font-size:9px;background:var(--panel2);padding:1px 5px;border-radius:8px;margin-left:2px}
+.nav-r{margin-left:auto;display:flex;align-items:center;gap:8px}
+.nav-r a,.nav-r button{padding:5px 11px;background:var(--panel2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;cursor:pointer;font-family:var(--font);text-decoration:none;transition:all .2s}
+.nav-r a:hover{border-color:var(--accent);color:var(--accent)}
+.nav-r button:hover{border-color:var(--danger);color:var(--danger)}
+.nav-user{font-size:11px;color:var(--muted)}
 
-/* ── Map Tab ─────────────────────────────────────────────────────── */
-#tab-map { flex-direction:row; }
-#admin-map { flex:1; height:100%; }
-#map-sidebar {
-  width:320px; height:100%; background:var(--panel); border-left:1px solid var(--border);
-  display:flex; flex-direction:column; overflow:hidden; flex-shrink:0;
-}
-.ms-head { padding:14px; border-bottom:1px solid var(--border); flex-shrink:0; }
-.ms-head h3 { font-size:13px; font-weight:600; margin-bottom:10px; }
-.ms-filters { display:flex; flex-direction:column; gap:6px; }
-.ms-select { width:100%; background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:7px 10px; color:var(--text); font-size:12px; font-family:var(--font); outline:none; }
-.ms-scroll { flex:1; overflow-y:auto; }
-.ms-scroll::-webkit-scrollbar { width:3px; }
-.ms-scroll::-webkit-scrollbar-thumb { background:var(--border); }
-.ms-item {
-  padding:10px 14px; border-bottom:1px solid rgba(46,51,80,.5);
-  cursor:pointer; transition:background .15s;
-}
-.ms-item:hover { background:var(--panel2); }
-.ms-item.selected { background:rgba(0,194,168,.08); border-left:2px solid var(--accent); }
-.ms-type { font-size:11px; font-weight:600; }
-.ms-addr { font-size:11px; color:var(--muted); margin-top:2px; }
-.ms-date { font-size:10px; color:var(--muted); font-family:var(--mono); }
-.ms-badge { font-size:9px; font-family:var(--mono); padding:1px 5px; border-radius:3px; }
-.b-open { background:rgba(232,69,60,.15); color:var(--red); }
-.b-in_progress { background:rgba(240,165,0,.15); color:var(--amber); }
-.b-closed { background:rgba(123,130,160,.15); color:var(--muted); }
+/* ── Map section ── */
+#map-section{height:var(--map-h);position:relative;flex-shrink:0;border-bottom:1px solid var(--border)}
+#admin-map{width:100%;height:100%}
 
-/* Map basemap toggle */
-.map-controls {
-  position:absolute; top:10px; left:10px; z-index:1000;
-  display:flex; gap:6px;
-}
-.mc-btn {
-  padding:6px 12px; background:var(--panel); border:1px solid var(--border);
-  border-radius:6px; color:var(--text); font-size:11px; cursor:pointer;
-  font-family:var(--font); transition:all .2s;
-}
-.mc-btn.active { background:var(--panel2); border-color:var(--accent); color:var(--accent); }
-.mc-btn:hover { border-color:var(--accent); }
+/* Map toolbar */
+.maptb{position:absolute;top:8px;left:8px;z-index:1000;display:flex;gap:5px;flex-wrap:wrap}
+.maptb-btn{padding:5px 10px;background:var(--panel);border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:11px;cursor:pointer;font-family:var(--font);transition:all .2s;white-space:nowrap}
+.maptb-btn:hover{border-color:var(--accent);color:var(--accent)}
+.maptb-btn.on{background:var(--panel2);border-color:var(--accent);color:var(--accent)}
 
-/* Leaflet dark theme */
-.leaflet-popup-content-wrapper { background:var(--panel) !important; color:var(--text) !important; border:1px solid var(--border) !important; border-radius:10px !important; box-shadow:0 8px 24px rgba(0,0,0,.5) !important; padding:0 !important; }
-.leaflet-popup-tip-container { display:none !important; }
-.leaflet-popup-close-button { color:var(--muted) !important; top:8px !important; right:8px !important; }
-.leaflet-popup-content { margin:0 !important; min-width:220px; }
-.leaflet-control-zoom a { background:var(--panel) !important; color:var(--text) !important; border-color:var(--border) !important; }
-.leaflet-control-zoom a:hover { background:var(--panel2) !important; }
-.leaflet-control-attribution { background:rgba(26,29,39,.8) !important; color:var(--muted) !important; font-size:10px !important; }
+/* Map resize handle */
+#map-resize{height:5px;background:var(--border);cursor:ns-resize;flex-shrink:0;transition:background .2s}
+#map-resize:hover{background:var(--accent)}
 
-/* ── Table Tabs ──────────────────────────────────────────────────── */
-#tab-crimes, #tab-annotations, #tab-photos, #tab-users {
-  flex-direction:column; padding:20px;
-  overflow-y:auto;
-}
+/* ── Data panel ── */
+#data-panel{flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0}
+.tab-pane{display:none;flex:1;flex-direction:column;overflow:hidden;min-height:0}
+.tab-pane.active{display:flex}
 
-/* Table toolbar */
-.tbar {
-  display:flex; align-items:center; gap:10px; margin-bottom:16px; flex-wrap:wrap;
-}
-.tbar h2 { font-size:16px; font-weight:600; margin-right:8px; }
-.tbar-count { font-family:var(--mono); font-size:12px; color:var(--muted); }
-.tbar-spacer { flex:1; }
-.tbar input, .tbar select {
-  background:var(--panel); border:1px solid var(--border); border-radius:6px;
-  padding:7px 12px; color:var(--text); font-size:12px; font-family:var(--font);
-  outline:none; transition:border-color .2s;
-}
-.tbar input:focus, .tbar select:focus { border-color:var(--accent); }
-.tbar input { width:200px; }
-.btn {
-  padding:7px 14px; border-radius:6px; font-size:12px; font-weight:500;
-  cursor:pointer; font-family:var(--font); display:flex; align-items:center;
-  gap:5px; transition:all .2s; border:1px solid var(--border);
-  background:var(--panel); color:var(--text);
-}
-.btn:hover { border-color:var(--accent); color:var(--accent); }
-.btn-accent { background:var(--accent); color:#000; border-color:var(--accent); }
-.btn-accent:hover { opacity:.85; color:#000; }
-.btn-danger { border-color:var(--danger); color:var(--danger); }
-.btn-danger:hover { background:var(--danger); color:#000; }
-.btn svg { width:13px; height:13px; }
+/* Tab toolbar */
+.tbar{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;background:var(--panel)}
+.tbar h3{font-size:13px;font-weight:600}
+.tbar-count{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.tbar-spacer{flex:1}
+.tf{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:11px;font-family:var(--font);outline:none}
+.tf:focus{border-color:var(--accent)}
+.tf-search{width:180px}
+.btn{padding:5px 11px;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;font-family:var(--font);display:flex;align-items:center;gap:4px;transition:all .2s;border:1px solid var(--border);background:var(--panel);color:var(--text)}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn-accent{background:var(--accent);color:#000;border-color:var(--accent)}
+.btn-accent:hover{opacity:.85;color:#000}
+.btn-sm{padding:3px 8px;font-size:10px}
+.btn-danger{border-color:var(--danger);color:var(--danger)}
+.btn-danger:hover{background:var(--danger);color:#000}
+.btn svg{width:12px;height:12px}
 
-/* Data table */
-.dtable-wrap { overflow-x:auto; border:1px solid var(--border); border-radius:10px; }
-table { width:100%; border-collapse:collapse; font-size:12px; }
-thead th {
-  text-align:left; padding:10px 12px; font-size:10px; font-weight:600;
-  color:var(--muted); text-transform:uppercase; letter-spacing:.06em;
-  background:var(--panel2); border-bottom:1px solid var(--border);
-  white-space:nowrap; cursor:pointer; user-select:none;
-}
-thead th:hover { color:var(--text); }
-thead th.sorted { color:var(--accent); }
-tbody tr { border-bottom:1px solid rgba(46,51,80,.4); transition:background .1s; }
-tbody tr:last-child { border-bottom:none; }
-tbody tr:hover { background:rgba(34,38,58,.6); }
-tbody td { padding:9px 12px; vertical-align:middle; }
-.td-type { font-weight:500; }
-.td-addr { color:var(--muted); max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.td-desc { color:var(--muted); max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.td-mono { font-family:var(--mono); font-size:11px; color:var(--muted); white-space:nowrap; }
-.td-actions { display:flex; gap:5px; }
-.act-btn {
-  padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer;
-  border:1px solid var(--border); background:transparent; color:var(--muted);
-  font-family:var(--font); transition:all .15s;
-}
-.act-btn:hover { border-color:var(--accent); color:var(--accent); }
-.act-del:hover { border-color:var(--danger); color:var(--danger); }
-.badge { font-family:var(--mono); font-size:9px; padding:2px 6px; border-radius:3px; white-space:nowrap; }
-.badge-open { background:rgba(232,69,60,.15); color:var(--red); }
-.badge-in_progress { background:rgba(240,165,0,.15); color:var(--amber); }
-.badge-closed { background:rgba(123,130,160,.15); color:var(--muted); }
-.badge-manual { background:rgba(45,139,255,.12); color:var(--blue); }
-.badge-pdf { background:rgba(0,194,168,.12); color:var(--accent); }
-.badge-public { background:rgba(34,197,94,.12); color:var(--green); }
-.badge-private { background:rgba(123,130,160,.12); color:var(--muted); }
+/* Table */
+.tbl-wrap{flex:1;overflow:auto;min-height:0}
+.tbl-wrap::-webkit-scrollbar{width:4px;height:4px}
+.tbl-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+table{width:100%;border-collapse:collapse;font-size:11px}
+thead th{position:sticky;top:0;text-align:left;padding:8px 10px;font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;background:var(--panel2);border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none;z-index:2}
+thead th:hover{color:var(--text)}
+thead th.sorted{color:var(--accent)}
+tbody tr{border-bottom:1px solid rgba(46,51,80,.3);transition:background .1s}
+tbody tr:hover{background:rgba(34,38,58,.7)}
+tbody tr.highlighted{background:rgba(0,194,168,.08)!important;outline:1px solid rgba(0,194,168,.3)}
+tbody td{padding:7px 10px;vertical-align:middle}
+.tc-type{font-weight:500;white-space:nowrap}
+.tc-addr{color:var(--muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tc-desc{color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tc-mono{font-family:var(--mono);font-size:10px;color:var(--muted);white-space:nowrap}
+.tc-actions{display:flex;gap:4px;white-space:nowrap}
+.badge{font-family:var(--mono);font-size:9px;padding:2px 5px;border-radius:3px;white-space:nowrap}
+.b-open{background:rgba(232,69,60,.15);color:var(--red)}
+.b-in_progress{background:rgba(240,165,0,.15);color:var(--amber)}
+.b-closed{background:rgba(123,130,160,.15);color:var(--muted)}
+.b-manual{background:rgba(45,139,255,.12);color:var(--blue)}
+.b-pdf_import{background:rgba(0,194,168,.12);color:var(--accent)}
+.b-public{background:rgba(34,197,94,.12);color:var(--green)}
+.b-private{background:rgba(123,130,160,.12);color:var(--muted)}
+.b-polygon{background:rgba(0,194,168,.12);color:var(--accent)}
+.b-line{background:rgba(240,165,0,.12);color:var(--amber)}
+.b-point{background:rgba(45,139,255,.12);color:var(--blue)}
 
-/* Inline edit row */
-.edit-row td { background:rgba(0,194,168,.05); }
-.inline-input {
-  width:100%; background:var(--bg); border:1px solid var(--border);
-  border-radius:4px; padding:4px 7px; color:var(--text); font-size:12px;
-  font-family:var(--font); outline:none;
-}
-.inline-input:focus { border-color:var(--accent); }
-.inline-select {
-  background:var(--bg); border:1px solid var(--border); border-radius:4px;
-  padding:4px 7px; color:var(--text); font-size:12px; font-family:var(--font); outline:none;
-}
+/* toggle switch */
+.sw{width:30px;height:17px;background:var(--border);border-radius:9px;position:relative;cursor:pointer;transition:background .2s;flex-shrink:0;display:inline-block}
+.sw.on{background:var(--accent)}
+.sw::after{content:'';position:absolute;top:2px;left:2px;width:13px;height:13px;background:white;border-radius:50%;transition:transform .2s}
+.sw.on::after{transform:translateX(13px)}
 
-/* Photos grid */
-.photo-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:14px; }
-.photo-card {
-  background:var(--panel); border:1px solid var(--border); border-radius:10px;
-  overflow:hidden; transition:border-color .2s;
-}
-.photo-card:hover { border-color:var(--accent); }
-.photo-img { width:100%; height:140px; object-fit:cover; display:block; cursor:pointer; background:var(--panel2); }
-.photo-info { padding:10px; }
-.photo-crime { font-size:11px; font-weight:500; margin-bottom:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.photo-date { font-size:10px; color:var(--muted); font-family:var(--mono); }
-.photo-del { margin-top:8px; width:100%; }
+/* pagination */
+.pgbar{display:flex;align-items:center;gap:5px;padding:8px 16px;border-top:1px solid var(--border);flex-shrink:0;background:var(--panel)}
+.pg-btn{padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:var(--panel);color:var(--muted);font-size:10px;cursor:pointer;font-family:var(--font)}
+.pg-btn:hover,.pg-btn.active{border-color:var(--accent);color:var(--accent)}
+.pg-btn.active{background:var(--accent);color:#000}
+.pg-info{font-size:10px;color:var(--muted);font-family:var(--mono);margin-right:6px}
 
-/* Users */
-.user-card { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:14px; margin-bottom:10px; display:flex; align-items:center; gap:14px; }
-.user-avatar { width:38px; height:38px; border-radius:50%; background:var(--panel2); display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
-.user-email { font-size:13px; font-weight:500; }
-.user-id { font-size:10px; color:var(--muted); font-family:var(--mono); margin-top:2px; }
-.role-select { background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:5px 10px; color:var(--text); font-size:12px; font-family:var(--font); outline:none; margin-left:auto; }
+/* photos */
+.photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding:14px;overflow-y:auto;flex:1}
+.photo-card{background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.photo-img{width:100%;height:110px;object-fit:cover;cursor:pointer;background:var(--panel2);display:block}
+.photo-meta{padding:7px}
+.photo-type{font-size:10px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.photo-date{font-size:9px;color:var(--muted);font-family:var(--mono)}
 
-/* ── Edit Modal ──────────────────────────────────────────────────── */
-#edit-modal {
-  position:fixed; inset:0; z-index:2000; background:rgba(0,0,0,.7);
-  display:none; align-items:center; justify-content:center;
-}
-#edit-modal.open { display:flex; }
-.em-box {
-  background:var(--panel); border:1px solid var(--border); border-radius:12px;
-  padding:24px; width:520px; max-width:95vw; max-height:85vh; overflow-y:auto;
-  position:relative;
-}
-.em-box::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,var(--accent),var(--blue)); border-radius:12px 12px 0 0; }
-.em-title { font-size:15px; font-weight:600; margin-bottom:18px; }
-.em-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-.em-field { margin-bottom:0; }
-.em-field.full { grid-column:1/-1; }
-.em-field label { display:block; font-size:10px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:4px; }
-.em-field input, .em-field select, .em-field textarea { width:100%; background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:8px 10px; color:var(--text); font-size:13px; font-family:var(--font); outline:none; }
-.em-field textarea { resize:vertical; min-height:80px; }
-.em-footer { display:flex; gap:8px; margin-top:18px; }
+/* users */
+.users-wrap{padding:14px;overflow-y:auto;flex:1}
+.user-row{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px}
+.user-icon{width:34px;height:34px;border-radius:50%;background:var(--panel2);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.user-email{font-size:12px;font-weight:500}
+.user-id{font-size:9px;color:var(--muted);font-family:var(--mono);margin-top:1px}
+.role-sel{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:4px 9px;color:var(--text);font-size:11px;font-family:var(--font);outline:none;margin-left:auto}
 
-/* ── Photo Lightbox ──────────────────────────────────────────────── */
-#lightbox {
-  position:fixed; inset:0; z-index:3000; background:rgba(0,0,0,.9);
-  display:none; align-items:center; justify-content:center;
-}
-#lightbox.open { display:flex; }
-#lightbox img { max-width:90vw; max-height:90vh; border-radius:8px; }
-#lightbox-close { position:absolute; top:20px; right:24px; color:white; font-size:28px; cursor:pointer; }
+/* edit modal */
+#edit-modal{position:fixed;inset:0;z-index:5000;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center}
+#edit-modal.open{display:flex}
+.em{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:22px;width:500px;max-width:95vw;max-height:85vh;overflow-y:auto;position:relative}
+.em::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--blue));border-radius:12px 12px 0 0}
+.em-title{font-size:14px;font-weight:600;margin-bottom:16px}
+.em-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.em-f{display:flex;flex-direction:column;gap:3px}
+.em-f.full{grid-column:1/-1}
+.em-f label{font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.em-f input,.em-f select,.em-f textarea{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 9px;color:var(--text);font-size:12px;font-family:var(--font);outline:none}
+.em-f textarea{resize:vertical;min-height:70px}
+.em-footer{display:flex;gap:8px;margin-top:16px}
 
-/* ── Toast ───────────────────────────────────────────────────────── */
-#toast { position:fixed; bottom:20px; right:20px; z-index:4000; background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:11px 16px; font-size:13px; display:none; box-shadow:0 4px 16px rgba(0,0,0,.4); }
-#toast.ok { border-color:var(--accent); color:var(--accent); }
-#toast.err { border-color:var(--danger); color:var(--danger); }
+/* lightbox */
+#lightbox{position:fixed;inset:0;z-index:6000;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center}
+#lightbox.open{display:flex}
+#lightbox img{max-width:90vw;max-height:90vh;border-radius:8px}
+#lb-close{position:absolute;top:18px;right:22px;color:white;font-size:26px;cursor:pointer;line-height:1}
 
-/* ── Login ───────────────────────────────────────────────────────── */
-#login {
-  position:fixed; inset:0; z-index:5000; background:linear-gradient(135deg,#0a0d16,#0f1525);
-  display:flex; align-items:center; justify-content:center;
-}
-.li-box { width:340px; background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:36px; position:relative; overflow:hidden; }
-.li-box::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,var(--accent),var(--blue)); }
-.li-title { font-size:20px; font-weight:600; margin-bottom:4px; }
-.li-sub { font-size:12px; color:var(--muted); margin-bottom:22px; }
-.li-field { margin-bottom:14px; }
-.li-field label { display:block; font-size:10px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:4px; }
-.li-field input { width:100%; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px 14px; color:var(--text); font-size:14px; font-family:var(--font); outline:none; }
-.li-field input:focus { border-color:var(--accent); }
-.li-btn { width:100%; background:var(--accent); color:#000; font-weight:600; font-size:14px; border:none; border-radius:8px; padding:12px; cursor:pointer; font-family:var(--font); margin-top:6px; }
-.li-err { color:var(--danger); font-size:12px; margin-top:8px; text-align:center; min-height:16px; }
+/* toast */
+#toast{position:fixed;bottom:16px;right:16px;z-index:7000;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:12px;display:none;box-shadow:0 4px 16px rgba(0,0,0,.4);max-width:260px}
+#toast.ok{border-color:var(--accent);color:var(--accent)}
+#toast.err{border-color:var(--danger);color:var(--danger)}
 
-/* Pagination */
-.pagination { display:flex; align-items:center; gap:6px; margin-top:14px; }
-.pg-btn { padding:5px 10px; border-radius:5px; border:1px solid var(--border); background:var(--panel); color:var(--muted); font-size:11px; cursor:pointer; font-family:var(--font); }
-.pg-btn:hover { border-color:var(--accent); color:var(--accent); }
-.pg-btn.active { background:var(--accent); color:#000; border-color:var(--accent); }
-.pg-info { font-size:11px; color:var(--muted); font-family:var(--mono); }
-
-/* Empty state */
-.empty { text-align:center; padding:48px; color:var(--muted); font-size:13px; }
-.empty svg { width:40px; height:40px; margin:0 auto 12px; display:block; opacity:.3; }
-
-/* Toggle switch */
-.sw { width:36px; height:20px; background:var(--border); border-radius:10px; position:relative; cursor:pointer; transition:background .2s; flex-shrink:0; }
-.sw.on { background:var(--accent); }
-.sw::after { content:''; position:absolute; top:2px; left:2px; width:16px; height:16px; background:white; border-radius:50%; transition:transform .2s; }
-.sw.on::after { transform:translateX(16px); }
+/* Leaflet dark overrides */
+.leaflet-popup-content-wrapper{background:var(--panel)!important;color:var(--text)!important;border:1px solid var(--border)!important;border-radius:10px!important;box-shadow:0 6px 20px rgba(0,0,0,.5)!important;padding:0!important}
+.leaflet-popup-tip-container{display:none!important}
+.leaflet-popup-close-button{color:var(--muted)!important;top:7px!important;right:8px!important;font-size:16px!important}
+.leaflet-popup-content{margin:0!important;min-width:180px}
+.leaflet-control-zoom a{background:var(--panel)!important;color:var(--text)!important;border-color:var(--border)!important}
+.leaflet-control-zoom a:hover{background:var(--panel2)!important}
+.leaflet-control-attribution{background:rgba(15,17,23,.8)!important;color:var(--muted)!important;font-size:9px!important}
+.marker-cluster-small,.marker-cluster-medium,.marker-cluster-large{background:rgba(0,194,168,.2)!important}
+.marker-cluster-small div,.marker-cluster-medium div,.marker-cluster-large div{background:#00c2a8!important;color:#000!important;font-family:var(--mono)!important;font-weight:600!important;font-size:12px!important}
+.empty-state{text-align:center;padding:40px;color:var(--muted);font-size:12px}
 </style>
 </head>
 <body>
 
-<!-- Login -->
+<!-- LOGIN -->
 <div id="login">
   <div class="li-box">
     <div class="li-title">Admin Portal</div>
     <div class="li-sub">Jefferson Park Crime Map</div>
-    <div class="li-field"><label>Email</label><input type="email" id="li-email" placeholder="admin@example.com" autocomplete="email"></div>
-    <div class="li-field"><label>Password</label><input type="password" id="li-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <div class="li-f"><label>Email</label><input type="email" id="li-email" placeholder="admin@example.com" autocomplete="email"></div>
+    <div class="li-f"><label>Password</label><input type="password" id="li-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
     <button class="li-btn" onclick="doLogin()">Sign in</button>
     <div class="li-err" id="li-err"></div>
   </div>
 </div>
 
-<!-- App -->
+<!-- APP -->
 <div id="app">
 
   <!-- Nav -->
   <div id="nav">
-    <div class="nav-brand">
-      <div class="nav-icon">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round"><path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7z"/></svg>
+    <div class="brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round"><path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7z"/></svg>
       </div>
-      <div>
-        <div class="nav-title">Admin Portal</div>
-        <div class="nav-sub">Jefferson Park</div>
-      </div>
+      <div><div class="brand-name">Admin Portal</div><div class="brand-sub">Jefferson Park</div></div>
     </div>
 
     <div class="nav-tabs">
-      <div class="nav-tab active" onclick="showTab('map')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
-        Map View
-      </div>
-      <div class="nav-tab" onclick="showTab('crimes')">
+      <div class="ntab active" onclick="showTab('crimes')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-        Crimes
-        <span id="crimes-count" style="font-family:var(--mono);font-size:10px;background:var(--panel2);padding:1px 6px;border-radius:10px">—</span>
+        Crimes <span class="cnt" id="cnt-crimes">—</span>
       </div>
-      <div class="nav-tab" onclick="showTab('annotations')">
+      <div class="ntab" onclick="showTab('annotations')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 2 17 12 22 22 17 22 7"/></svg>
-        Annotations
-        <span id="ann-count" style="font-family:var(--mono);font-size:10px;background:var(--panel2);padding:1px 6px;border-radius:10px">—</span>
+        Annotations <span class="cnt" id="cnt-ann">—</span>
       </div>
-      <div class="nav-tab" onclick="showTab('photos')">
+      <div class="ntab" onclick="showTab('photos')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-        Photos
-        <span id="photos-count" style="font-family:var(--mono);font-size:10px;background:var(--panel2);padding:1px 6px;border-radius:10px">—</span>
+        Photos <span class="cnt" id="cnt-photos">—</span>
       </div>
-      <div class="nav-tab" onclick="showTab('users')">
+      <div class="ntab" onclick="showTab('users')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
         Users
       </div>
     </div>
 
-    <div class="nav-right">
+    <div class="nav-r">
       <span class="nav-user" id="nav-user"></span>
-      <a class="nav-map-link" href="index.html">
-        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
-        Field Map
-      </a>
-      <button class="btn-logout" onclick="doLogout()">Sign out</button>
+      <a href="index.html">← Field Map</a>
+      <button onclick="doLogout()">Sign out</button>
     </div>
   </div>
 
-  <!-- Content -->
-  <div id="content">
-
-    <!-- ═══ MAP TAB ═══ -->
-    <div class="tab-pane active" id="tab-map">
-      <div style="position:relative;flex:1">
-        <div class="map-controls">
-          <button class="mc-btn active" id="mc-street" onclick="setAdminBasemap('street')">🗺 Street</button>
-          <button class="mc-btn" id="mc-sat" onclick="setAdminBasemap('satellite')">🛰 Satellite</button>
-          <button class="mc-btn" id="mc-slo" onclick="toggleAdminLayer('slo')">SLO</button>
-          <button class="mc-btn" id="mc-unnc" onclick="toggleAdminLayer('unnc')">UNNC</button>
-          <button class="mc-btn" id="mc-ann" onclick="toggleAdminLayer('ann')">Annotations</button>
-        </div>
-        <div id="admin-map"></div>
-      </div>
-      <div id="map-sidebar">
-        <div class="ms-head">
-          <h3>Crime Records</h3>
-          <div class="ms-filters">
-            <select class="ms-select" id="ms-status" onchange="filterMapList()">
-              <option value="">All statuses</option>
-              <option value="open">Open</option>
-              <option value="in_progress">In Progress</option>
-              <option value="closed">Closed</option>
-            </select>
-            <select class="ms-select" id="ms-type" onchange="filterMapList()">
-              <option value="">All crime types</option>
-            </select>
-          </div>
-        </div>
-        <div class="ms-scroll" id="map-list"></div>
-      </div>
+  <!-- MAP -->
+  <div id="map-section">
+    <div id="admin-map"></div>
+    <div class="maptb">
+      <button class="maptb-btn on" id="mb-street" onclick="setBasemap('street')">🗺 Street</button>
+      <button class="maptb-btn" id="mb-sat" onclick="setBasemap('satellite')">🛰 Satellite</button>
+      <button class="maptb-btn" id="mb-crimes" onclick="toggleMapLayer('crimes')">● Crimes</button>
+      <button class="maptb-btn" id="mb-ann" onclick="toggleMapLayer('ann')">◈ Annotations</button>
+      <button class="maptb-btn" id="mb-slo" onclick="toggleMapLayer('slo')">▭ SLO</button>
+      <button class="maptb-btn" id="mb-unnc" onclick="toggleMapLayer('unnc')">▭ UNNC</button>
+      <button class="maptb-btn" onclick="fitAllData()">⊙ Fit All</button>
     </div>
+  </div>
 
-    <!-- ═══ CRIMES TAB ═══ -->
-    <div class="tab-pane" id="tab-crimes">
+  <!-- Resize handle -->
+  <div id="map-resize"></div>
+
+  <!-- DATA PANEL -->
+  <div id="data-panel">
+
+    <!-- CRIMES TAB -->
+    <div class="tab-pane active" id="tab-crimes">
       <div class="tbar">
-        <h2>Crime Records</h2>
-        <span class="tbar-count" id="crimes-tbar-count"></span>
-        <input type="text" id="crimes-search" placeholder="Search address, description…" oninput="filterCrimes()">
-        <select id="crimes-status-filter" onchange="filterCrimes()">
+        <h3>Crimes</h3>
+        <span class="tbar-count" id="crimes-tcount"></span>
+        <input class="tf tf-search" id="c-search" placeholder="Search address, notes…" oninput="filterCrimes()">
+        <select class="tf" id="c-status" onchange="filterCrimes()">
           <option value="">All statuses</option>
           <option value="open">Open</option>
           <option value="in_progress">In Progress</option>
           <option value="closed">Closed</option>
         </select>
-        <select id="crimes-type-filter" onchange="filterCrimes()">
+        <select class="tf" id="c-type" onchange="filterCrimes()">
           <option value="">All types</option>
         </select>
-        <select id="crimes-source-filter" onchange="filterCrimes()">
+        <select class="tf" id="c-source" onchange="filterCrimes()">
           <option value="">All sources</option>
           <option value="manual">Manual</option>
           <option value="pdf_import">PDF Import</option>
@@ -402,788 +284,693 @@ tbody td { padding:9px 12px; vertical-align:middle; }
         <div class="tbar-spacer"></div>
         <button class="btn btn-accent" onclick="exportCrimesCSV()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export CSV
+          Export CSV (QGIS)
         </button>
       </div>
-      <div class="dtable-wrap">
-        <table id="crimes-table">
-          <thead>
-            <tr>
-              <th onclick="sortCrimes('crime_type')">Type</th>
-              <th onclick="sortCrimes('status')">Status</th>
-              <th onclick="sortCrimes('address')">Address</th>
-              <th onclick="sortCrimes('incident_date')">Date</th>
-              <th onclick="sortCrimes('incident_time')">Time</th>
-              <th>Description</th>
-              <th>Notes</th>
-              <th onclick="sortCrimes('source')">Source</th>
-              <th onclick="sortCrimes('created_at')">Added</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th onclick="sortTable('crime_type')">Type</th>
+            <th onclick="sortTable('status')">Status</th>
+            <th onclick="sortTable('address')">Address</th>
+            <th onclick="sortTable('incident_date')">Date</th>
+            <th onclick="sortTable('incident_time')">Time</th>
+            <th>Description</th>
+            <th>Notes</th>
+            <th onclick="sortTable('source')">Source</th>
+            <th>Lat</th><th>Lng</th>
+            <th onclick="sortTable('created_at')">Added</th>
+            <th>Actions</th>
+          </tr></thead>
           <tbody id="crimes-tbody"></tbody>
         </table>
       </div>
-      <div class="pagination" id="crimes-pagination"></div>
+      <div class="pgbar" id="crimes-pgbar"></div>
     </div>
 
-    <!-- ═══ ANNOTATIONS TAB ═══ -->
+    <!-- ANNOTATIONS TAB -->
     <div class="tab-pane" id="tab-annotations">
       <div class="tbar">
-        <h2>Annotations</h2>
-        <span class="tbar-count" id="ann-tbar-count"></span>
+        <h3>Annotations</h3>
+        <span class="tbar-count" id="ann-tcount"></span>
         <div class="tbar-spacer"></div>
         <button class="btn btn-accent" onclick="exportAnnotationsCSV()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export CSV
+          Export CSV (QGIS)
         </button>
       </div>
-      <div class="dtable-wrap">
-        <table id="ann-table">
-          <thead>
-            <tr>
-              <th>Label</th>
-              <th>Type</th>
-              <th>Notes</th>
-              <th>Created By</th>
-              <th>Created At</th>
-              <th>Public</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>Label</th><th>Type</th><th>Notes</th>
+            <th>Centroid Lat</th><th>Centroid Lng</th>
+            <th>WKT Geometry</th>
+            <th>Created</th><th>Public</th><th>Actions</th>
+          </tr></thead>
           <tbody id="ann-tbody"></tbody>
         </table>
       </div>
     </div>
 
-    <!-- ═══ PHOTOS TAB ═══ -->
+    <!-- PHOTOS TAB -->
     <div class="tab-pane" id="tab-photos">
       <div class="tbar">
-        <h2>Photos</h2>
-        <span class="tbar-count" id="photos-tbar-count"></span>
+        <h3>Photos</h3>
+        <span class="tbar-count" id="photos-tcount"></span>
       </div>
       <div class="photo-grid" id="photo-grid"></div>
     </div>
 
-    <!-- ═══ USERS TAB ═══ -->
+    <!-- USERS TAB -->
     <div class="tab-pane" id="tab-users">
-      <div class="tbar"><h2>Users</h2></div>
-      <div id="users-list"></div>
+      <div class="tbar"><h3>Users</h3></div>
+      <div class="users-wrap" id="users-wrap"></div>
     </div>
 
-  </div><!-- #content -->
+  </div><!-- #data-panel -->
 </div><!-- #app -->
 
 <!-- Edit Crime Modal -->
 <div id="edit-modal">
-  <div class="em-box">
+  <div class="em">
     <div class="em-title">Edit Crime Record</div>
     <input type="hidden" id="edit-id">
     <div class="em-grid">
-      <div class="em-field">
-        <label>Crime Type</label>
-        <select id="edit-type"></select>
-      </div>
-      <div class="em-field">
-        <label>Status</label>
+      <div class="em-f"><label>Crime Type</label><select id="edit-type"></select></div>
+      <div class="em-f"><label>Status</label>
         <select id="edit-status">
           <option value="open">Open</option>
           <option value="in_progress">In Progress</option>
           <option value="closed">Closed</option>
         </select>
       </div>
-      <div class="em-field full">
-        <label>Address</label>
-        <input type="text" id="edit-address">
-      </div>
-      <div class="em-field">
-        <label>Date</label>
-        <input type="text" id="edit-date">
-      </div>
-      <div class="em-field">
-        <label>Time</label>
-        <input type="text" id="edit-time">
-      </div>
-      <div class="em-field full">
-        <label>Description</label>
-        <textarea id="edit-desc"></textarea>
-      </div>
-      <div class="em-field full">
-        <label>Notes</label>
-        <textarea id="edit-notes" style="min-height:60px"></textarea>
-      </div>
+      <div class="em-f full"><label>Address</label><input type="text" id="edit-addr"></div>
+      <div class="em-f"><label>Date</label><input type="text" id="edit-date"></div>
+      <div class="em-f"><label>Time</label><input type="text" id="edit-time"></div>
+      <div class="em-f full"><label>Description</label><textarea id="edit-desc"></textarea></div>
+      <div class="em-f full"><label>Notes</label><textarea id="edit-notes" style="min-height:55px"></textarea></div>
     </div>
     <div class="em-footer">
-      <button class="btn" onclick="closeEditModal()">Cancel</button>
+      <button class="btn" onclick="closeEdit()">Cancel</button>
       <button class="btn btn-accent" onclick="saveEdit()">Save Changes</button>
     </div>
   </div>
 </div>
 
-<!-- Photo Lightbox -->
-<div id="lightbox" onclick="closeLightbox()">
-  <span id="lightbox-close">×</span>
-  <img id="lightbox-img" src="" alt="">
+<!-- Lightbox -->
+<div id="lightbox" onclick="closeLB()">
+  <span id="lb-close">×</span>
+  <img id="lb-img" src="" alt="">
 </div>
 
-<!-- Toast -->
 <div id="toast"></div>
 
 <script>
-// ══════════════════════════════════════════════════════════════════
-// CONFIG — same values as index.html
-// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════════════════
 //const SUPABASE_URL  = 'YOUR_SUPABASE_URL';
 //const SUPABASE_ANON = 'YOUR_ANON_KEY';
-
 const SUPABASE_URL = 'https://sqiioihssmnqatjrednq.supabase.co';
 const SUPABASE_ANON = 'sb_publishable_3s5kREPGF10ahyWGMT9tBA_v9FUqbit';
 
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
 
-// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
 // STATE
-// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
 let currentUser = null;
-let allCrimes = [], filteredCrimes = [], allAnnotations = [], allPhotos = [];
-let adminMap = null, crimeMarkers = null, annLayer = null, sloLayer = null, unncLayer = null;
-let adminTileStreet = null, adminTileSat = null;
-let adminLayerVisible = { slo:false, unnc:false, ann:true };
-let crimesPage = 1;
-const PAGE_SIZE = 50;
-let crimesSortCol = 'created_at', crimesSortDir = -1;
+let allCrimes = [], filteredCrimes = [];
+let allAnnotations = [], allPhotos = [];
+let adminMap = null;
+let crimeCluster = null, annLayerGrp = null, sloLayerGrp = null, unncLayerGrp = null;
+let tileStreet = null, tileSat = null;
+let layerOn = { crimes:true, ann:true, slo:false, unnc:false };
+let sortCol = 'created_at', sortDir = -1;
+let page = 1; const PG = 50;
 
-const CRIMES = ['Aggravated Assault','Battery','Robbery','Homicide','Criminal Threat',
-  'Shots Fired','Burglary','Theft','Vandalism','GTA','Attempt GTA','TFMV','BFMV','BTFV'];
+const CRIMES_LIST = ['Aggravated Assault','Battery','Robbery','Homicide',
+  'Criminal Threat','Shots Fired','Burglary','Theft','Vandalism',
+  'GTA','Attempt GTA','TFMV','BFMV','BTFV'];
 
-const CRIME_COLORS = {
+const COLORS = {
   'Aggravated Assault':'#e8453c','Battery':'#e8453c','Robbery':'#e8453c',
   'Homicide':'#7b0000','Criminal Threat':'#e8453c','Shots Fired':'#ff6b35',
   'Burglary':'#f0a500','Theft':'#f0a500','Vandalism':'#f0a500',
   'GTA':'#2d8bff','Attempt GTA':'#2d8bff','TFMV':'#2d8bff','BFMV':'#2d8bff','BTFV':'#2d8bff',
 };
 
-// ══════════════════════════════════════════════════════════════════
+// Marker reference by crime id for map highlight
+const markerById = {};
+
+// ══════════════════════════════════════════════════════
 // AUTH
-// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
 async function doLogin() {
   const email = document.getElementById('li-email').value.trim();
   const pass  = document.getElementById('li-pass').value;
   const err   = document.getElementById('li-err');
-  if (!email || !pass) { err.textContent = 'Enter email and password.'; return; }
-
-  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
-  if (error) { err.textContent = error.message; return; }
-
-  // Verify admin role
-  const { data: profile } = await sb.from('profiles').select('role').eq('id', data.user.id).single();
-  if (profile?.role !== 'admin') {
-    await sb.auth.signOut();
-    err.textContent = 'Admin access required.';
-    return;
-  }
+  if (!email||!pass){err.textContent='Enter email and password.';return;}
+  const {data,error} = await sb.auth.signInWithPassword({email,password:pass});
+  if (error){err.textContent=error.message;return;}
+  const {data:prof} = await sb.from('profiles').select('role').eq('id',data.user.id).single();
+  if (prof?.role !== 'admin'){await sb.auth.signOut();err.textContent='Admin access required.';return;}
   currentUser = data.user;
-  launchPortal();
+  launch();
 }
+async function doLogout(){await sb.auth.signOut();location.reload();}
 
-async function doLogout() { await sb.auth.signOut(); location.reload(); }
-
-// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
 // LAUNCH
-// ══════════════════════════════════════════════════════════════════
-async function launchPortal() {
+// ══════════════════════════════════════════════════════
+async function launch() {
   document.getElementById('login').style.display = 'none';
   document.getElementById('app').classList.add('ready');
   document.getElementById('nav-user').textContent = currentUser.email;
 
-  // Populate crime type filters
-  ['crimes-type-filter','edit-type','ms-type'].forEach(id => {
+  // Populate crime type dropdowns
+  ['c-type','edit-type'].forEach(id => {
     const el = document.getElementById(id);
-    if (!el) return;
-    if (id === 'edit-type') {
-      CRIMES.forEach(t => el.innerHTML += `<option value="${t}">${t}</option>`);
-    } else {
-      el.innerHTML += CRIMES.map(t => `<option value="${t}">${t}</option>`).join('');
-    }
+    CRIMES_LIST.forEach(t => el.innerHTML += `<option value="${t}">${t}</option>`);
   });
 
-  await Promise.all([ loadAllCrimes(), loadAnnotations(), loadPhotos(), loadUsers() ]);
-  initAdminMap();
+  initMap();
+  await Promise.all([loadCrimes(), loadAnnotations(), loadPhotos(), loadUsers()]);
+  setupResize();
 }
 
-// ══════════════════════════════════════════════════════════════════
-// LOAD DATA
-// ══════════════════════════════════════════════════════════════════
-async function loadAllCrimes() {
-  const { data, error } = await sb.rpc('get_crimes', {
-    p_exclude_closed: false, p_date_from: null, p_date_to: null
+// ══════════════════════════════════════════════════════
+// MAP
+// ══════════════════════════════════════════════════════
+function initMap() {
+  tileStreet = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    {attribution:'© OpenStreetMap',maxZoom:19});
+  tileSat = L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    {attribution:'Esri',maxZoom:19});
+
+  adminMap = L.map('admin-map',{center:[34.028,-118.334],zoom:14,layers:[tileStreet]});
+
+  crimeCluster = L.markerClusterGroup({
+    maxClusterRadius:50,showCoverageOnHover:false,
+    iconCreateFunction(cluster){
+      const n = cluster.getChildCount();
+      const s = n<10?34:n<50?40:48;
+      return L.divIcon({html:`<div style="width:${s}px;height:${s}px;background:#00c2a8;border:2.5px solid white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:12px;font-weight:600;color:#000;box-shadow:0 0 0 3px rgba(0,194,168,.2)">${n}</div>`,className:'',iconSize:[s,s],iconAnchor:[s/2,s/2]});
+    }
   });
-  if (error) { console.error(error); showToast('Error loading crimes', 'err'); return; }
-  allCrimes = data || [];
+  crimeCluster.addTo(adminMap);
+
+  annLayerGrp  = L.layerGroup().addTo(adminMap);
+  sloLayerGrp  = L.layerGroup();
+  unncLayerGrp = L.layerGroup();
+}
+
+function setBasemap(type) {
+  if (type==='street'){adminMap.removeLayer(tileSat);adminMap.addLayer(tileStreet);tileStreet.bringToBack();}
+  else{adminMap.removeLayer(tileStreet);adminMap.addLayer(tileSat);tileSat.bringToBack();}
+  crimeCluster.bringToFront();
+  document.getElementById('mb-street').classList.toggle('on',type==='street');
+  document.getElementById('mb-sat').classList.toggle('on',type==='satellite');
+}
+
+function toggleMapLayer(type) {
+  layerOn[type] = !layerOn[type];
+  document.getElementById('mb-'+type).classList.toggle('on',layerOn[type]);
+  const grp = {crimes:crimeCluster,ann:annLayerGrp,slo:sloLayerGrp,unnc:unncLayerGrp}[type];
+  if (!grp) return;
+  if (layerOn[type]) grp.addTo(adminMap); else adminMap.removeLayer(grp);
+}
+
+function fitAllData() {
+  const bounds = [];
+  allCrimes.forEach(c=>{ if(c.lat&&c.lng) bounds.push([c.lat,c.lng]); });
+  if (bounds.length) adminMap.fitBounds(L.latLngBounds(bounds).pad(0.1));
+}
+
+function flyTo(lat,lng,id) {
+  adminMap.flyTo([lat,lng],17);
+  if (id && markerById[id]) {
+    setTimeout(()=>{ markerById[id].openPopup(); },600);
+  }
+  // Highlight table row
+  document.querySelectorAll('tbody tr').forEach(r=>r.classList.remove('highlighted'));
+  const row = document.getElementById('row-'+id);
+  if (row){ row.classList.add('highlighted'); row.scrollIntoView({block:'nearest'}); }
+}
+
+// ══════════════════════════════════════════════════════
+// LOAD DATA
+// ══════════════════════════════════════════════════════
+async function loadCrimes() {
+  const {data,error} = await sb.rpc('get_crimes',{p_exclude_closed:false,p_date_from:null,p_date_to:null});
+  if (error){console.error(error);showToast('Error loading crimes','err');return;}
+  allCrimes = data||[];
   filteredCrimes = [...allCrimes];
-  document.getElementById('crimes-count').textContent = allCrimes.length;
+  document.getElementById('cnt-crimes').textContent = allCrimes.length;
   renderCrimesTable();
-  renderMapList();
+  renderCrimeMarkers();
 }
 
 async function loadAnnotations() {
-  const { data, error } = await sb.from('map_annotations')
-    .select('*').order('created_at', { ascending: false });
-  if (error) { console.error(error); return; }
-  allAnnotations = data || [];
-  document.getElementById('ann-count').textContent = allAnnotations.length;
+  // Use the WKT function for georeferencing export
+  const {data,error} = await sb.rpc('get_annotations_with_wkt').catch(()=>({data:null,error:'no_fn'}));
+  if (error || !data) {
+    // Fallback to plain select if function doesn't exist yet
+    const {data:d2} = await sb.from('map_annotations').select('*').order('created_at',{ascending:false});
+    allAnnotations = (d2||[]).map(a=>({...a,wkt:'',lat:null,lng:null}));
+  } else {
+    allAnnotations = data||[];
+  }
+  document.getElementById('cnt-ann').textContent = allAnnotations.length;
   renderAnnotationsTable();
+  renderAnnotationMarkers();
+  renderBoundaries();
 }
 
 async function loadPhotos() {
-  const { data, error } = await sb.from('photos')
-    .select('*, crimes(crime_type, address), map_annotations(label)')
-    .order('created_at', { ascending: false });
-  if (error) { console.error(error); return; }
-  allPhotos = data || [];
-  document.getElementById('photos-count').textContent = allPhotos.length;
+  const {data} = await sb.from('photos')
+    .select('*,crimes(crime_type,address),map_annotations(label)')
+    .order('created_at',{ascending:false});
+  allPhotos = data||[];
+  document.getElementById('cnt-photos').textContent = allPhotos.length;
   renderPhotos();
 }
 
 async function loadUsers() {
-  const { data, error } = await sb.from('profiles')
-    .select('id, role, created_at');
-  if (error) { console.error(error); return; }
-
-  // Get emails from auth (admin only via service role — use profiles only)
-  const el = document.getElementById('users-list');
-  el.innerHTML = (data || []).map(u => `
-    <div class="user-card">
-      <div class="user-avatar">👤</div>
+  const {data} = await sb.from('profiles').select('id,role,created_at');
+  const el = document.getElementById('users-wrap');
+  el.innerHTML = (data||[]).map(u=>`
+    <div class="user-row">
+      <div class="user-icon">👤</div>
       <div>
-        <div class="user-email">${u.id === currentUser.id ? currentUser.email : 'User ' + u.id.slice(0,8)+'…'}</div>
+        <div class="user-email">${u.id===currentUser.id?currentUser.email:'User '+u.id.slice(0,8)+'…'}</div>
         <div class="user-id">${u.id}</div>
       </div>
-      <select class="role-select" onchange="updateRole('${u.id}',this.value)">
+      <select class="role-sel" onchange="updateRole('${u.id}',this.value)">
         <option value="field_officer" ${u.role==='field_officer'?'selected':''}>Field Officer</option>
         <option value="admin" ${u.role==='admin'?'selected':''}>Admin</option>
       </select>
     </div>`).join('');
 }
 
-// ══════════════════════════════════════════════════════════════════
-// ADMIN MAP
-// ══════════════════════════════════════════════════════════════════
-function initAdminMap() {
-  adminTileStreet = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution:'© OpenStreetMap', maxZoom:19
-  });
-  adminTileSat = L.tileLayer(
-    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    { attribution:'Esri', maxZoom:19 }
-  );
+// ══════════════════════════════════════════════════════
+// CRIME MARKERS
+// ══════════════════════════════════════════════════════
+function renderCrimeMarkers() {
+  crimeCluster.clearLayers();
+  Object.keys(markerById).forEach(k=>delete markerById[k]);
 
-  adminMap = L.map('admin-map', {
-    center:[34.028,-118.334], zoom:14, layers:[adminTileStreet]
-  });
-
-  crimeMarkers = L.layerGroup().addTo(adminMap);
-  annLayer     = L.layerGroup().addTo(adminMap);
-  sloLayer     = L.layerGroup();
-  unncLayer    = L.layerGroup();
-
-  renderAdminCrimes();
-  loadAdminBoundaries();
-  loadAdminAnnotations();
-}
-
-function renderAdminCrimes() {
-  crimeMarkers.clearLayers();
-  const statusFilter = document.getElementById('ms-status')?.value || '';
-  const typeFilter   = document.getElementById('ms-type')?.value   || '';
-
-  const filtered = allCrimes.filter(c =>
-    (!statusFilter || c.status === statusFilter) &&
-    (!typeFilter   || c.crime_type === typeFilter)
-  );
-
-  filtered.forEach(c => {
-    if (!c.lat || !c.lng) return;
-    const color = CRIME_COLORS[c.crime_type] || '#888';
-    const marker = L.circleMarker([c.lat, c.lng], {
-      radius:7, color:'white', weight:2,
-      fillColor:color, fillOpacity:1,
+  allCrimes.forEach(c=>{
+    if (!c.lat||!c.lng) return;
+    const color = COLORS[c.crime_type]||'#888';
+    const m = L.circleMarker([c.lat,c.lng],{
+      radius:7,color:'white',weight:2,fillColor:color,fillOpacity:1
     });
-    marker.bindPopup(`
-      <div style="padding:10px;font-family:var(--font);color:var(--text)">
-        <div style="font-weight:600;font-size:12px;color:${color};margin-bottom:4px">${c.crime_type}</div>
-        <div style="font-size:11px;margin-bottom:2px">${c.address||'—'}</div>
-        <div style="font-size:10px;color:var(--muted)">${c.incident_date||'—'} ${c.incident_time||''}</div>
-        <div style="margin-top:6px"><span class="badge badge-${c.status}">${c.status?.replace('_',' ')}</span></div>
-      </div>`, { closeButton:true }
-    );
-    marker.on('click', () => highlightListItem(c.id));
-    crimeMarkers.addLayer(marker);
+    m.bindPopup(`<div style="padding:10px;font-family:var(--font)">
+      <div style="font-weight:600;font-size:12px;color:${color}">${c.crime_type}</div>
+      <div style="font-size:11px;margin:3px 0">${c.address||'—'}</div>
+      <div style="font-size:10px;color:var(--muted)">${c.incident_date||'—'} ${c.incident_time||''}</div>
+      <span class="badge b-${c.status}">${c.status?.replace('_',' ')}</span>
+      <div style="margin-top:8px;display:flex;gap:6px">
+        <button class="btn btn-sm" onclick="openEdit('${c.id}')">Edit</button>
+      </div>
+    </div>`,{closeButton:true});
+    m.on('click',()=>{
+      document.querySelectorAll('tbody tr').forEach(r=>r.classList.remove('highlighted'));
+      const row = document.getElementById('row-'+c.id);
+      if(row){row.classList.add('highlighted');row.scrollIntoView({block:'nearest'});}
+    });
+    crimeCluster.addLayer(m);
+    markerById[c.id] = m;
   });
 }
 
-async function loadAdminBoundaries() {
-  const { data } = await sb.rpc('get_boundaries');
+// ══════════════════════════════════════════════════════
+// ANNOTATION MARKERS
+// ══════════════════════════════════════════════════════
+function renderAnnotationMarkers() {
+  annLayerGrp.clearLayers();
+  allAnnotations.forEach(a=>{
+    if (!a.geometry) return;
+    try {
+      const geom = typeof a.geometry==='string'? JSON.parse(a.geometry): a.geometry;
+      const color = a.is_public?'#00c2a8':'#ffaa00';
+      const pop = `<div style="padding:10px;font-family:var(--font)">
+        <div style="font-weight:600;font-size:12px;color:${color}">${a.label||'Annotation'}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:3px">${a.annotation_type} · ${a.is_public?'Public':'Private'}</div>
+        ${a.notes?`<div style="font-size:11px;margin-top:5px">${a.notes}</div>`:''}
+      </div>`;
+      let layer;
+      if (geom.type==='Point'){
+        layer = L.circleMarker([geom.coordinates[1],geom.coordinates[0]],
+          {radius:8,color:'white',weight:2,fillColor:color,fillOpacity:0.85});
+      } else {
+        layer = L.geoJSON(geom,{style:{color,weight:2.5,fillColor:color,fillOpacity:0.12}});
+      }
+      layer.bindPopup(pop,{closeButton:true});
+      annLayerGrp.addLayer(layer);
+    } catch(e){console.warn('Ann render error',e);}
+  });
+}
+
+// ══════════════════════════════════════════════════════
+// BOUNDARIES
+// ══════════════════════════════════════════════════════
+async function renderBoundaries() {
+  const {data} = await sb.rpc('get_boundaries');
   if (!data) return;
-  data.forEach(b => {
+  sloLayerGrp.clearLayers();
+  unncLayerGrp.clearLayers();
+  data.forEach(b=>{
     if (!b.geometry) return;
-    if (b.boundary_type === 'slo') {
-      L.geoJSON(b.geometry, {
-        style:{ color:'#00c2a8', weight:2, fillColor:'#00c2a8', fillOpacity:0.06 }
-      }).bindPopup(`<div style="padding:10px;font-family:var(--font);color:var(--text)">
-        <b style="color:var(--accent)">RD ${b.properties?.rd}</b><br>
-        <span style="font-size:11px">${b.properties?.slo_name||'—'}</span><br>
-        <span style="font-size:11px;color:var(--muted)">${b.properties?.cell||''}</span>
-      </div>`).addTo(sloLayer);
-    } else if (b.boundary_type === 'unnc') {
-      L.geoJSON(b.geometry, {
-        style:{ color:'#2d8bff', weight:2, fillColor:'#2d8bff', fillOpacity:0.06, dashArray:'6 3' }
-      }).bindPopup(`<div style="padding:10px;font-family:var(--font);color:var(--text)">
-        <b style="color:#2d8bff">UNNC Region ${b.properties?.region||''}</b><br>
-        <span style="font-size:11px">${b.name||'—'}</span>
-      </div>`).addTo(unncLayer);
+    if (b.boundary_type==='slo'){
+      L.geoJSON(b.geometry,{style:{color:'#00c2a8',weight:2,fillColor:'#00c2a8',fillOpacity:0.05}})
+        .bindPopup(`<div style="padding:10px;font-family:var(--font)"><b style="color:var(--accent)">RD ${b.properties?.rd}</b><br><span style="font-size:11px">${b.properties?.slo_name||'—'}</span><br><span style="font-size:11px;color:var(--muted)">${b.properties?.cell||''}</span></div>`)
+        .addTo(sloLayerGrp);
+    } else if (b.boundary_type==='unnc'){
+      L.geoJSON(b.geometry,{style:{color:'#2d8bff',weight:2,fillColor:'#2d8bff',fillOpacity:0.05,dashArray:'6 3'}})
+        .bindPopup(`<div style="padding:10px;font-family:var(--font)"><b style="color:#2d8bff">UNNC Region ${b.properties?.region||''}</b><br><span style="font-size:11px">${b.name||'—'}</span></div>`)
+        .addTo(unncLayerGrp);
     }
   });
 }
 
-async function loadAdminAnnotations() {
-  annLayer.clearLayers();
-  const { data } = await sb.from('map_annotations').select('*');
-  if (!data) return;
-  data.forEach(a => {
-    if (!a.geometry) return;
-    try {
-      const geom = typeof a.geometry === 'string' ? JSON.parse(a.geometry) : a.geometry;
-      const color = a.is_public ? '#00c2a8' : '#ffaa00';
-      const popup = `<div style="padding:10px;font-family:var(--font);color:var(--text)">
-        <b style="color:${color}">${a.label||'Annotation'}</b>
-        <div style="font-size:11px;color:var(--muted);margin-top:4px">${a.annotation_type} · ${a.is_public?'Public':'Private'}</div>
-        ${a.notes ? `<div style="font-size:11px;margin-top:4px">${a.notes}</div>` : ''}
-      </div>`;
-
-      let layer;
-      if (geom.type === 'Point') {
-        layer = L.circleMarker([geom.coordinates[1], geom.coordinates[0]], {
-          radius:8, color:'white', weight:2, fillColor:color, fillOpacity:0.8
-        });
-      } else {
-        layer = L.geoJSON(geom, {
-          style:{ color, weight:2, fillColor:color, fillOpacity:0.15 }
-        });
-      }
-      layer.bindPopup(popup);
-      annLayer.addLayer(layer);
-    } catch(e) { console.warn('Annotation geometry error:', e); }
-  });
-}
-
-function setAdminBasemap(type) {
-  if (type === 'street') {
-    adminMap.removeLayer(adminTileSat);
-    adminMap.addLayer(adminTileStreet);
-    adminTileStreet.bringToBack();
-  } else {
-    adminMap.removeLayer(adminTileStreet);
-    adminMap.addLayer(adminTileSat);
-    adminTileSat.bringToBack();
-  }
-  crimeMarkers.bringToFront();
-  document.getElementById('mc-street').classList.toggle('active', type==='street');
-  document.getElementById('mc-sat').classList.toggle('active', type==='satellite');
-}
-
-function toggleAdminLayer(type) {
-  adminLayerVisible[type] = !adminLayerVisible[type];
-  const btn = document.getElementById('mc-' + type);
-  btn?.classList.toggle('active', adminLayerVisible[type]);
-  const layerMap = { slo:sloLayer, unnc:unncLayer, ann:annLayer };
-  const layer = layerMap[type];
-  if (!layer) return;
-  if (adminLayerVisible[type]) layer.addTo(adminMap);
-  else adminMap.removeLayer(layer);
-}
-
-// ══════════════════════════════════════════════════════════════════
-// MAP SIDEBAR LIST
-// ══════════════════════════════════════════════════════════════════
-function filterMapList() {
-  renderMapList();
-  renderAdminCrimes();
-}
-
-function renderMapList() {
-  const statusF = document.getElementById('ms-status')?.value || '';
-  const typeF   = document.getElementById('ms-type')?.value   || '';
-  const crimes  = allCrimes.filter(c =>
-    (!statusF || c.status === statusF) &&
-    (!typeF   || c.crime_type === typeF)
-  );
-
-  const el = document.getElementById('map-list');
-  if (!crimes.length) {
-    el.innerHTML = '<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>No records found</div>';
-    return;
-  }
-
-  el.innerHTML = crimes.map(c => {
-    const color = CRIME_COLORS[c.crime_type] || '#888';
-    return `<div class="ms-item" id="li-${c.id}" onclick="flyToC('${c.id}')">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
-        <span class="ms-type" style="color:${color}">${c.crime_type}</span>
-        <span class="ms-badge b-${c.status}">${c.status?.replace('_',' ')}</span>
-      </div>
-      <div class="ms-addr">${c.address||'—'}</div>
-      <div class="ms-date">${c.incident_date||'—'} ${c.incident_time||''}</div>
-    </div>`;
-  }).join('');
-}
-
-function flyToC(id) {
-  const c = allCrimes.find(x => x.id === id);
-  if (!c?.lat || !c?.lng) return;
-  adminMap.flyTo([c.lat, c.lng], 17);
-  highlightListItem(id);
-  showTab('map');
-}
-
-function highlightListItem(id) {
-  document.querySelectorAll('.ms-item').forEach(el => el.classList.remove('selected'));
-  const el = document.getElementById('li-' + id);
-  if (el) { el.classList.add('selected'); el.scrollIntoView({ block:'nearest' }); }
-}
-
-// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
 // CRIMES TABLE
-// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
 function filterCrimes() {
-  const search = document.getElementById('crimes-search').value.toLowerCase();
-  const status = document.getElementById('crimes-status-filter').value;
-  const type   = document.getElementById('crimes-type-filter').value;
-  const source = document.getElementById('crimes-source-filter').value;
-
-  filteredCrimes = allCrimes.filter(c =>
-    (!search || (c.address||'').toLowerCase().includes(search) || (c.description||'').toLowerCase().includes(search) || (c.notes||'').toLowerCase().includes(search)) &&
-    (!status || c.status === status) &&
-    (!type   || c.crime_type === type) &&
-    (!source || c.source === source)
-  );
-  crimesPage = 1;
+  const s = document.getElementById('c-search').value.toLowerCase();
+  const st= document.getElementById('c-status').value;
+  const tp= document.getElementById('c-type').value;
+  const sr= document.getElementById('c-source').value;
+  filteredCrimes = allCrimes.filter(c=>
+    (!s||(c.address||'').toLowerCase().includes(s)||(c.description||'').toLowerCase().includes(s)||(c.notes||'').toLowerCase().includes(s))&&
+    (!st||c.status===st)&&(!tp||c.crime_type===tp)&&(!sr||c.source===sr));
+  page=1;
   renderCrimesTable();
 }
 
-function sortCrimes(col) {
-  if (crimesSortCol === col) crimesSortDir *= -1;
-  else { crimesSortCol = col; crimesSortDir = 1; }
-  filteredCrimes.sort((a,b) => {
-    const va = a[col]||'', vb = b[col]||'';
-    return va < vb ? -crimesSortDir : va > vb ? crimesSortDir : 0;
-  });
+function sortTable(col) {
+  if(sortCol===col) sortDir*=-1; else{sortCol=col;sortDir=1;}
+  document.querySelectorAll('thead th').forEach(th=>th.classList.remove('sorted'));
+  filteredCrimes.sort((a,b)=>{const va=a[col]||'',vb=b[col]||'';return va<vb?-sortDir:va>vb?sortDir:0;});
   renderCrimesTable();
 }
 
 function renderCrimesTable() {
-  const start = (crimesPage-1) * PAGE_SIZE;
-  const page  = filteredCrimes.slice(start, start + PAGE_SIZE);
-  document.getElementById('crimes-tbar-count').textContent = `${filteredCrimes.length} records`;
-
-  const tbody = document.getElementById('crimes-tbody');
-  if (!filteredCrimes.length) {
-    tbody.innerHTML = `<tr><td colspan="10" class="empty">No crimes found</td></tr>`;
-    renderPagination();
+  const start=(page-1)*PG;
+  const slice=filteredCrimes.slice(start,start+PG);
+  document.getElementById('crimes-tcount').textContent=`${filteredCrimes.length} records`;
+  const tbody=document.getElementById('crimes-tbody');
+  if(!filteredCrimes.length){
+    tbody.innerHTML=`<tr><td colspan="12" class="empty-state">No crimes match filters</td></tr>`;
+    document.getElementById('crimes-pgbar').innerHTML='';
     return;
   }
-
-  tbody.innerHTML = page.map(c => `
-    <tr>
-      <td class="td-type" style="color:${CRIME_COLORS[c.crime_type]||'#888'}">${c.crime_type}</td>
-      <td><span class="badge badge-${c.status}">${c.status?.replace('_',' ')}</span></td>
-      <td class="td-addr" title="${c.address||''}">${c.address||'—'}</td>
-      <td class="td-mono">${c.incident_date||'—'}</td>
-      <td class="td-mono">${c.incident_time||'—'}</td>
-      <td class="td-desc" title="${c.description||''}">${c.description||'—'}</td>
-      <td class="td-desc" title="${c.notes||''}">${c.notes||'—'}</td>
-      <td><span class="badge badge-${c.source||'manual'}">${c.source||'manual'}</span></td>
-      <td class="td-mono">${c.created_at ? new Date(c.created_at).toLocaleDateString() : '—'}</td>
+  tbody.innerHTML=slice.map(c=>`
+    <tr id="row-${c.id}" onclick="flyTo(${c.lat||0},${c.lng||0},'${c.id}')" style="cursor:pointer">
+      <td class="tc-type" style="color:${COLORS[c.crime_type]||'#888'}">${c.crime_type}</td>
+      <td><span class="badge b-${c.status}">${c.status?.replace('_',' ')||'—'}</span></td>
+      <td class="tc-addr" title="${c.address||''}">${c.address||'—'}</td>
+      <td class="tc-mono">${c.incident_date||'—'}</td>
+      <td class="tc-mono">${c.incident_time||'—'}</td>
+      <td class="tc-desc" title="${c.description||''}">${c.description||'—'}</td>
+      <td class="tc-desc" title="${c.notes||''}">${c.notes||'—'}</td>
+      <td><span class="badge b-${c.source||'manual'}">${c.source||'manual'}</span></td>
+      <td class="tc-mono">${c.lat?c.lat.toFixed(6):'—'}</td>
+      <td class="tc-mono">${c.lng?c.lng.toFixed(6):'—'}</td>
+      <td class="tc-mono">${c.created_at?new Date(c.created_at).toLocaleDateString():'—'}</td>
       <td>
-        <div class="td-actions">
-          <button class="act-btn" onclick="openEditModal('${c.id}')">Edit</button>
-          <button class="act-btn" onclick="flyToC('${c.id}')">Map</button>
-          <button class="act-btn act-del" onclick="deleteCrime('${c.id}')">Delete</button>
+        <div class="tc-actions">
+          <button class="btn btn-sm" onclick="event.stopPropagation();openEdit('${c.id}')">Edit</button>
+          <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteCrime('${c.id}')">Del</button>
         </div>
       </td>
     </tr>`).join('');
 
-  renderPagination();
+  // Pagination
+  const total=Math.ceil(filteredCrimes.length/PG);
+  const pgbar=document.getElementById('crimes-pgbar');
+  if(total<=1){pgbar.innerHTML='';return;}
+  let html=`<span class="pg-info">Page ${page} of ${total} · ${filteredCrimes.length} records</span>`;
+  if(page>1) html+=`<button class="pg-btn" onclick="goPage(${page-1})">← Prev</button>`;
+  for(let i=Math.max(1,page-2);i<=Math.min(total,page+2);i++)
+    html+=`<button class="pg-btn ${i===page?'active':''}" onclick="goPage(${i})">${i}</button>`;
+  if(page<total) html+=`<button class="pg-btn" onclick="goPage(${page+1})">Next →</button>`;
+  pgbar.innerHTML=html;
 }
 
-function renderPagination() {
-  const total = Math.ceil(filteredCrimes.length / PAGE_SIZE);
-  const el = document.getElementById('crimes-pagination');
-  if (total <= 1) { el.innerHTML = ''; return; }
+function goPage(p){page=p;renderCrimesTable();}
 
-  let html = `<span class="pg-info">Page ${crimesPage} of ${total}</span>`;
-  if (crimesPage > 1) html += `<button class="pg-btn" onclick="goPage(${crimesPage-1})">← Prev</button>`;
-  // Show nearby pages
-  for (let i = Math.max(1,crimesPage-2); i <= Math.min(total,crimesPage+2); i++) {
-    html += `<button class="pg-btn ${i===crimesPage?'active':''}" onclick="goPage(${i})">${i}</button>`;
-  }
-  if (crimesPage < total) html += `<button class="pg-btn" onclick="goPage(${crimesPage+1})">Next →</button>`;
-  el.innerHTML = html;
-}
-
-function goPage(p) { crimesPage = p; renderCrimesTable(); }
-
-// ══════════════════════════════════════════════════════════════════
-// EDIT CRIME MODAL
-// ══════════════════════════════════════════════════════════════════
-function openEditModal(id) {
-  const c = allCrimes.find(x => x.id === id);
-  if (!c) return;
-  document.getElementById('edit-id').value      = c.id;
-  document.getElementById('edit-type').value    = c.crime_type;
-  document.getElementById('edit-status').value  = c.status || 'open';
-  document.getElementById('edit-address').value = c.address || '';
-  document.getElementById('edit-date').value    = c.incident_date || '';
-  document.getElementById('edit-time').value    = c.incident_time || '';
-  document.getElementById('edit-desc').value    = c.description || '';
-  document.getElementById('edit-notes').value   = c.notes || '';
+// ══════════════════════════════════════════════════════
+// EDIT CRIME
+// ══════════════════════════════════════════════════════
+function openEdit(id) {
+  const c=allCrimes.find(x=>x.id===id); if(!c) return;
+  document.getElementById('edit-id').value=c.id;
+  document.getElementById('edit-type').value=c.crime_type;
+  document.getElementById('edit-status').value=c.status||'open';
+  document.getElementById('edit-addr').value=c.address||'';
+  document.getElementById('edit-date').value=c.incident_date||'';
+  document.getElementById('edit-time').value=c.incident_time||'';
+  document.getElementById('edit-desc').value=c.description||'';
+  document.getElementById('edit-notes').value=c.notes||'';
   document.getElementById('edit-modal').classList.add('open');
 }
-
-function closeEditModal() { document.getElementById('edit-modal').classList.remove('open'); }
+function closeEdit(){document.getElementById('edit-modal').classList.remove('open');}
 
 async function saveEdit() {
-  const id = document.getElementById('edit-id').value;
-  const updates = {
-    crime_type:    document.getElementById('edit-type').value,
-    status:        document.getElementById('edit-status').value,
-    address:       document.getElementById('edit-address').value,
-    incident_date: document.getElementById('edit-date').value || null,
-    incident_time: document.getElementById('edit-time').value || null,
-    description:   document.getElementById('edit-desc').value,
-    notes:         document.getElementById('edit-notes').value,
-    updated_by:    currentUser.id,
+  const id=document.getElementById('edit-id').value;
+  const u={
+    crime_type:document.getElementById('edit-type').value,
+    status:document.getElementById('edit-status').value,
+    address:document.getElementById('edit-addr').value,
+    incident_date:document.getElementById('edit-date').value||null,
+    incident_time:document.getElementById('edit-time').value||null,
+    description:document.getElementById('edit-desc').value,
+    notes:document.getElementById('edit-notes').value,
+    updated_by:currentUser.id,
   };
-  const { error } = await sb.from('crimes').update(updates).eq('id', id);
-  if (error) { showToast('Error: ' + error.message, 'err'); return; }
-  showToast('Crime updated', 'ok');
-  closeEditModal();
-  await loadAllCrimes();
+  const {error}=await sb.from('crimes').update(u).eq('id',id);
+  if(error){showToast('Error: '+error.message,'err');return;}
+  showToast('Crime updated','ok');
+  closeEdit();
+  await loadCrimes();
 }
 
 async function deleteCrime(id) {
-  if (!confirm('Delete this crime record? This cannot be undone.')) return;
-  const { error } = await sb.from('crimes').delete().eq('id', id);
-  if (error) { showToast('Error: ' + error.message, 'err'); return; }
-  showToast('Crime deleted', 'ok');
-  await loadAllCrimes();
+  if(!confirm('Delete this crime record? Cannot be undone.')) return;
+  const {error}=await sb.from('crimes').delete().eq('id',id);
+  if(error){showToast('Error: '+error.message,'err');return;}
+  showToast('Deleted','ok');
+  await loadCrimes();
 }
 
-// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
 // ANNOTATIONS TABLE
-// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
 function renderAnnotationsTable() {
-  document.getElementById('ann-tbar-count').textContent = `${allAnnotations.length} annotations`;
-  const tbody = document.getElementById('ann-tbody');
-
-  if (!allAnnotations.length) {
-    tbody.innerHTML = `<tr><td colspan="7" class="empty">No annotations yet</td></tr>`;
+  document.getElementById('ann-tcount').textContent=`${allAnnotations.length} annotations`;
+  const tbody=document.getElementById('ann-tbody');
+  if(!allAnnotations.length){
+    tbody.innerHTML=`<tr><td colspan="9" class="empty-state">No annotations yet — use Draw tools in the field map</td></tr>`;
     return;
   }
-
-  tbody.innerHTML = allAnnotations.map(a => `
-    <tr>
+  tbody.innerHTML=allAnnotations.map(a=>`
+    <tr style="cursor:pointer" onclick="flyToAnn('${a.id}')">
       <td style="font-weight:500">${a.label||'—'}</td>
-      <td><span class="badge" style="background:rgba(0,194,168,.12);color:var(--accent)">${a.annotation_type}</span></td>
-      <td class="td-desc" title="${a.notes||''}">${a.notes||'—'}</td>
-      <td class="td-mono">${a.created_by?.slice(0,8)||'—'}…</td>
-      <td class="td-mono">${a.created_at ? new Date(a.created_at).toLocaleDateString() : '—'}</td>
+      <td><span class="badge b-${a.annotation_type||'point'}">${a.annotation_type||'—'}</span></td>
+      <td class="tc-desc" title="${a.notes||''}">${a.notes||'—'}</td>
+      <td class="tc-mono">${a.lat?parseFloat(a.lat).toFixed(6):'—'}</td>
+      <td class="tc-mono">${a.lng?parseFloat(a.lng).toFixed(6):'—'}</td>
+      <td class="tc-mono" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${a.wkt||''}">${a.wkt?a.wkt.slice(0,40)+'…':'—'}</td>
+      <td class="tc-mono">${a.created_at?new Date(a.created_at).toLocaleDateString():'—'}</td>
       <td>
-        <div class="sw ${a.is_public?'on':''}" id="sw-${a.id}" onclick="togglePublic('${a.id}',${a.is_public})"></div>
+        <div class="sw ${a.is_public?'on':''}" onclick="event.stopPropagation();togglePublic('${a.id}',${a.is_public})"></div>
       </td>
       <td>
-        <div class="td-actions">
-          <button class="act-btn" onclick="flyToAnn('${a.id}')">Map</button>
-          <button class="act-btn act-del" onclick="deleteAnnotation('${a.id}')">Delete</button>
-        </div>
+        <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteAnn('${a.id}')">Del</button>
       </td>
     </tr>`).join('');
 }
 
-async function togglePublic(id, current) {
-  const newVal = !current;
-  const { error } = await sb.from('map_annotations').update({ is_public:newVal }).eq('id', id);
-  if (error) { showToast('Error: ' + error.message, 'err'); return; }
-  const sw = document.getElementById('sw-' + id);
-  if (sw) sw.classList.toggle('on', newVal);
-  const ann = allAnnotations.find(a => a.id === id);
-  if (ann) ann.is_public = newVal;
-  showToast(newVal ? 'Annotation made public' : 'Annotation made private', 'ok');
-  await loadAdminAnnotations(); // refresh map
-}
-
-async function deleteAnnotation(id) {
-  if (!confirm('Delete this annotation?')) return;
-  const { error } = await sb.from('map_annotations').delete().eq('id', id);
-  if (error) { showToast('Error: ' + error.message, 'err'); return; }
-  showToast('Annotation deleted', 'ok');
-  await loadAnnotations();
-  await loadAdminAnnotations();
-}
-
 function flyToAnn(id) {
-  showTab('map');
-  // Annotations are on the map — just switch to map view
+  const a=allAnnotations.find(x=>x.id===id);
+  if(a?.lat&&a?.lng) adminMap.flyTo([parseFloat(a.lat),parseFloat(a.lng)],17);
 }
 
-// ══════════════════════════════════════════════════════════════════
-// PHOTOS
-// ══════════════════════════════════════════════════════════════════
-async function renderPhotos() {
-  document.getElementById('photos-tbar-count').textContent = `${allPhotos.length} photos`;
-  const grid = document.getElementById('photo-grid');
+async function togglePublic(id,current) {
+  const nv=!current;
+  const {error}=await sb.from('map_annotations').update({is_public:nv}).eq('id',id);
+  if(error){showToast('Error: '+error.message,'err');return;}
+  const sw=document.querySelector(`[onclick*="togglePublic('${id}'"]`);
+  if(sw) sw.classList.toggle('on',nv);
+  const a=allAnnotations.find(x=>x.id===id); if(a) a.is_public=nv;
+  showToast(nv?'Made public':'Made private','ok');
+  renderAnnotationMarkers();
+}
 
-  if (!allPhotos.length) {
-    grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>No photos uploaded yet</div>';
+async function deleteAnn(id) {
+  if(!confirm('Delete this annotation?')) return;
+  const {error}=await sb.from('map_annotations').delete().eq('id',id);
+  if(error){showToast('Error: '+error.message,'err');return;}
+  showToast('Deleted','ok');
+  await loadAnnotations();
+}
+
+// ══════════════════════════════════════════════════════
+// PHOTOS
+// ══════════════════════════════════════════════════════
+async function renderPhotos() {
+  document.getElementById('photos-tcount').textContent=`${allPhotos.length} photos`;
+  const grid=document.getElementById('photo-grid');
+  if(!allPhotos.length){
+    grid.innerHTML=`<div class="empty-state" style="grid-column:1/-1">No photos uploaded yet</div>`;
     return;
   }
+  grid.innerHTML=allPhotos.map(p=>`
+    <div class="photo-card">
+      <img class="photo-img" data-path="${p.storage_path}" src=""
+        onclick="openLB(this)" alt="${p.crimes?.crime_type||'Photo'}"
+        style="opacity:0;transition:opacity .3s" onload="this.style.opacity=1">
+      <div class="photo-meta">
+        <div class="photo-type">${p.crimes?.crime_type||p.map_annotations?.label||'Photo'}</div>
+        <div class="photo-date">${p.crimes?.address||''}</div>
+        <button class="btn btn-sm btn-danger" style="margin-top:6px;width:100%;justify-content:center" onclick="deletePhoto('${p.id}','${p.storage_path}')">Delete</button>
+      </div>
+    </div>`).join('');
 
-  grid.innerHTML = allPhotos.map(p => {
-    const crimeType = p.crimes?.crime_type || p.map_annotations?.label || 'Photo';
-    const addr      = p.crimes?.address || '—';
-    const date      = p.created_at ? new Date(p.created_at).toLocaleDateString() : '';
-    return `
-      <div class="photo-card">
-        <img class="photo-img" src="" data-path="${p.storage_path}"
-          onclick="openLightbox(this)"
-          onload="this.style.opacity=1" style="opacity:0;transition:opacity .3s"
-          alt="${crimeType}">
-        <div class="photo-info">
-          <div class="photo-crime">${crimeType}</div>
-          <div class="photo-date">${addr} · ${date}</div>
-          <button class="btn btn-danger photo-del" onclick="deletePhoto('${p.id}','${p.storage_path}')">Delete</button>
-        </div>
-      </div>`;
-  }).join('');
-
-  // Load signed URLs for each photo
-  for (const p of allPhotos) {
-    const { data } = await sb.storage.from('crime-photos').createSignedUrl(p.storage_path, 3600);
-    if (data?.signedUrl) {
-      const img = document.querySelector(`img[data-path="${p.storage_path}"]`);
-      if (img) img.src = data.signedUrl;
+  // Load signed URLs
+  for(const p of allPhotos){
+    const {data}=await sb.storage.from('crime-photos').createSignedUrl(p.storage_path,3600);
+    if(data?.signedUrl){
+      const img=document.querySelector(`img[data-path="${p.storage_path}"]`);
+      if(img) img.src=data.signedUrl;
     }
   }
 }
 
-function openLightbox(img) {
-  document.getElementById('lightbox-img').src = img.src;
-  document.getElementById('lightbox').classList.add('open');
-}
-function closeLightbox() { document.getElementById('lightbox').classList.remove('open'); }
+function openLB(img){document.getElementById('lb-img').src=img.src;document.getElementById('lightbox').classList.add('open');}
+function closeLB(){document.getElementById('lightbox').classList.remove('open');}
 
-async function deletePhoto(id, path) {
-  if (!confirm('Delete this photo?')) return;
+async function deletePhoto(id,path){
+  if(!confirm('Delete this photo?')) return;
   await sb.storage.from('crime-photos').remove([path]);
-  await sb.from('photos').delete().eq('id', id);
-  showToast('Photo deleted', 'ok');
+  await sb.from('photos').delete().eq('id',id);
+  showToast('Photo deleted','ok');
   await loadPhotos();
 }
 
-// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
 // USERS
-// ══════════════════════════════════════════════════════════════════
-async function updateRole(userId, newRole) {
-  const { error } = await sb.from('profiles').update({ role: newRole }).eq('id', userId);
-  if (error) showToast('Error: ' + error.message, 'err');
-  else showToast('Role updated', 'ok');
+// ══════════════════════════════════════════════════════
+async function updateRole(uid,role){
+  const {error}=await sb.from('profiles').update({role}).eq('id',uid);
+  if(error) showToast('Error: '+error.message,'err');
+  else showToast('Role updated','ok');
 }
 
-// ══════════════════════════════════════════════════════════════════
-// CSV EXPORT — includes lat/lng for QGIS re-import
-// ══════════════════════════════════════════════════════════════════
-function exportCrimesCSV() {
-  const headers = ['id','crime_type','status','address','zip','incident_date',
-    'incident_time','description','notes','source','report_period','lat','lng','created_at'];
-
-  const rows = filteredCrimes.map(c => headers.map(h => {
-    const v = c[h];
-    if (v === null || v === undefined) return '';
-    const s = String(v).replace(/"/g, '""');
-    return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s}"` : s;
-  }).join(','));
-
-  const csv = [headers.join(','), ...rows].join('\n');
-  downloadFile('jefferson_park_crimes_' + today() + '.csv', csv, 'text/csv');
-  showToast(`Exported ${filteredCrimes.length} records`, 'ok');
+// ══════════════════════════════════════════════════════
+// CSV EXPORT — with full georeferencing for QGIS
+// ══════════════════════════════════════════════════════
+function toCSV(rows, headers) {
+  const escape = v => {
+    if(v===null||v===undefined) return '';
+    const s=String(v).replace(/"/g,'""');
+    return (s.includes(',')||s.includes('"')||s.includes('\n'))?`"${s}"`:s;
+  };
+  return [headers.join(','), ...rows.map(r=>headers.map(h=>escape(r[h])).join(','))].join('\n');
 }
 
-function exportAnnotationsCSV() {
-  const headers = ['id','label','annotation_type','notes','is_public','created_at'];
-  const rows = allAnnotations.map(a =>
-    headers.map(h => {
-      const v = a[h];
-      if (v === null || v === undefined) return '';
-      const s = String(v).replace(/"/g,'""');
-      return s.includes(',') || s.includes('"') ? `"${s}"` : s;
-    }).join(',')
-  );
-  const csv = [headers.join(','), ...rows].join('\n');
-  downloadFile('jefferson_park_annotations_' + today() + '.csv', csv, 'text/csv');
-}
-
-function downloadFile(filename, content, type) {
-  const blob = new Blob([content], { type });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url; a.download = filename; a.click();
+function downloadCSV(filename, csv) {
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=filename;a.click();
   URL.revokeObjectURL(url);
 }
 
-function today() {
-  return new Date().toISOString().split('T')[0];
+function exportCrimesCSV() {
+  // Include lat/lng for QGIS point import
+  // QGIS: Layer > Add Layer > Add Delimited Text Layer > select lat/lng columns
+  const headers=['id','crime_type','status','address','zip','incident_date',
+    'incident_time','description','notes','source','report_period',
+    'lat','lng','created_at','updated_at'];
+  const csv = toCSV(filteredCrimes, headers);
+  downloadCSV(`jefferson_park_crimes_${today()}.csv`, csv);
+  showToast(`Exported ${filteredCrimes.length} records with lat/lng for QGIS`,'ok');
 }
 
-// ══════════════════════════════════════════════════════════════════
-// TAB NAVIGATION
-// ══════════════════════════════════════════════════════════════════
+function exportAnnotationsCSV() {
+  // Includes WKT geometry column for QGIS geometry import
+  // QGIS: Layer > Add Layer > Add Delimited Text Layer > WKT geometry
+  const headers=['id','label','annotation_type','notes','is_public',
+    'lat','lng','wkt','created_at'];
+  const csv = toCSV(allAnnotations, headers);
+  downloadCSV(`jefferson_park_annotations_${today()}.csv`, csv);
+  showToast(`Exported ${allAnnotations.length} annotations with WKT geometry for QGIS`,'ok');
+}
+
+function today(){return new Date().toISOString().split('T')[0];}
+
+// ══════════════════════════════════════════════════════
+// TAB NAV
+// ══════════════════════════════════════════════════════
 function showTab(name) {
-  document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
-  document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
-  document.getElementById('tab-' + name).classList.add('active');
-
-  const tabs = { map:0, crimes:1, annotations:2, photos:3, users:4 };
-  const idx  = tabs[name] ?? 0;
-  document.querySelectorAll('.nav-tab')[idx]?.classList.add('active');
-
-  // Invalidate map size when switching to map tab
-  if (name === 'map' && adminMap) setTimeout(() => adminMap.invalidateSize(), 50);
+  document.querySelectorAll('.tab-pane').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.ntab').forEach(el=>el.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  const idx={crimes:0,annotations:1,photos:2,users:3}[name]??0;
+  document.querySelectorAll('.ntab')[idx]?.classList.add('active');
 }
 
-// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
+// RESIZABLE MAP/PANEL SPLIT
+// ══════════════════════════════════════════════════════
+function setupResize() {
+  const handle=document.getElementById('map-resize');
+  const mapSec=document.getElementById('map-section');
+  let dragging=false, startY=0, startH=0;
+
+  handle.addEventListener('mousedown',e=>{
+    dragging=true;startY=e.clientY;
+    startH=mapSec.getBoundingClientRect().height;
+    document.body.style.cursor='ns-resize';
+    document.body.style.userSelect='none';
+  });
+  document.addEventListener('mousemove',e=>{
+    if(!dragging) return;
+    const newH=Math.max(200,Math.min(window.innerHeight-200,startH+(e.clientY-startY)));
+    document.documentElement.style.setProperty('--map-h',newH+'px');
+    adminMap.invalidateSize();
+  });
+  document.addEventListener('mouseup',()=>{
+    dragging=false;
+    document.body.style.cursor='';
+    document.body.style.userSelect='';
+  });
+}
+
+// ══════════════════════════════════════════════════════
 // TOAST
-// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
 let toastTimer;
-function showToast(msg, type='ok') {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.className = type; t.style.display = 'block';
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.style.display='none', 3500);
+function showToast(msg,type='ok'){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className=type;t.style.display='block';
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.style.display='none',3500);
 }
 
-// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
 // STARTUP
-// ══════════════════════════════════════════════════════════════════
-(async () => {
-  const { data: { session } } = await sb.auth.getSession();
-  if (session?.user) {
-    const { data: profile } = await sb.from('profiles')
-      .select('role').eq('id', session.user.id).single();
-    if (profile?.role === 'admin') {
-      currentUser = session.user;
-      launchPortal();
-    }
+// ══════════════════════════════════════════════════════
+(async()=>{
+  const {data:{session}}=await sb.auth.getSession();
+  if(session?.user){
+    const {data:prof}=await sb.from('profiles').select('role').eq('id',session.user.id).single();
+    if(prof?.role==='admin'){currentUser=session.user;launch();}
   }
 })();
 </script>

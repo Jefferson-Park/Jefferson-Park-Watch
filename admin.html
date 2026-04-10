@@ -6,9 +6,6 @@
 <title>Jefferson Park — Admin Portal</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -187,6 +184,7 @@ tbody td{padding:7px 10px;vertical-align:middle}
 .marker-cluster-small,.marker-cluster-medium,.marker-cluster-large{background:rgba(0,194,168,.2)!important}
 .marker-cluster-small div,.marker-cluster-medium div,.marker-cluster-large div{background:#00c2a8!important;color:#000!important;font-family:var(--mono)!important;font-weight:600!important;font-size:12px!important}
 .empty-state{text-align:center;padding:40px;color:var(--muted);font-size:12px}
+@keyframes pulse-star{from{transform:translate(-50%,-100%) scale(1)}to{transform:translate(-50%,-100%) scale(1.25)}}
 </style>
 </head>
 <body>
@@ -393,7 +391,6 @@ tbody td{padding:7px 10px;vertical-align:middle}
 //const SUPABASE_ANON = 'YOUR_ANON_KEY';
 const SUPABASE_URL = 'https://sqiioihssmnqatjrednq.supabase.co';
 const SUPABASE_ANON = 'sb_publishable_3s5kREPGF10ahyWGMT9tBA_v9FUqbit';
-
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
 
@@ -472,15 +469,8 @@ function initMap() {
 
   adminMap = L.map('admin-map',{center:[34.028,-118.334],zoom:14,layers:[tileStreet]});
 
-  crimeCluster = L.markerClusterGroup({
-    maxClusterRadius:50,showCoverageOnHover:false,
-    iconCreateFunction(cluster){
-      const n = cluster.getChildCount();
-      const s = n<10?34:n<50?40:48;
-      return L.divIcon({html:`<div style="width:${s}px;height:${s}px;background:#00c2a8;border:2.5px solid white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:12px;font-weight:600;color:#000;box-shadow:0 0 0 3px rgba(0,194,168,.2)">${n}</div>`,className:'',iconSize:[s,s],iconAnchor:[s/2,s/2]});
-    }
-  });
-  crimeCluster.addTo(adminMap);
+  // Admin map uses plain layer group — no clustering for full data visibility
+  crimeCluster = L.layerGroup().addTo(adminMap);
 
   annLayerGrp  = L.layerGroup().addTo(adminMap);
   sloLayerGrp  = L.layerGroup();
@@ -509,11 +499,43 @@ function fitAllData() {
   if (bounds.length) adminMap.fitBounds(L.latLngBounds(bounds).pad(0.1));
 }
 
+let highlightMarker = null;
+
+function clearHighlight() {
+  if (highlightMarker) { adminMap.removeLayer(highlightMarker); highlightMarker = null; }
+}
+
 function flyTo(lat,lng,id) {
+  if (!lat||!lng) return;
   adminMap.flyTo([lat,lng],17);
-  if (id && markerById[id]) {
-    setTimeout(()=>{ markerById[id].openPopup(); },600);
-  }
+
+  // Drop a bright yellow star highlight marker
+  clearHighlight();
+  highlightMarker = L.marker([lat,lng], {
+    icon: L.divIcon({
+      html: `<div style="
+        width:0;height:0;
+        position:relative;
+      ">
+        <div style="
+          position:absolute;
+          transform:translate(-50%,-100%);
+          font-size:28px;
+          line-height:1;
+          filter:drop-shadow(0 2px 4px rgba(0,0,0,.5));
+          animation:pulse-star .6s ease-in-out infinite alternate;
+        ">⭐</div>
+      </div>`,
+      className:'',
+      iconSize:[0,0],
+      iconAnchor:[0,0],
+    }),
+    zIndexOffset:1000,
+  }).addTo(adminMap);
+
+  // Auto-remove after 4 seconds
+  setTimeout(clearHighlight, 4000);
+
   // Highlight table row
   document.querySelectorAll('tbody tr').forEach(r=>r.classList.remove('highlighted'));
   const row = document.getElementById('row-'+id);
@@ -534,15 +556,41 @@ async function loadCrimes() {
 }
 
 async function loadAnnotations() {
-  // Use the WKT function for georeferencing export
-  const {data,error} = await sb.rpc('get_annotations_with_wkt').catch(()=>({data:null,error:'no_fn'}));
-  if (error || !data) {
-    // Fallback to plain select if function doesn't exist yet
-    const {data:d2} = await sb.from('map_annotations').select('*').order('created_at',{ascending:false});
-    allAnnotations = (d2||[]).map(a=>({...a,wkt:'',lat:null,lng:null}));
-  } else {
-    allAnnotations = data||[];
+  // Load annotations with WKT geometry for both rendering and QGIS export
+  let annData = [];
+
+  // Try the WKT RPC function first (provides lat/lng/wkt for export)
+  try {
+    const {data,error} = await sb.rpc('get_annotations_with_wkt');
+    if (!error && data && data.length > 0) {
+      annData = data;
+      console.log('Annotations via WKT RPC:', annData.length);
+    }
+  } catch(e) { console.warn('WKT RPC not available:', e); }
+
+  // If WKT RPC returned nothing, fall back to direct query
+  // We'll get geometry as GeoJSON by casting in a custom function
+  if (!annData.length) {
+    try {
+      const {data,error} = await sb.rpc('get_annotations_geojson');
+      if (!error && data) {
+        annData = data;
+        console.log('Annotations via GeoJSON RPC:', annData.length);
+      }
+    } catch(e) { console.warn('GeoJSON RPC not available:', e); }
   }
+
+  // Last resort: plain select (geometry will be binary — can't render but can list)
+  if (!annData.length) {
+    const {data:d} = await sb.from('map_annotations')
+      .select('id,label,annotation_type,notes,is_public,created_by,created_at')
+      .order('created_at',{ascending:false});
+    annData = (d||[]).map(a=>({...a,geometry_geojson:null,wkt:'',lat:null,lng:null}));
+    console.warn('Using plain select fallback — geometry will not render on map');
+    console.warn('Run get_annotations_geojson() SQL function in Supabase to fix this');
+  }
+
+  allAnnotations = annData;
   document.getElementById('cnt-ann').textContent = allAnnotations.length;
   renderAnnotationsTable();
   renderAnnotationMarkers();
@@ -612,27 +660,59 @@ function renderCrimeMarkers() {
 // ══════════════════════════════════════════════════════
 function renderAnnotationMarkers() {
   annLayerGrp.clearLayers();
+  let rendered = 0;
   allAnnotations.forEach(a=>{
-    if (!a.geometry) return;
+    // geometry_geojson is set by get_annotations_geojson() RPC
+    // geometry field from wkt rpc may also be present as parsed geojson
+    const rawGeom = a.geometry_geojson || a.geometry;
+    if (!rawGeom) return;
     try {
-      const geom = typeof a.geometry==='string'? JSON.parse(a.geometry): a.geometry;
-      const color = a.is_public?'#00c2a8':'#ffaa00';
+      let geom;
+      if (typeof rawGeom === 'string') {
+        // Try JSON parse first
+        try { geom = JSON.parse(rawGeom); }
+        catch(e) {
+          // Could be WKT — skip for now (wkt rendering requires turf)
+          console.warn('Cannot parse geometry for:', a.label, rawGeom.slice(0,50));
+          return;
+        }
+      } else {
+        geom = rawGeom;
+      }
+      if (!geom || !geom.type) return;
+
+      const color = a.is_public ? '#00c2a8' : '#ffaa00';
       const pop = `<div style="padding:10px;font-family:var(--font)">
         <div style="font-weight:600;font-size:12px;color:${color}">${a.label||'Annotation'}</div>
-        <div style="font-size:10px;color:var(--muted);margin-top:3px">${a.annotation_type} · ${a.is_public?'Public':'Private'}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:3px">${a.annotation_type||''} · ${a.is_public?'Public':'Private'}</div>
         ${a.notes?`<div style="font-size:11px;margin-top:5px">${a.notes}</div>`:''}
       </div>`;
+
       let layer;
-      if (geom.type==='Point'){
-        layer = L.circleMarker([geom.coordinates[1],geom.coordinates[0]],
-          {radius:8,color:'white',weight:2,fillColor:color,fillOpacity:0.85});
+      if (geom.type === 'Point') {
+        layer = L.circleMarker(
+          [geom.coordinates[1], geom.coordinates[0]],
+          { radius:9, color:'white', weight:2.5, fillColor:color, fillOpacity:0.9 }
+        );
+      } else if (geom.type === 'Polygon' || geom.type === 'MultiPolygon') {
+        layer = L.geoJSON(geom, {
+          style:{ color, weight:2.5, fillColor:color, fillOpacity:0.15, dashArray:'6 3' }
+        });
+      } else if (geom.type === 'LineString' || geom.type === 'MultiLineString') {
+        layer = L.geoJSON(geom, {
+          style:{ color, weight:3, fillOpacity:0 }
+        });
       } else {
-        layer = L.geoJSON(geom,{style:{color,weight:2.5,fillColor:color,fillOpacity:0.12}});
+        layer = L.geoJSON(geom, {
+          style:{ color, weight:2.5, fillColor:color, fillOpacity:0.12 }
+        });
       }
-      layer.bindPopup(pop,{closeButton:true});
+      layer.bindPopup(pop, { closeButton:true });
       annLayerGrp.addLayer(layer);
-    } catch(e){console.warn('Ann render error',e);}
+      rendered++;
+    } catch(e) { console.warn('Ann render error for', a.label, e); }
   });
+  console.log('Annotations rendered:', rendered, 'of', allAnnotations.length);
 }
 
 // ══════════════════════════════════════════════════════
@@ -830,17 +910,22 @@ async function renderPhotos() {
     grid.innerHTML=`<div class="empty-state" style="grid-column:1/-1">No photos uploaded yet</div>`;
     return;
   }
-  grid.innerHTML=allPhotos.map(p=>`
-    <div class="photo-card">
+  grid.innerHTML=allPhotos.map(p=>{
+    const crimeId = p.crime_id;
+    const crime = crimeId ? allCrimes.find(c=>c.id===crimeId) : null;
+    const hasLoc = crime?.lat && crime?.lng;
+    return `<div class="photo-card">
       <img class="photo-img" data-path="${p.storage_path}" src=""
         onclick="openLB(this)" alt="${p.crimes?.crime_type||'Photo'}"
         style="opacity:0;transition:opacity .3s" onload="this.style.opacity=1">
       <div class="photo-meta">
         <div class="photo-type">${p.crimes?.crime_type||p.map_annotations?.label||'Photo'}</div>
         <div class="photo-date">${p.crimes?.address||''}</div>
-        <button class="btn btn-sm btn-danger" style="margin-top:6px;width:100%;justify-content:center" onclick="deletePhoto('${p.id}','${p.storage_path}')">Delete</button>
+        ${hasLoc ? `<button class="btn btn-sm" style="margin-top:5px;width:100%;justify-content:center" onclick="flyTo(${crime.lat},${crime.lng},'${crimeId}')">⭐ Show on Map</button>` : ''}
+        <button class="btn btn-sm btn-danger" style="margin-top:4px;width:100%;justify-content:center" onclick="deletePhoto('${p.id}','${p.storage_path}')">Delete</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
   // Load signed URLs
   for(const p of allPhotos){

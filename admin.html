@@ -584,38 +584,30 @@ async function loadCrimes() {
 }
 
 async function loadAnnotations() {
-  // Load annotations with WKT geometry for both rendering and QGIS export
+  // get_annotations_geojson() returns geometry_geojson (for map) + wkt + lat/lng (for export)
+  // This is the single source of truth — always use it
   let annData = [];
 
-  // Try the WKT RPC function first (provides lat/lng/wkt for export)
   try {
-    const {data,error} = await sb.rpc('get_annotations_with_wkt');
-    if (!error && data && data.length > 0) {
-      annData = data;
-      console.log('Annotations via WKT RPC:', annData.length);
+    const {data, error} = await sb.rpc('get_annotations_geojson');
+    if (error) throw error;
+    annData = data || [];
+    console.log('Annotations loaded:', annData.length, 'records');
+    if (annData.length > 0) {
+      console.log('Sample geometry_geojson:', annData[0].geometry_geojson);
     }
-  } catch(e) { console.warn('WKT RPC not available:', e); }
-
-  // If WKT RPC returned nothing, fall back to direct query
-  // We'll get geometry as GeoJSON by casting in a custom function
-  if (!annData.length) {
+  } catch(e) {
+    console.error('get_annotations_geojson failed:', e.message);
+    console.error('Make sure you ran the SQL function in Supabase:');
+    console.error('CREATE OR REPLACE FUNCTION get_annotations_geojson()...');
+    // Fallback: load without geometry (table only, no map rendering)
     try {
-      const {data,error} = await sb.rpc('get_annotations_geojson');
-      if (!error && data) {
-        annData = data;
-        console.log('Annotations via GeoJSON RPC:', annData.length);
-      }
-    } catch(e) { console.warn('GeoJSON RPC not available:', e); }
-  }
-
-  // Last resort: plain select (geometry will be binary — can't render but can list)
-  if (!annData.length) {
-    const {data:d} = await sb.from('map_annotations')
-      .select('id,label,annotation_type,notes,is_public,created_by,created_at')
-      .order('created_at',{ascending:false});
-    annData = (d||[]).map(a=>({...a,geometry_geojson:null,wkt:'',lat:null,lng:null}));
-    console.warn('Using plain select fallback — geometry will not render on map');
-    console.warn('Run get_annotations_geojson() SQL function in Supabase to fix this');
+      const {data:d} = await sb.from('map_annotations')
+        .select('id,label,annotation_type,notes,is_public,created_by,created_at')
+        .order('created_at',{ascending:false});
+      annData = (d||[]).map(a=>({...a,geometry_geojson:null,wkt:'',lat:null,lng:null}));
+      console.warn('Using fallback — annotations will appear in table but NOT on map');
+    } catch(e2) { console.error('Fallback also failed:', e2); }
   }
 
   allAnnotations = annData;
@@ -692,22 +684,22 @@ function renderAnnotationMarkers() {
   allAnnotations.forEach(a=>{
     // geometry_geojson is set by get_annotations_geojson() RPC
     // geometry field from wkt rpc may also be present as parsed geojson
-    const rawGeom = a.geometry_geojson || a.geometry;
-    if (!rawGeom) return;
+    const rawGeom = a.geometry_geojson;
+    if (!rawGeom) {
+      console.warn('No geometry_geojson for annotation:', a.label||a.id);
+      return;
+    }
     try {
       let geom;
       if (typeof rawGeom === 'string') {
-        // Try JSON parse first
         try { geom = JSON.parse(rawGeom); }
-        catch(e) {
-          // Could be WKT — skip for now (wkt rendering requires turf)
-          console.warn('Cannot parse geometry for:', a.label, rawGeom.slice(0,50));
-          return;
-        }
+        catch(e) { console.warn('JSON parse failed for:', a.label, rawGeom.slice(0,60)); return; }
       } else {
+        // Already a parsed object (Supabase may auto-parse JSON columns)
         geom = rawGeom;
       }
-      if (!geom || !geom.type) return;
+      if (!geom || !geom.type) { console.warn('Invalid geometry object for:', a.label); return; }
+      console.log('Rendering annotation:', a.label||'unnamed', geom.type);
 
       // High contrast colors — teal for public, bright amber for private
       const color  = a.is_public ? '#00ffcc' : '#ffcc00';

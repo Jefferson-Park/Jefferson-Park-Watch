@@ -484,6 +484,10 @@ function initMap() {
 function setBasemap(type) {
   if (type==='street'){adminMap.removeLayer(tileSat);adminMap.addLayer(tileStreet);tileStreet.bringToBack();}
   else{adminMap.removeLayer(tileStreet);adminMap.addLayer(tileSat);tileSat.bringToBack();}
+  // Bring data layers above tiles after basemap swap
+  sloLayerGrp.bringToFront();
+  unncLayerGrp.bringToFront();
+  annLayerGrp.bringToFront();
   crimeCluster.bringToFront();
   document.getElementById('mb-street').classList.toggle('on',type==='street');
   document.getElementById('mb-sat').classList.toggle('on',type==='satellite');
@@ -612,6 +616,9 @@ async function loadAnnotations() {
 
   allAnnotations = annData;
   document.getElementById('cnt-ann').textContent = allAnnotations.length;
+  if (allAnnotations.length === 0) {
+    console.warn('No annotations returned. Check RLS: map_annotations needs SELECT policy for authenticated users.');
+  }
   renderAnnotationsTable();
   renderAnnotationMarkers();
   renderBoundaries();
@@ -681,71 +688,68 @@ function renderCrimeMarkers() {
 function renderAnnotationMarkers() {
   annLayerGrp.clearLayers();
   let rendered = 0;
-  allAnnotations.forEach(a=>{
-    // geometry_geojson is set by get_annotations_geojson() RPC
-    // geometry field from wkt rpc may also be present as parsed geojson
-    const rawGeom = a.geometry_geojson;
-    if (!rawGeom) {
-      console.warn('No geometry_geojson for annotation:', a.label||a.id);
+
+  allAnnotations.forEach(ann => {
+    if (!ann.geometry_geojson) {
+      console.warn('No geometry_geojson for:', ann.label||ann.id);
       return;
     }
     try {
-      let geom;
-      if (typeof rawGeom === 'string') {
-        try { geom = JSON.parse(rawGeom); }
-        catch(e) { console.warn('JSON parse failed for:', a.label, rawGeom.slice(0,60)); return; }
-      } else {
-        // Already a parsed object (Supabase may auto-parse JSON columns)
-        geom = rawGeom;
-      }
-      if (!geom || !geom.type) { console.warn('Invalid geometry object for:', a.label); return; }
-      console.log('Rendering annotation:', a.label||'unnamed', geom.type);
+      // Parse string → object (Supabase returns json columns as strings sometimes)
+      const geom = (typeof ann.geometry_geojson === 'string')
+        ? JSON.parse(ann.geometry_geojson)
+        : ann.geometry_geojson;
 
-      // High contrast colors — teal for public, bright amber for private
-      const color  = a.is_public ? '#00ffcc' : '#ffcc00';
-      const shadow = a.is_public ? '#007a5e' : '#cc8800';
-      const pop = `<div style="padding:10px;font-family:var(--font)">
-        <div style="font-weight:600;font-size:12px;color:${color}">${a.label||'Annotation'}</div>
-        <div style="font-size:10px;color:var(--muted);margin-top:3px">${a.annotation_type||''} · ${a.is_public?'Public':'Private'}</div>
-        ${a.notes?`<div style="font-size:11px;margin-top:5px">${a.notes}</div>`:''}
-        <button class="btn btn-sm" style="margin-top:6px" onclick="flyToAnn('${a.id}')">★ Star</button>
+      // High contrast: teal = public, amber = private
+      const isLine = ann.annotation_type === 'line';
+      const strokeColor = isLine ? '#ffcc00' : (ann.is_public ? '#00ffcc' : '#ffcc00');
+      const fillColor   = ann.is_public ? '#00c2a8' : '#ffaa00';
+
+      const popup = `<div style="padding:10px;font-family:var(--font)">
+        <b style="color:${strokeColor};font-size:12px">${ann.label||'Untitled'}</b><br>
+        <span class="badge b-${ann.annotation_type}">${ann.annotation_type}</span>
+        <span style="font-size:10px;color:var(--muted);margin-left:4px">${ann.is_public?'Public':'Private'}</span>
+        ${ann.notes?`<p style="margin-top:5px;font-size:11px">${ann.notes}</p>`:''}
+        <button class="btn btn-sm" style="margin-top:6px" onclick="flyToAnn('${ann.id}')">★ Star</button>
       </div>`;
 
-      let layer;
-      if (geom.type === 'Point') {
-        // Large bright circle with dark outline for max contrast
-        layer = L.circleMarker(
-          [geom.coordinates[1], geom.coordinates[0]],
-          { radius:12, color:shadow, weight:3, fillColor:color, fillOpacity:1 }
-        );
-      } else if (geom.type === 'Polygon' || geom.type === 'MultiPolygon') {
-        layer = L.geoJSON(geom, {
-          style:{ color, weight:4, fillColor:color, fillOpacity:0.25,
-            opacity:1, lineCap:'round', lineJoin:'round' }
-        });
-      } else if (geom.type === 'LineString' || geom.type === 'MultiLineString') {
-        layer = L.geoJSON(geom, {
-          style:{ color, weight:5, opacity:1, lineCap:'round', lineJoin:'round',
-            fillOpacity:0 }
-        });
-      } else {
-        layer = L.geoJSON(geom, {
-          style:{ color, weight:4, fillColor:color, fillOpacity:0.2 }
-        });
-      }
-      layer.bindPopup(pop, { closeButton:true });
-      // Add tooltip label for visibility
-      if (a.label) {
-        layer.bindTooltip(a.label, {
-          permanent: false, direction:'top',
-          className: 'ann-tooltip',
-          offset: [0,-10]
+      // Use L.geoJSON for everything — handles coordinate order correctly
+      const layer = L.geoJSON(geom, {
+        style: () => ({
+          color:       strokeColor,
+          weight:      isLine ? 5 : 4,
+          opacity:     1,
+          fillColor:   fillColor,
+          fillOpacity: isLine ? 0 : 0.5,   // 50% fill as requested
+          lineCap:     'round',
+          lineJoin:    'round',
+          dashArray:   ann.is_public ? '' : '8 4',  // dashed = private
+        }),
+        pointToLayer: (feature, latlng) => L.circleMarker(latlng, {
+          radius:      12,
+          color:       '#fff',
+          weight:      3,
+          fillColor:   strokeColor,
+          fillOpacity: 1,
+        }),
+      });
+
+      layer.bindPopup(popup, { closeButton: true });
+      if (ann.label) {
+        layer.bindTooltip(ann.label, {
+          permanent: false, direction: 'top',
+          className: 'ann-tooltip', offset: [0, -8]
         });
       }
       annLayerGrp.addLayer(layer);
       rendered++;
-    } catch(e) { console.warn('Ann render error for', a.label, e); }
+    } catch(e) {
+      console.error('Error rendering annotation:', ann.id, e);
+    }
   });
+
+  // Bring annotations above base tiles
+  annLayerGrp.bringToFront();
   console.log('Annotations rendered:', rendered, 'of', allAnnotations.length);
 }
 

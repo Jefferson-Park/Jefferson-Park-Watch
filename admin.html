@@ -565,10 +565,13 @@ function clearAllStars() {
   document.querySelectorAll('tbody tr').forEach(r=>r.classList.remove('highlighted'));
 }
 
-function flyTo(lat,lng,id) {
+function flyTo(lat, lng, id, labelOverride) {
   if (!lat||!lng) return;
-  const c = allCrimes.find(x=>x.id===id);
-  const label = c ? c.crime_type + (c.address?' · '+c.address:'') : id;
+  let label = labelOverride || null;
+  if (!label) {
+    const c = allCrimes.find(x=>x.id===id);
+    label = c ? c.crime_type + (c.address?' · '+c.address.slice(0,30):'') : String(id).slice(0,20);
+  }
   toggleStar(lat, lng, id, label);
   adminMap.flyTo([lat,lng],17);
 }
@@ -1006,10 +1009,28 @@ function closeLB(){document.getElementById('lightbox').classList.remove('open');
 
 async function togglePhotoPublic(id, current) {
   const newVal = !current;
-  const { error } = await sb.from('photos').update({ is_public: newVal }).eq('id', id);
-  if (error) { showToast('Error: '+error.message,'err'); return; }
-  showToast(newVal ? 'Photo now public on field map' : 'Photo made private','ok');
-  // Reload photos so the UI reflects true DB state (prevents toggle snap-back)
+  console.log('Toggling photo', id, 'to is_public:', newVal);
+
+  const { data, error } = await sb
+    .from('photos')
+    .update({ is_public: newVal })
+    .eq('id', id)
+    .select('id, is_public');
+
+  console.log('Update result:', data, error);
+
+  if (error) {
+    showToast('Error: '+error.message,'err');
+    console.error('Photo update failed — check RLS policy on photos table');
+    return;
+  }
+  if (!data || data.length === 0) {
+    showToast('Update failed — check RLS permissions','err');
+    console.error('Update returned no rows — RLS may be blocking the UPDATE');
+    return;
+  }
+
+  showToast(newVal ? '🌐 Photo is now public' : '🔒 Photo made private','ok');
   await loadPhotos();
 }
 

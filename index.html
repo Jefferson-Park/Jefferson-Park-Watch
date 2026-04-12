@@ -839,7 +839,11 @@ function initMap() {
     }
   }
 
-  loadBoundaries().then(() => { loadCrimes(); loadPublicAnnotations(); loadPublicPhotos(); });
+  loadBoundaries().then(async () => {
+    await loadCrimes();           // crimes must load first — photos need lat/lng from crimesData
+    loadPublicAnnotations();
+    loadPublicPhotos();
+  });
   setupRealtime();
 }
 
@@ -986,23 +990,38 @@ function renderPhotoPin(photos) {
   photos.forEach(p => {
     const icon = L.divIcon({
       html: `<div style="position:relative;width:0;height:0">
-        <div style="position:absolute;transform:translate(-50%,-100%);font-size:20px;
-          filter:drop-shadow(0 2px 4px rgba(0,0,0,.6));line-height:1">📷</div>
+        <div style="
+          position:absolute;
+          transform:translate(-50%,-100%);
+          display:flex;flex-direction:column;align-items:center;
+          filter:drop-shadow(0 2px 5px rgba(0,0,0,.6));
+        ">
+          <div style="font-size:22px;line-height:1">⭐</div>
+          <div style="font-size:9px;background:#fbbf24;color:#000;font-weight:700;
+            padding:1px 5px;border-radius:3px;white-space:nowrap;margin-top:1px;
+            max-width:90px;overflow:hidden;text-overflow:ellipsis">
+            📷 ${(p.crimeType||'Photo').slice(0,15)}
+          </div>
+        </div>
       </div>`,
       className: '', iconSize: [0,0], iconAnchor: [0,0],
     });
-    const marker = L.marker([p.lat, p.lng], { icon, zIndexOffset: 500 });
+    const marker = L.marker([p.lat, p.lng], { icon, zIndexOffset: 800 });
     marker.bindPopup(`
       <div style="padding:10px;font-family:var(--font);color:var(--text)">
-        <div style="font-weight:600;font-size:12px;color:#ffcc00;margin-bottom:4px">📷 Photo</div>
-        <div style="font-size:11px;margin-bottom:3px">${p.crimeType||'—'}</div>
+        <div style="font-weight:600;font-size:12px;color:#fbbf24;margin-bottom:4px">⭐ Photo Location</div>
+        <div style="font-size:11px;font-weight:500;margin-bottom:3px">${p.crimeType||'—'}</div>
         <div style="font-size:11px;color:var(--muted)">${p.address||'—'}</div>
-        ${p.caption ? `<div style="font-size:11px;margin-top:5px">${p.caption}</div>` : ''}
+        ${p.caption ? `<div style="font-size:11px;margin-top:5px;font-style:italic">${p.caption}</div>` : ''}
       </div>`, { closeButton: true, autoClose: false }
     );
     photoLayerGroup.addLayer(marker);
   });
-  photoLayerGroup.bringToFront();
+  // Only add to map if toggle is ON
+  if (layerVisible.photos) {
+    photoLayerGroup.addTo(map);
+    photoLayerGroup.bringToFront();
+  }
   console.log('Photo pins rendered:', photos.length);
 }
 
@@ -1640,7 +1659,13 @@ async function saveSLO(id) {
 // ══════════════════════════════════════════════════════════════════
 function setupRealtime() {
   sb.channel('crimes-rt')
-    .on('postgres_changes',{event:'*',schema:'public',table:'crimes'}, () => loadCrimes())
+    .on('postgres_changes',{event:'*',schema:'public',table:'crimes'}, async () => {
+      await loadCrimes();
+      loadPublicPhotos(); // refresh photo pins since they depend on crime locations
+    })
+    .on('postgres_changes',{event:'*',schema:'public',table:'map_annotations'}, () => {
+      loadPublicAnnotations(); // refresh annotations when any change
+    })
     .subscribe();
 }
 

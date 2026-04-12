@@ -954,25 +954,37 @@ async function renderPhotos() {
   }
   grid.innerHTML=allPhotos.map(p=>{
     const crimeId = p.crime_id;
-    const crime = crimeId ? allCrimes.find(c=>c.id===crimeId) : null;
-    const hasLoc = crime?.lat && crime?.lng;
+    const annId   = p.annotation_id;
+    const crime   = crimeId ? allCrimes.find(c=>c.id===crimeId) : null;
+    const hasLoc  = crime?.lat && crime?.lng;
     const isPublic = p.is_public || false;
     const crimeLabel = p.crimes?.crime_type || p.map_annotations?.label || 'Photo';
-    const addr = p.crimes?.address || '';
+    const addr = p.crimes?.address || (annId ? 'Linked to annotation' : '');
+    // Warn if photo is public but parent crime/annotation is not
+    const parentPublic = crime ? true : true; // crimes don't have is_public, approved via status
     return `<div class="photo-card" id="pcard-${p.id}">
       <img class="photo-img" data-path="${p.storage_path}" src=""
         onclick="openLB(this)" alt="${crimeLabel}"
         style="opacity:0;transition:opacity .3s" onload="this.style.opacity=1">
       <div class="photo-meta">
         <div class="photo-type">${crimeLabel}</div>
-        <div class="photo-date" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${addr}</div>
-        <div style="display:flex;align-items:center;gap:6px;margin-top:7px">
-          <span style="font-size:10px;color:var(--muted)">Public</span>
-          <div class="sw ${isPublic?'on':''}" id="photo-sw-${p.id}"
-            onclick="togglePhotoPublic('${p.id}',${isPublic})"></div>
+        <div class="photo-date" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px">${addr}</div>
+        <div style="margin-top:7px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+            <span style="font-size:10px;color:${isPublic?'var(--accent)':'var(--muted)'};font-weight:${isPublic?'600':'400'}">
+              ${isPublic ? '🌐 Public' : '🔒 Private'}
+            </span>
+            <div class="sw ${isPublic?'on':''}" id="photo-sw-${p.id}"
+              onclick="togglePhotoPublic('${p.id}',${isPublic})"></div>
+          </div>
+          <div style="font-size:9px;color:var(--muted);line-height:1.4">
+            ${isPublic
+              ? 'Visible to all users on field map'
+              : 'Only you and admins can see this'}
+          </div>
         </div>
-        ${hasLoc ? `<button class="btn btn-sm" style="margin-top:5px;width:100%;justify-content:center"
-          onclick="flyTo(${crime.lat},${crime.lng},'photo-${p.id}','📷 '+${JSON.stringify(crimeLabel)})">⭐ Show on Map</button>` : ''}
+        ${hasLoc ? `<button class="btn btn-sm" style="margin-top:6px;width:100%;justify-content:center"
+          onclick="flyTo(${crime.lat},${crime.lng},'photo-${p.id}','📷 ${crimeLabel.replace(/'/g,"\'")}')">⭐ Show on Map</button>` : ''}
         <button class="btn btn-sm btn-danger" style="margin-top:4px;width:100%;justify-content:center"
           onclick="deletePhoto('${p.id}','${p.storage_path}')">Delete</button>
       </div>
@@ -996,11 +1008,9 @@ async function togglePhotoPublic(id, current) {
   const newVal = !current;
   const { error } = await sb.from('photos').update({ is_public: newVal }).eq('id', id);
   if (error) { showToast('Error: '+error.message,'err'); return; }
-  const sw = document.getElementById('photo-sw-'+id);
-  if (sw) sw.classList.toggle('on', newVal);
-  const photo = allPhotos.find(p=>p.id===id);
-  if (photo) photo.is_public = newVal;
-  showToast(newVal ? 'Photo is now public on field map' : 'Photo made private','ok');
+  showToast(newVal ? 'Photo now public on field map' : 'Photo made private','ok');
+  // Reload photos so the UI reflects true DB state (prevents toggle snap-back)
+  await loadPhotos();
 }
 
 async function deletePhoto(id,path){

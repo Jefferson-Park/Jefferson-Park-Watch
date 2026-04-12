@@ -433,14 +433,14 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--accent)" stroke-width="2"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>
         </div>
         <span class="tog-label">Annotations</span>
-        <div class="tog-sw on" id="sw-annotations"></div>
+        <div class="tog-sw" id="sw-annotations"></div>
       </div>
       <div class="tog-row" onclick="togglePhotoPins()">
         <div class="tog-icon" style="background:rgba(255,204,0,.15)">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#ffcc00" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
         </div>
         <span class="tog-label">Photo Locations</span>
-        <div class="tog-sw on" id="sw-photos"></div>
+        <div class="tog-sw" id="sw-photos"></div>
       </div>
 
       <!-- Draw hint for officers -->
@@ -503,29 +503,46 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
 <div class="modal-overlay" id="add-modal">
   <div class="modal-box">
     <div class="modal-title">Add Crime Incident</div>
-    <div class="mf-grid">
-      <div class="mf"><label>Crime Type</label><select id="add-type"></select></div>
-      <div class="mf"><label>Status</label>
-        <select id="add-status">
-          <option value="open">Open</option>
-          <option value="in_progress">In Progress</option>
-          <option value="closed">Closed</option>
-        </select>
+    <!-- Step 1: Crime details -->
+    <div id="add-step1">
+      <div class="mf-grid">
+        <div class="mf"><label>Crime Type</label><select id="add-type"></select></div>
+        <div class="mf"><label>Status</label>
+          <select id="add-status">
+            <option value="open">Open</option>
+            <option value="in_progress">In Progress</option>
+            <option value="closed">Closed</option>
+          </select>
+        </div>
+        <div class="mf mf-full">
+          <label>Address</label>
+          <input type="text" id="add-addr" placeholder="e.g. 28** Crenshaw Bl" oninput="geocodeAddr()">
+          <div id="geocode-status"></div>
+          <div class="mf-hint">Use ** for redacted block numbers. Area defaults to Jefferson Park, LA.</div>
+        </div>
+        <div class="mf"><label>Date</label><input type="date" id="add-date"></div>
+        <div class="mf"><label>Time</label><input type="time" id="add-time"></div>
+        <div class="mf mf-full"><label>Description</label><textarea id="add-desc" placeholder="Describe the incident…"></textarea></div>
       </div>
-      <div class="mf mf-full">
-        <label>Address</label>
-        <input type="text" id="add-addr" placeholder="e.g. 28** Crenshaw Bl" oninput="geocodeAddr()">
-        <div id="geocode-status"></div>
-        <div class="mf-hint">Use ** for redacted block numbers. Area defaults to Jefferson Park, LA.</div>
+      <div id="add-coords" style="font-family:var(--mono);font-size:10px;color:var(--muted)"></div>
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="closeModal('add-modal')">Cancel</button>
+        <button class="btn-submit" onclick="submitCrime()">Save Incident</button>
       </div>
-      <div class="mf"><label>Date</label><input type="date" id="add-date"></div>
-      <div class="mf"><label>Time</label><input type="time" id="add-time"></div>
-      <div class="mf mf-full"><label>Description</label><textarea id="add-desc" placeholder="Describe the incident…"></textarea></div>
     </div>
-    <div id="add-coords" style="font-family:var(--mono);font-size:10px;color:var(--muted)"></div>
-    <div class="modal-footer">
-      <button class="btn-cancel" onclick="closeModal('add-modal')">Cancel</button>
-      <button class="btn-submit" onclick="submitCrime()">Save Incident</button>
+    <!-- Step 2: Photo upload (shown after crime saved) -->
+    <div id="add-step2" style="display:none">
+      <div style="text-align:center;padding:10px 0 18px">
+        <div style="font-size:28px;margin-bottom:8px">✅</div>
+        <div style="font-weight:600;margin-bottom:4px" id="add-success-label">Crime recorded</div>
+        <div style="font-size:12px;color:var(--muted)">Would you like to attach a photo?</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-cancel" style="flex:1" onclick="closeModal('add-modal');resetAddForm()">Done — No Photo</button>
+        <button class="btn-submit" style="flex:1" onclick="triggerAddCrimePhoto()">
+          📷 Add Photo
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -534,11 +551,24 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
 <div class="modal-overlay" id="ann-modal">
   <div class="modal-box" style="width:360px">
     <div class="modal-title">Save Annotation</div>
-    <div class="mf"><label>Label</label><input type="text" id="ann-label" placeholder="e.g. Hotspot, Patrol route…"></div>
-    <div class="mf"><label>Notes</label><textarea id="ann-notes" placeholder="Additional notes…" style="min-height:70px"></textarea></div>
-    <div class="modal-footer">
-      <button class="btn-cancel" onclick="closeModal('ann-modal')">Cancel</button>
-      <button class="btn-submit" onclick="saveAnnotation()">Save</button>
+    <div id="ann-step1">
+      <div class="mf"><label>Label</label><input type="text" id="ann-label" placeholder="e.g. Hotspot, Patrol route…"></div>
+      <div class="mf"><label>Notes</label><textarea id="ann-notes" placeholder="Additional notes…" style="min-height:70px"></textarea></div>
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="closeModal('ann-modal')">Cancel</button>
+        <button class="btn-submit" onclick="saveAnnotation()">Save Annotation</button>
+      </div>
+    </div>
+    <div id="ann-step2" style="display:none">
+      <div style="text-align:center;padding:10px 0 18px">
+        <div style="font-size:28px;margin-bottom:8px">✅</div>
+        <div style="font-weight:600;margin-bottom:4px">Annotation saved</div>
+        <div style="font-size:12px;color:var(--muted)">Attach a photo to this annotation?</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-cancel" style="flex:1" onclick="closeModal('ann-modal');resetAnnForm()">Done</button>
+        <button class="btn-submit" style="flex:1" onclick="triggerAnnPhoto()">📷 Add Photo</button>
+      </div>
     </div>
   </div>
 </div>
@@ -602,7 +632,7 @@ let map, currentUser, userRole = 'public';
 let crimesData = [], boundariesData = [], annotationsData = [];
 let showClosed = false, dateFrom = null, dateTo = null;
 let activeCrimeTypes = new Set();
-let layerVisible = { slo: false, unnc: false, annotations: true, photos: true };
+let layerVisible = { slo: false, unnc: false, annotations: false, photos: false };
 let clusterGroup = null;
 let sloLayerGroup = null, unncLayerGroup = null, annotationLayerGroup = null, photoLayerGroup = null;
 let geocodeLng = null, geocodeLat = null;
@@ -768,8 +798,8 @@ function initMap() {
 
   sloLayerGroup        = L.layerGroup();
   unncLayerGroup       = L.layerGroup();
-  annotationLayerGroup = L.layerGroup().addTo(map); // public annotations visible by default
-  photoLayerGroup      = L.layerGroup().addTo(map); // public photo pins visible by default
+  annotationLayerGroup = L.layerGroup(); // off by default — user toggles on
+  photoLayerGroup      = L.layerGroup(); // off by default
 
   // Draw controls — wrapped in try/catch so CDN failure doesn't crash map
   if (userRole === 'admin' || userRole === 'field_officer') {
@@ -879,15 +909,21 @@ async function loadPublicAnnotations() {
 
 function renderPublicAnnotations() {
   annotationLayerGroup.clearLayers();
-  annotationsData.forEach(ann => {
+  const color = '#00c2a8';
+
+  // Render in order: polygons first, then lines, then points
+  // so points are always on top and selectable
+  const ordered = [
+    ...annotationsData.filter(a => a.annotation_type === 'polygon'),
+    ...annotationsData.filter(a => a.annotation_type === 'line'),
+    ...annotationsData.filter(a => a.annotation_type === 'point'),
+  ];
+
+  ordered.forEach(ann => {
     if (!ann.geometry_geojson) return;
     try {
       const geom = (typeof ann.geometry_geojson === 'string')
-        ? JSON.parse(ann.geometry_geojson)
-        : ann.geometry_geojson;
-
-      const isLine = ann.annotation_type === 'line';
-      const color  = '#00c2a8';
+        ? JSON.parse(ann.geometry_geojson) : ann.geometry_geojson;
 
       const popup = `<div style="padding:10px;font-family:var(--font);color:var(--text)">
         <div style="font-weight:600;font-size:12px;color:${color}">${ann.label||'Annotation'}</div>
@@ -898,32 +934,25 @@ function renderPublicAnnotations() {
       const layer = L.geoJSON(geom, {
         style: () => ({
           color,
-          weight:      isLine ? 4 : 3,
+          weight:      ann.annotation_type === 'line' ? 4 : 3,
           opacity:     0.9,
           fillColor:   color,
-          fillOpacity: isLine ? 0 : 0.5,
-          lineCap:     'round',
-          lineJoin:    'round',
+          fillOpacity: ann.annotation_type === 'polygon' ? 0.25 : 0,
+          lineCap:     'round', lineJoin:'round',
         }),
-        pointToLayer: (feature, latlng) => L.circleMarker(latlng, {
-          radius:      9,
-          color:       'white',
-          weight:      2.5,
-          fillColor:   color,
-          fillOpacity: 1,
+        pointToLayer: (_f, latlng) => L.circleMarker(latlng, {
+          radius:9, color:'white', weight:2.5, fillColor:color, fillOpacity:1,
+          // Points get highest z-index via pane
+          pane: 'markerPane',
         }),
       });
 
-      layer.bindPopup(popup, { closeButton: true, autoClose: false });
-      if (ann.label) {
-        layer.bindTooltip(ann.label, {
-          permanent: false, direction: 'top', className: 'ann-tooltip'
-        });
-      }
+      layer.bindPopup(popup, { closeButton:true, autoClose:false });
+      if (ann.label) layer.bindTooltip(ann.label, { permanent:false, direction:'top', className:'ann-tooltip' });
       annotationLayerGroup.addLayer(layer);
     } catch(e) { console.warn('Annotation render error:', e); }
   });
-  annotationLayerGroup.bringToFront();
+  if (layerVisible.annotations) annotationLayerGroup.bringToFront();
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -1166,7 +1195,8 @@ function toggleAnnotations() {
 function buildToggles() {
   const el = document.getElementById('crime-toggles');
   Object.entries(CRIMES).forEach(([type, cfg]) => {
-    activeCrimeTypes.add(type);
+    // Default all crime types OFF — user turns on what they want
+    // activeCrimeTypes.add(type);
     el.innerHTML += `
       <div class="tog-row" onclick="toggleCrime('${type}',this)">
         <div class="tog-icon" style="background:${cfg.color}22">
@@ -1174,7 +1204,7 @@ function buildToggles() {
         </div>
         <span class="tog-label" style="font-size:11px">${type}</span>
         <span class="tog-count" id="ct-${type.replace(/\W/g,'_')}">0</span>
-        <div class="tog-sw on" id="sw-${type.replace(/\W/g,'_')}"></div>
+        <div class="tog-sw" id="sw-${type.replace(/\W/g,'_')}"></div>
       </div>`;
   });
 }
@@ -1260,13 +1290,25 @@ function onSearchKey(e) { if (e.key==='Escape') document.getElementById('search-
 // ══════════════════════════════════════════════════════════════════
 // LOCATE ME
 // ══════════════════════════════════════════════════════════════════
+let locationMarker = null;
 function locateMe() {
   if (!navigator.geolocation) { showToast('Geolocation not supported','err'); return; }
   navigator.geolocation.getCurrentPosition(pos => {
     const { latitude:lat, longitude:lng } = pos.coords;
     map.flyTo([lat,lng], 17);
-    L.circleMarker([lat,lng], { radius:8, color:'white', weight:3, fillColor:'#0088ff', fillOpacity:1 })
-      .addTo(map).bindPopup('Your location').openPopup();
+    if (locationMarker) map.removeLayer(locationMarker);
+    locationMarker = L.marker([lat,lng], {
+      icon: L.divIcon({
+        html: `<div style="position:relative;width:0;height:0">
+          <div style="position:absolute;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center">
+            <div style="width:22px;height:32px;background:#9333ea;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,.5)"></div>
+            <div style="font-size:10px;color:#9333ea;font-weight:700;margin-top:3px;text-shadow:0 1px 3px rgba(0,0,0,.5);white-space:nowrap">You are here</div>
+          </div>
+        </div>`,
+        className:'', iconSize:[0,0], iconAnchor:[0,0]
+      }),
+      zIndexOffset: 3000
+    }).addTo(map).bindPopup('<b style="color:#9333ea">📍 Your Location</b>', {closeButton:true});
   }, () => showToast('Could not get your location','err'));
 }
 
@@ -1308,6 +1350,8 @@ function toggleSidebar() {
 // ══════════════════════════════════════════════════════════════════
 // ANNOTATIONS
 // ══════════════════════════════════════════════════════════════════
+let lastAddedAnnId = null;
+
 async function saveAnnotation() {
   if (!pendingGeometry) { closeModal('ann-modal'); return; }
   const label = document.getElementById('ann-label').value.trim();
@@ -1323,12 +1367,35 @@ async function saveAnnotation() {
     p_notes:      notes || null,
   });
 
-  if (error) showToast('Error: ' + error.message, 'err');
-  else showToast('Annotation saved', 'ok');
+  if (error) { showToast('Error: ' + error.message, 'err'); return; }
+
+  // Get the new annotation id for photo attachment
+  const { data: newAnn } = await sb.from('map_annotations')
+    .select('id').eq('created_by', currentUser.id)
+    .order('created_at',{ascending:false}).limit(1).single();
+  lastAddedAnnId = newAnn?.id || null;
 
   pendingGeometry = null;
-  closeModal('ann-modal');
   cancelDraw();
+  // Show photo option
+  document.getElementById('ann-step1').style.display = 'none';
+  document.getElementById('ann-step2').style.display = 'block';
+}
+
+function triggerAnnPhoto() {
+  if (!lastAddedAnnId) { closeModal('ann-modal'); return; }
+  currentPhotoCtx = { id: lastAddedAnnId, type: 'annotation' };
+  document.getElementById('photo-input').click();
+  closeModal('ann-modal');
+  resetAnnForm();
+}
+
+function resetAnnForm() {
+  document.getElementById('ann-step1').style.display = 'block';
+  document.getElementById('ann-step2').style.display = 'none';
+  document.getElementById('ann-label').value = '';
+  document.getElementById('ann-notes').value = '';
+  lastAddedAnnId = null;
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -1364,6 +1431,8 @@ function geocodeAddr() {
   }, 700);
 }
 
+let lastAddedCrimeId = null;
+
 async function submitCrime() {
   const type  = document.getElementById('add-type').value;
   const status= document.getElementById('add-status').value;
@@ -1374,16 +1443,44 @@ async function submitCrime() {
 
   if (!type || !addr || !geocodeLng) { showToast('Fill address and wait for geocoding','err'); return; }
 
-  const { error } = await sb.rpc('insert_crime', {
+  const { data, error } = await sb.rpc('insert_crime', {
     p_crime_type: type, p_status: status, p_address: addr,
     p_description: desc, p_incident_date: date||null, p_incident_time: time||null,
     p_lng: geocodeLng, p_lat: geocodeLat,
     p_source: 'manual', p_updated_by: currentUser?.id||null,
   });
   if (error) { showToast('Error: '+error.message,'err'); return; }
-  showToast('Crime added','ok');
-  closeModal('add-modal');
+
+  // Get the new crime ID for photo attachment
+  const { data: newCrime } = await sb.from('crimes')
+    .select('id').eq('address', addr).eq('source','manual')
+    .order('created_at',{ascending:false}).limit(1).single();
+  lastAddedCrimeId = newCrime?.id || null;
+
+  // Show step 2 — photo option
+  document.getElementById('add-step1').style.display = 'none';
+  document.getElementById('add-step2').style.display = 'block';
+  document.getElementById('add-success-label').textContent = type + ' at ' + addr.slice(0,30);
   await loadCrimes();
+}
+
+function triggerAddCrimePhoto() {
+  if (!lastAddedCrimeId) { closeModal('add-modal'); return; }
+  currentPhotoCtx = { id: lastAddedCrimeId, type: 'crime' };
+  document.getElementById('photo-input').click();
+  closeModal('add-modal');
+  resetAddForm();
+}
+
+function resetAddForm() {
+  document.getElementById('add-step1').style.display = 'block';
+  document.getElementById('add-step2').style.display = 'none';
+  document.getElementById('add-addr').value = '';
+  document.getElementById('add-desc').value = '';
+  document.getElementById('geocode-status').textContent = '';
+  document.getElementById('add-coords').textContent = '';
+  geocodeLng = geocodeLat = null;
+  lastAddedCrimeId = null;
 }
 
 // ══════════════════════════════════════════════════════════════════

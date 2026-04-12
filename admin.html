@@ -484,10 +484,10 @@ function setBasemap(type) {
   if (type==='street'){adminMap.removeLayer(tileSat);adminMap.addLayer(tileStreet);tileStreet.bringToBack();}
   else{adminMap.removeLayer(tileStreet);adminMap.addLayer(tileSat);tileSat.bringToBack();}
   // Bring data layers above tiles after basemap swap
-  sloLayerGrp.bringToFront();
-  unncLayerGrp.bringToFront();
-  annLayerGrp.bringToFront();
-  crimeCluster.bringToFront();
+  // L.layerGroup has no bringToFront — iterate child layers instead
+  [sloLayerGrp, unncLayerGrp, annLayerGrp].forEach(grp => {
+    if (grp) grp.eachLayer(l => { if (l.bringToFront) l.bringToFront(); });
+  });
   document.getElementById('mb-street').classList.toggle('on',type==='street');
   document.getElementById('mb-sat').classList.toggle('on',type==='satellite');
 }
@@ -752,7 +752,8 @@ function renderAnnotationMarkers() {
   });
 
   // Bring annotations above base tiles
-  annLayerGrp.bringToFront();
+  // bringToFront on each child (layerGroup has no bringToFront)
+  annLayerGrp.eachLayer(l => { if (l.bringToFront) l.bringToFront(); });
   console.log('Annotations rendered:', rendered, 'of', allAnnotations.length);
 }
 

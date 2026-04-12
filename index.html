@@ -861,7 +861,7 @@ function setBasemap(type) {
     TILE_SAT.bringToBack();
   }
   // Keep crime markers on top
-  if (clusterGroup) clusterGroup.bringToFront();
+  if (clusterGroup) clusterGroup.eachLayer(l => { if (l.bringToFront) l.bringToFront(); });
   document.getElementById('bm-street').classList.toggle('active', type === 'street');
   document.getElementById('bm-sat').classList.toggle('active', type === 'satellite');
 }
@@ -956,7 +956,7 @@ function renderPublicAnnotations() {
       annotationLayerGroup.addLayer(layer);
     } catch(e) { console.warn('Annotation render error:', e); }
   });
-  if (layerVisible.annotations) annotationLayerGroup.bringToFront();
+  if (layerVisible.annotations) annotationLayerGroup.eachLayer(l => { if (l.bringToFront) l.bringToFront(); });
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -996,7 +996,7 @@ function renderPhotoPin(photos) {
           display:flex;flex-direction:column;align-items:center;
           filter:drop-shadow(0 2px 5px rgba(0,0,0,.6));
         ">
-          <div style="font-size:22px;line-height:1">⭐</div>
+          <div style="font-size:24px;line-height:1">⭐</div>
           <div style="font-size:9px;background:#fbbf24;color:#000;font-weight:700;
             padding:1px 5px;border-radius:3px;white-space:nowrap;margin-top:1px;
             max-width:90px;overflow:hidden;text-overflow:ellipsis">
@@ -1006,21 +1006,47 @@ function renderPhotoPin(photos) {
       </div>`,
       className: '', iconSize: [0,0], iconAnchor: [0,0],
     });
+
+    const popupId = 'photo-popup-' + p.id;
     const marker = L.marker([p.lat, p.lng], { icon, zIndexOffset: 800 });
+
+    // Build popup with placeholder — load image URL async on open
     marker.bindPopup(`
-      <div style="padding:10px;font-family:var(--font);color:var(--text)">
-        <div style="font-weight:600;font-size:12px;color:#fbbf24;margin-bottom:4px">⭐ Photo Location</div>
-        <div style="font-size:11px;font-weight:500;margin-bottom:3px">${p.crimeType||'—'}</div>
-        <div style="font-size:11px;color:var(--muted)">${p.address||'—'}</div>
-        ${p.caption ? `<div style="font-size:11px;margin-top:5px;font-style:italic">${p.caption}</div>` : ''}
-      </div>`, { closeButton: true, autoClose: false }
+      <div id="${popupId}" style="padding:10px;font-family:var(--font);color:var(--text);min-width:200px">
+        <div style="font-weight:600;font-size:12px;color:#fbbf24;margin-bottom:6px">⭐ Photo Location</div>
+        <div style="font-size:11px;font-weight:500;margin-bottom:2px">${p.crimeType||'—'}</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px">${p.address||'—'}</div>
+        <div id="${popupId}-img" style="width:100%;min-height:80px;background:var(--panel2);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted)">
+          Loading photo…
+        </div>
+        ${p.caption ? `<div style="font-size:11px;margin-top:6px;font-style:italic;color:var(--muted)">${p.caption}</div>` : ''}
+      </div>`, { closeButton: true, autoClose: false, maxWidth: 260 }
     );
+
+    // Load signed URL when popup opens
+    marker.on('popupopen', async () => {
+      try {
+        const { data } = await sb.storage.from('crime-photos')
+          .createSignedUrl(p.storage_path, 3600);
+        const imgEl = document.getElementById(popupId + '-img');
+        if (imgEl && data?.signedUrl) {
+          imgEl.innerHTML = `<img src="${data.signedUrl}"
+            style="width:100%;border-radius:6px;display:block;cursor:pointer"
+            onclick="window.open('${data.signedUrl}','_blank')"
+            alt="${p.crimeType||'Photo'}">`;
+        }
+      } catch(e) {
+        const imgEl = document.getElementById(popupId + '-img');
+        if (imgEl) imgEl.textContent = 'Photo unavailable';
+      }
+    });
+
     photoLayerGroup.addLayer(marker);
   });
-  // Only add to map if toggle is ON
+
+  // Only show if toggle is ON
   if (layerVisible.photos) {
-    photoLayerGroup.addTo(map);
-    photoLayerGroup.bringToFront();
+    if (!map.hasLayer(photoLayerGroup)) photoLayerGroup.addTo(map);
   }
   console.log('Photo pins rendered:', photos.length);
 }
@@ -1204,7 +1230,7 @@ function toggleLayer(type) {
 function toggleAnnotations() {
   layerVisible.annotations = !layerVisible.annotations;
   document.getElementById('sw-annotations').classList.toggle('on', layerVisible.annotations);
-  if (layerVisible.annotations) { annotationLayerGroup.addTo(map); annotationLayerGroup.bringToFront(); }
+  if (layerVisible.annotations) { annotationLayerGroup.addTo(map); annotationLayerGroup.eachLayer(l => { if (l.bringToFront) l.bringToFront(); }); }
   else map.removeLayer(annotationLayerGroup);
 }
 

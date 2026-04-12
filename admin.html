@@ -391,10 +391,9 @@ tbody td{padding:7px 10px;vertical-align:middle}
 // ══════════════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════════════
-//const SUPABASE_URL  = 'YOUR_SUPABASE_URL';
-//const SUPABASE_ANON = 'YOUR_ANON_KEY';
 const SUPABASE_URL = 'https://sqiioihssmnqatjrednq.supabase.co';
 const SUPABASE_ANON = 'sb_publishable_3s5kREPGF10ahyWGMT9tBA_v9FUqbit';
+
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
 
@@ -625,9 +624,10 @@ async function loadAnnotations() {
 }
 
 async function loadPhotos() {
-  const {data} = await sb.from('photos')
-    .select('*,crimes(crime_type,address),map_annotations(label)')
+  const {data, error} = await sb.from('photos')
+    .select('id,storage_path,caption,is_public,crime_id,annotation_id,created_at,uploaded_by,crimes(crime_type,address),map_annotations(label)')
     .order('created_at',{ascending:false});
+  if (error) { console.error('Photos error:', error); }
   allPhotos = data||[];
   document.getElementById('cnt-photos').textContent = allPhotos.length;
   renderPhotos();
@@ -956,15 +956,25 @@ async function renderPhotos() {
     const crimeId = p.crime_id;
     const crime = crimeId ? allCrimes.find(c=>c.id===crimeId) : null;
     const hasLoc = crime?.lat && crime?.lng;
-    return `<div class="photo-card">
+    const isPublic = p.is_public || false;
+    const crimeLabel = p.crimes?.crime_type || p.map_annotations?.label || 'Photo';
+    const addr = p.crimes?.address || '';
+    return `<div class="photo-card" id="pcard-${p.id}">
       <img class="photo-img" data-path="${p.storage_path}" src=""
-        onclick="openLB(this)" alt="${p.crimes?.crime_type||'Photo'}"
+        onclick="openLB(this)" alt="${crimeLabel}"
         style="opacity:0;transition:opacity .3s" onload="this.style.opacity=1">
       <div class="photo-meta">
-        <div class="photo-type">${p.crimes?.crime_type||p.map_annotations?.label||'Photo'}</div>
-        <div class="photo-date">${p.crimes?.address||''}</div>
-        ${hasLoc ? `<button class="btn btn-sm" style="margin-top:5px;width:100%;justify-content:center" onclick="flyTo(${crime.lat},${crime.lng},'${crimeId}')">⭐ Show on Map</button>` : ''}
-        <button class="btn btn-sm btn-danger" style="margin-top:4px;width:100%;justify-content:center" onclick="deletePhoto('${p.id}','${p.storage_path}')">Delete</button>
+        <div class="photo-type">${crimeLabel}</div>
+        <div class="photo-date" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${addr}</div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:7px">
+          <span style="font-size:10px;color:var(--muted)">Public</span>
+          <div class="sw ${isPublic?'on':''}" id="photo-sw-${p.id}"
+            onclick="togglePhotoPublic('${p.id}',${isPublic})"></div>
+        </div>
+        ${hasLoc ? `<button class="btn btn-sm" style="margin-top:5px;width:100%;justify-content:center"
+          onclick="flyTo(${crime.lat},${crime.lng},'photo-${p.id}','📷 '+${JSON.stringify(crimeLabel)})">⭐ Show on Map</button>` : ''}
+        <button class="btn btn-sm btn-danger" style="margin-top:4px;width:100%;justify-content:center"
+          onclick="deletePhoto('${p.id}','${p.storage_path}')">Delete</button>
       </div>
     </div>`;
   }).join('');
@@ -981,6 +991,17 @@ async function renderPhotos() {
 
 function openLB(img){document.getElementById('lb-img').src=img.src;document.getElementById('lightbox').classList.add('open');}
 function closeLB(){document.getElementById('lightbox').classList.remove('open');}
+
+async function togglePhotoPublic(id, current) {
+  const newVal = !current;
+  const { error } = await sb.from('photos').update({ is_public: newVal }).eq('id', id);
+  if (error) { showToast('Error: '+error.message,'err'); return; }
+  const sw = document.getElementById('photo-sw-'+id);
+  if (sw) sw.classList.toggle('on', newVal);
+  const photo = allPhotos.find(p=>p.id===id);
+  if (photo) photo.is_public = newVal;
+  showToast(newVal ? 'Photo is now public on field map' : 'Photo made private','ok');
+}
 
 async function deletePhoto(id,path){
   if(!confirm('Delete this photo?')) return;

@@ -840,8 +840,8 @@ function initMap() {
   }
 
   loadBoundaries().then(async () => {
-    await loadCrimes();           // crimes must load first — photos need lat/lng from crimesData
-    loadPublicAnnotations();
+    await loadCrimes();
+    await loadPublicAnnotations(); // must finish before loadPublicPhotos (annotation photos need ann lat/lng)
     loadPublicPhotos();
   });
   setupRealtime();
@@ -964,22 +964,52 @@ function renderPublicAnnotations() {
 // ══════════════════════════════════════════════════════════════════
 async function loadPublicPhotos() {
   try {
+    // Fetch all public photos — include both crime_id and annotation_id
     const { data, error } = await sb
       .from('photos')
-      .select('id, storage_path, caption, is_public, crime_id')
-      .eq('is_public', true);
+      .select('id, storage_path, caption, is_public, crime_id, annotation_id');
+
     if (error) throw error;
 
-    // Match each photo to a crime using already-loaded crimesData for lat/lng
-    const photosWithLoc = (data || []).map(p => {
-      const crime = crimesData.find(c => c.id === p.crime_id);
-      if (!crime?.lat || !crime?.lng) return null;
-      return { ...p, lat: crime.lat, lng: crime.lng,
-        crimeType: crime.crime_type, address: crime.address };
+    // For non-admin/officer: only public photos
+    // For admin/officer: all photos they have permission to see
+    const visible = (data || []).filter(p => {
+      if (userRole === 'admin') return true;
+      if (userRole === 'field_officer') return p.is_public || p.uploaded_by === currentUser?.id;
+      return p.is_public; // public sees only public
+    });
+
+    const photosWithLoc = visible.map(p => {
+      // Try crime location first
+      if (p.crime_id) {
+        const crime = crimesData.find(c => c.id === p.crime_id);
+        if (crime?.lat && crime?.lng) {
+          return {
+            ...p,
+            lat: crime.lat, lng: crime.lng,
+            label: crime.crime_type,
+            address: crime.address,
+          };
+        }
+      }
+      // Fall back to annotation centroid lat/lng
+      if (p.annotation_id) {
+        const ann = annotationsData.find(a => a.id === p.annotation_id);
+        if (ann?.lat && ann?.lng) {
+          return {
+            ...p,
+            lat: parseFloat(ann.lat), lng: parseFloat(ann.lng),
+            label: ann.label || ann.annotation_type || 'Annotation',
+            address: ann.label || '',
+          };
+        }
+      }
+      return null;
     }).filter(Boolean);
 
     renderPhotoPin(photosWithLoc);
-    console.log('Public photo pins:', photosWithLoc.length);
+    console.log('Photo pins — crimes:', photosWithLoc.filter(p=>p.crime_id).length,
+      'annotations:', photosWithLoc.filter(p=>p.annotation_id).length);
   } catch(e) {
     console.warn('Photo pins not available:', e.message);
   }
@@ -1000,7 +1030,7 @@ function renderPhotoPin(photos) {
           <div style="font-size:9px;background:#fbbf24;color:#000;font-weight:700;
             padding:1px 5px;border-radius:3px;white-space:nowrap;margin-top:1px;
             max-width:90px;overflow:hidden;text-overflow:ellipsis">
-            📷 ${(p.crimeType||'Photo').slice(0,15)}
+            📷 ${(p.label||p.crimeType||'Photo').slice(0,15)}
           </div>
         </div>
       </div>`,
@@ -1013,8 +1043,10 @@ function renderPhotoPin(photos) {
     // Build popup with placeholder — load image URL async on open
     marker.bindPopup(`
       <div id="${popupId}" style="padding:10px;font-family:var(--font);color:var(--text);min-width:200px">
-        <div style="font-weight:600;font-size:12px;color:#fbbf24;margin-bottom:6px">⭐ Photo Location</div>
-        <div style="font-size:11px;font-weight:500;margin-bottom:2px">${p.crimeType||'—'}</div>
+        <div style="font-weight:600;font-size:12px;color:#fbbf24;margin-bottom:6px">
+          ⭐ ${p.annotation_id ? 'Annotation Photo' : 'Crime Photo'}
+        </div>
+        <div style="font-size:11px;font-weight:500;margin-bottom:2px">${p.label||p.crimeType||'—'}</div>
         <div style="font-size:11px;color:var(--muted);margin-bottom:8px">${p.address||'—'}</div>
         <div id="${popupId}-img" style="width:100%;min-height:80px;background:var(--panel2);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted)">
           Loading photo…

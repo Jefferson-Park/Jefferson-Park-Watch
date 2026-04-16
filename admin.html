@@ -627,8 +627,10 @@ async function loadAnnotations() {
 }
 
 async function loadPhotos() {
+  // Admin sees ALL photos regardless of is_public
+  // The select includes joined data from both crimes and map_annotations
   const {data, error} = await sb.from('photos')
-    .select('id,storage_path,caption,is_public,crime_id,annotation_id,created_at,uploaded_by,crimes(crime_type,address),map_annotations(label)')
+    .select('id,storage_path,caption,is_public,crime_id,annotation_id,created_at,uploaded_by,crimes(crime_type,address),map_annotations(id,label,annotation_type)')
     .order('created_at',{ascending:false});
   if (error) { console.error('Photos error:', error); }
   allPhotos = data||[];

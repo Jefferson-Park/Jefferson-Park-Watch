@@ -1055,17 +1055,28 @@ function renderPhotoPin(photos) {
       </div>`, { closeButton: true, autoClose: false, maxWidth: 260 }
     );
 
-    // Load signed URL when popup opens
+    // Load photo URL when popup opens
+    // Public users: getPublicUrl (no auth needed) — requires bucket to be public in Supabase
+    // Authenticated users: createSignedUrl (private bucket access)
     marker.on('popupopen', async () => {
       try {
-        const { data } = await sb.storage.from('crime-photos')
-          .createSignedUrl(p.storage_path, 3600);
         const imgEl = document.getElementById(popupId + '-img');
-        if (imgEl && data?.signedUrl) {
-          imgEl.innerHTML = `<img src="${data.signedUrl}"
+        if (!imgEl) return;
+        let url;
+        if (userRole === 'public') {
+          const { data } = sb.storage.from('crime-photos').getPublicUrl(p.storage_path);
+          url = data?.publicUrl;
+        } else {
+          const { data } = await sb.storage.from('crime-photos').createSignedUrl(p.storage_path, 3600);
+          url = data?.signedUrl;
+        }
+        if (url) {
+          imgEl.innerHTML = `<img src="${url}"
             style="width:100%;border-radius:6px;display:block;cursor:pointer"
-            onclick="window.open('${data.signedUrl}','_blank')"
-            alt="${p.crimeType||'Photo'}">`;
+            onclick="window.open('${url}','_blank')"
+            alt="${p.label||'Photo'}">`;
+        } else {
+          imgEl.textContent = 'Photo unavailable';
         }
       } catch(e) {
         const imgEl = document.getElementById(popupId + '-img');

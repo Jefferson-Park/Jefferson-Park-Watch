@@ -1088,7 +1088,7 @@ function renderPhotoPin(photos) {
           <div style="font-size:9px;background:#fbbf24;color:#000;font-weight:700;
             padding:1px 5px;border-radius:3px;white-space:nowrap;margin-top:1px;
             max-width:90px;overflow:hidden;text-overflow:ellipsis">
-            📷 ${(p.label||p.crimeType||'Photo').slice(0,15)}
+            ${(p.storage_path||'').startsWith('link://') ? '🔗' : (p.storage_path||'').toLowerCase().endsWith('.pdf') ? '📄' : '📷'} ${(p.label||p.crimeType||'Photo').slice(0,15)}
           </div>
         </div>
       </div>`,
@@ -1102,12 +1102,13 @@ function renderPhotoPin(photos) {
     marker.bindPopup(`
       <div id="${popupId}" style="padding:10px;font-family:var(--font);color:var(--text);min-width:200px">
         <div style="font-weight:600;font-size:12px;color:#fbbf24;margin-bottom:6px">
-          ⭐ ${p.annotation_id ? 'Annotation Photo' : 'Crime Photo'}
+          ${(p.storage_path||'').startsWith('link://') ? '🔗 Link' : (p.storage_path||'').toLowerCase().endsWith('.pdf') ? '📄 PDF' : '📷 Photo'}
+          — ${p.annotation_id ? 'Annotation' : 'Crime'}
         </div>
         <div style="font-size:11px;font-weight:500;margin-bottom:2px">${p.label||p.crimeType||'—'}</div>
         <div style="font-size:11px;color:var(--muted);margin-bottom:8px">${p.address||'—'}</div>
-        <div id="${popupId}-img" style="width:100%;min-height:80px;background:var(--panel2);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted)">
-          Loading photo…
+        <div id="${popupId}-img" style="width:100%;min-height:60px;background:var(--panel2);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted)">
+          ${(p.storage_path||'').startsWith('link://') ? '' : 'Loading…'}
         </div>
         ${p.caption ? `<div style="font-size:11px;margin-top:6px;font-style:italic;color:var(--muted)">${p.caption}</div>` : ''}
       </div>`, { closeButton: true, autoClose: false, maxWidth: 260 }
@@ -1156,10 +1157,14 @@ function renderPhotoPin(photos) {
       try {
         const { data } = await sb.storage.from('crime-photos').createSignedUrl(path, 3600);
         if (data?.signedUrl) {
-          imgEl.innerHTML = `<img src="${data.signedUrl}"
-            style="width:100%;border-radius:6px;display:block;cursor:pointer;max-height:200px;object-fit:cover"
-            onclick="window.open('${data.signedUrl}','_blank')"
-            alt="${p.label||p.crimeType||'Photo'}">`;
+          const sUrl = data.signedUrl;
+          imgEl.innerHTML = '';
+          const img = document.createElement('img');
+          img.src = sUrl;
+          img.style.cssText = 'width:100%;border-radius:6px;display:block;cursor:pointer;max-height:200px;object-fit:cover';
+          img.alt = p.label||p.crimeType||'Photo';
+          img.onclick = () => window.open(sUrl, '_blank');
+          imgEl.appendChild(img);
         }
       } catch(e) { imgEl.textContent = 'Photo unavailable'; }
     });

@@ -177,6 +177,7 @@ tbody td{padding:7px 10px;vertical-align:middle}
 /* lightbox */
 #lightbox{position:fixed;inset:0;z-index:6000;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center}
 #lightbox.open{display:flex}
+#edit-ann-modal.open{display:flex!important}
 #lightbox img{max-width:90vw;max-height:90vh;border-radius:8px}
 #lb-close{position:absolute;top:18px;right:22px;color:white;font-size:26px;cursor:pointer;line-height:1}
 
@@ -1026,56 +1027,92 @@ async function renderPhotos() {
   document.getElementById('photos-tcount').textContent=`${allPhotos.length} photos`;
   const grid=document.getElementById('photo-grid');
   if(!allPhotos.length){
-    grid.innerHTML=`<div class="empty-state" style="grid-column:1/-1">No photos uploaded yet</div>`;
+    grid.innerHTML=`<div class="empty-state" style="grid-column:1/-1">No photos yet</div>`;
     return;
   }
+
   grid.innerHTML=allPhotos.map(p=>{
-    const crimeId = p.crime_id;
-    const annId   = p.annotation_id;
-    const crime   = crimeId ? allCrimes.find(c=>c.id===crimeId) : null;
-    const hasLoc  = crime?.lat && crime?.lng;
-    const isPublic = p.is_public || false;
-    const crimeLabel = p.crimes?.crime_type || p.map_annotations?.label || 'Photo';
-    const addr = p.crimes?.address || (annId ? 'Linked to annotation' : '');
-    // Warn if photo is public but parent crime/annotation is not
-    const parentPublic = crime ? true : true; // crimes don't have is_public, approved via status
+    const crimeId  = p.crime_id;
+    const annId    = p.annotation_id;
+    const isPublic = p.is_public||false;
+    const path     = p.storage_path||'';
+    const isLink   = path.startsWith('link://');
+    const isPDF    = !isLink && path.toLowerCase().endsWith('.pdf');
+    const isImg    = !isLink && !isPDF;
+
+    // Location: crime first, then annotation centroid
+    const crime = crimeId ? allCrimes.find(c=>c.id===crimeId) : null;
+    const ann   = annId   ? allAnnotations.find(a=>a.id===annId) : null;
+    const lat   = crime?.lat ?? (ann?.lat!=null ? parseFloat(ann.lat) : null);
+    const lng   = crime?.lng ?? (ann?.lng!=null ? parseFloat(ann.lng) : null);
+    const hasLoc = lat!=null && lng!=null && !isNaN(lat) && !isNaN(lng);
+
+    const linkedLabel = crime
+      ? (crime.crime_type+(crime.address?' — '+crime.address.slice(0,28):''))
+      : ann ? (ann.label||ann.annotation_type||'Annotation') : 'Unlinked';
+    const linkedTag = crimeId?'🔴 Crime':annId?'🟦 Annotation':'—';
+    const typeIcon  = isLink?'🔗':isPDF?'📄':'📷';
+    const caption   = p.caption||'';
+    const safeLabel = linkedLabel.replace(/'/g,"\\'").replace(/"/g,'\\"').slice(0,40);
+
     return `<div class="photo-card" id="pcard-${p.id}">
-      <img class="photo-img" data-path="${p.storage_path}" src=""
-        onclick="openLB(this)" alt="${crimeLabel}"
-        style="opacity:0;transition:opacity .3s" onload="this.style.opacity=1">
+      ${isImg
+        ? `<img data-path="${path}" src="" onclick="openLB(this)"
+            style="width:100px;min-height:80px;max-height:120px;flex-shrink:0;
+              object-fit:cover;cursor:pointer;background:var(--panel2);
+              opacity:0;transition:opacity .3s;display:block" onload="this.style.opacity=1">`
+        : isLink
+          ? `<div onclick="window.open('${path.replace('link://','').replace(/'/g,"\\'")}','_blank')"
+              style="width:100px;min-height:80px;flex-shrink:0;background:var(--panel2);
+                display:flex;flex-direction:column;align-items:center;justify-content:center;
+                gap:4px;cursor:pointer;padding:8px">
+              <span style="font-size:26px">🔗</span>
+              <span style="font-size:9px;color:var(--accent)">LINK</span></div>`
+          : `<div data-pdf="${path}" onclick="openPDFCard(this.dataset.pdf)"
+              style="width:100px;min-height:80px;flex-shrink:0;background:var(--panel2);
+                display:flex;flex-direction:column;align-items:center;justify-content:center;
+                gap:4px;cursor:pointer;padding:8px">
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="var(--danger)" stroke-width="1.5">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+              </svg>
+              <span style="font-size:9px;color:var(--danger)">PDF</span></div>`}
       <div class="photo-meta">
-        <div class="photo-type">${crimeLabel}</div>
-        <div class="photo-date" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px">${addr}</div>
-        <div style="margin-top:7px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-            <span style="font-size:10px;color:${isPublic?'var(--accent)':'var(--muted)'};font-weight:${isPublic?'600':'400'}">
-              ${isPublic ? '🌐 Public' : '🔒 Private'}
-            </span>
-            <div class="sw ${isPublic?'on':''}" id="photo-sw-${p.id}"
-              onclick="togglePhotoPublic('${p.id}',${isPublic})"></div>
-          </div>
-          <div style="font-size:9px;color:var(--muted);line-height:1.4">
-            ${isPublic
-              ? 'Visible to all users on field map'
-              : 'Only you and admins can see this'}
-          </div>
+        <div style="display:flex;align-items:flex-start;gap:5px;margin-bottom:3px">
+          <span style="font-size:9px;background:var(--panel2);padding:1px 5px;border-radius:3px;
+            color:var(--muted);white-space:nowrap;flex-shrink:0">${typeIcon} ${linkedTag}</span>
+          <span style="font-size:11px;font-weight:600;line-height:1.3;overflow:hidden;
+            text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;
+            -webkit-box-orient:vertical">${linkedLabel}</span>
         </div>
-        ${hasLoc ? `<button class="btn btn-sm" style="margin-top:6px;width:100%;justify-content:center"
-          onclick="flyTo(${crime.lat},${crime.lng},'photo-${p.id}','📷 ${crimeLabel.replace(/'/g,"\'")}')">⭐ Show on Map</button>` : ''}
-        <button class="btn btn-sm btn-danger" style="margin-top:4px;width:100%;justify-content:center"
-          onclick="deletePhoto('${p.id}','${p.storage_path}')">Delete</button>
+        ${caption?`<div style="font-size:10px;color:var(--muted);margin-bottom:3px;
+          overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${caption}</div>`:''}
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
+          <div class="sw ${isPublic?'on':''}" id="photo-sw-${p.id}"
+            onclick="togglePhotoPublic('${p.id}',${isPublic})"></div>
+          <span style="font-size:10px;color:${isPublic?'var(--accent)':'var(--muted)'}">
+            ${isPublic?'🌐 Public':'🔒 Private'}</span>
+        </div>
+        <div style="display:flex;gap:4px">
+          ${hasLoc
+            ? `<button class="btn btn-sm" style="flex:1;justify-content:center"
+                onclick="flyTo(${lat},${lng},'photo-${p.id}','${typeIcon} ${safeLabel}')">⭐ Map</button>`
+            : `<span style="font-size:9px;color:var(--muted);flex:1;align-self:center">No location</span>`}
+          <button class="btn btn-sm btn-danger" style="justify-content:center"
+            onclick="deletePhoto('${p.id}','${p.storage_path}')">Del</button>
+        </div>
       </div>
     </div>`;
   }).join('');
 
-  // Load signed URLs only for image elements
+  // Load signed URLs for images only
   for(const p of allPhotos){
-    const path = p.storage_path || '';
-    if (path.startsWith('link://') || path.toLowerCase().endsWith('.pdf')) continue;
-    const imgEl = document.querySelector(`img[data-path="${path}"]`);
-    if (!imgEl) continue;
-    const {data} = await sb.storage.from('crime-photos').createSignedUrl(path, 3600);
-    if (data?.signedUrl) imgEl.src = data.signedUrl;
+    const path=p.storage_path||'';
+    if(path.startsWith('link://')||path.toLowerCase().endsWith('.pdf')) continue;
+    const imgEl=document.querySelector(`img[data-path="${path}"]`);
+    if(!imgEl) continue;
+    const {data}=await sb.storage.from('crime-photos').createSignedUrl(path,3600);
+    if(data?.signedUrl) imgEl.src=data.signedUrl;
   }
 }
 

@@ -242,12 +242,14 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
   #bottom-panel { left:0 !important; flex-wrap:wrap; }
   #sb-toggle { left:0; border-radius:6px; border:1px solid var(--border); }
   body.sb-open #sb-toggle { left:260px; }
-  .leaflet-popup-content { min-width:220px; max-width:260px; }
+  .leaflet-popup-content { min-width:200px; max-width:calc(100vw - 40px); }
   .pop-head { padding:10px 34px 8px 10px; }
   .pop-body { padding:8px 10px; }
   .pop-desc { font-size:11px; }
-  /* Keep popup open on mobile — auto-pan */
+  /* Keep popup open on mobile */
   .leaflet-popup { margin-bottom:20px; }
+  /* Photo popup image on mobile — constrain height */
+  .leaflet-popup-content img { max-height:180px; width:100%; object-fit:cover; }
 }
 
 /* Leaflet controls */
@@ -539,9 +541,7 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
       </div>
       <div style="display:flex;gap:8px">
         <button class="btn-cancel" style="flex:1" onclick="closeModal('add-modal');resetAddForm()">Done — No Photo</button>
-        <button class="btn-submit" style="flex:1" onclick="triggerAddCrimePhoto()">
-          📷 Add Photo
-        </button>
+        <button class="btn-submit" style="flex:1" onclick="triggerAddCrimePhoto()">📎 Add Attachment</button>
       </div>
     </div>
   </div>
@@ -567,7 +567,7 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
       </div>
       <div style="display:flex;gap:8px">
         <button class="btn-cancel" style="flex:1" onclick="closeModal('ann-modal');resetAnnForm()">Done</button>
-        <button class="btn-submit" style="flex:1" onclick="triggerAnnPhoto()">📷 Add Photo</button>
+        <button class="btn-submit" style="flex:1" onclick="triggerAnnPhoto()">📎 Add Attachment</button>
       </div>
     </div>
   </div>
@@ -610,7 +610,43 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
 
 <!-- Toast & photo input -->
 <div id="toast"></div>
-<input type="file" id="photo-input" accept="image/*" style="display:none" onchange="uploadPhoto(event)">
+<!-- File inputs — images and PDFs/docs -->
+<input type="file" id="photo-input" accept="image/*,application/pdf,.pdf" style="display:none" onchange="uploadAttachment(event)">
+<!-- Attachment picker modal -->
+<div class="modal-overlay" id="attach-modal">
+  <div class="modal-box" style="width:380px">
+    <div class="modal-title">Add Attachment</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+      <button class="btn" style="flex-direction:column;padding:16px;gap:8px;height:auto"
+        onclick="closeModal('attach-modal');document.getElementById('photo-input').setAttribute('accept','image/*');document.getElementById('photo-input').click()">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        <span style="font-size:12px;font-weight:600">Photo</span>
+        <span style="font-size:10px;color:var(--muted)">jpg, png, heic</span>
+      </button>
+      <button class="btn" style="flex-direction:column;padding:16px;gap:8px;height:auto"
+        onclick="closeModal('attach-modal');document.getElementById('photo-input').setAttribute('accept','application/pdf,.pdf');document.getElementById('photo-input').click()">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span style="font-size:12px;font-weight:600">PDF / Doc</span>
+        <span style="font-size:10px;color:var(--muted)">.pdf files</span>
+      </button>
+    </div>
+    <!-- Link option -->
+    <div style="border-top:1px solid var(--border);padding-top:14px">
+      <div class="mf">
+        <label>Or attach a web link</label>
+        <input type="url" id="attach-url" placeholder="https://…" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);font-size:13px;font-family:var(--font);outline:none">
+      </div>
+      <div class="mf" style="margin-top:8px">
+        <label>Link label (optional)</label>
+        <input type="text" id="attach-url-label" placeholder="e.g. Police report, News article…" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);font-size:13px;font-family:var(--font);outline:none">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('attach-modal')">Cancel</button>
+      <button class="btn-submit" onclick="saveLink()">Save Link</button>
+    </div>
+  </div>
+</div>
 
 <script>
 // ══════════════════════════════════════════════════════════════════
@@ -929,10 +965,32 @@ function renderPublicAnnotations() {
       const geom = (typeof ann.geometry_geojson === 'string')
         ? JSON.parse(ann.geometry_geojson) : ann.geometry_geojson;
 
+      const canEditAnn = userRole === 'admin' || userRole === 'field_officer';
       const popup = `<div style="padding:10px;font-family:var(--font);color:var(--text)">
         <div style="font-weight:600;font-size:12px;color:${color}">${ann.label||'Annotation'}</div>
         <span style="font-family:var(--mono);font-size:9px;padding:2px 5px;border-radius:3px;background:rgba(0,194,168,.15);color:var(--accent)">${ann.annotation_type}</span>
         ${ann.notes ? `<div style="font-size:11px;margin-top:6px;line-height:1.5">${ann.notes}</div>` : ''}
+        ${canEditAnn ? `
+          <div style="margin-top:10px;border-top:1px solid rgba(255,255,255,.08);padding-top:8px">
+            <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em">Edit Notes</div>
+            <textarea id="ann-edit-${ann.id}"
+              style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:5px;
+                padding:6px 8px;color:var(--text);font-size:11px;font-family:var(--font);
+                outline:none;resize:vertical;min-height:55px"
+              placeholder="Add or edit notes…">${ann.notes||''}</textarea>
+            <div style="display:flex;gap:5px;margin-top:5px">
+              <button onclick="saveAnnNotes('${ann.id}')"
+                style="flex:1;background:var(--accent);color:#000;border:none;border-radius:5px;
+                  padding:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font)">
+                Save
+              </button>
+              <button onclick="openAnnotationAttach('${ann.id}')"
+                style="flex:1;background:var(--panel2);border:1px solid var(--border);border-radius:5px;
+                  padding:6px;font-size:11px;cursor:pointer;font-family:var(--font);color:var(--text)">
+                📎 Attach
+              </button>
+            </div>
+          </div>` : ''}
       </div>`;
 
       const layer = L.geoJSON(geom, {
@@ -1055,33 +1113,55 @@ function renderPhotoPin(photos) {
       </div>`, { closeButton: true, autoClose: false, maxWidth: 260 }
     );
 
-    // Load photo URL when popup opens
-    // Public users: getPublicUrl (no auth needed) — requires bucket to be public in Supabase
-    // Authenticated users: createSignedUrl (private bucket access)
+    // Load attachment when popup opens — handle photo, PDF, or link
     marker.on('popupopen', async () => {
-      try {
-        const imgEl = document.getElementById(popupId + '-img');
-        if (!imgEl) return;
-        let url;
-        if (userRole === 'public') {
-          const { data } = sb.storage.from('crime-photos').getPublicUrl(p.storage_path);
-          url = data?.publicUrl;
-        } else {
-          const { data } = await sb.storage.from('crime-photos').createSignedUrl(p.storage_path, 3600);
-          url = data?.signedUrl;
-        }
-        if (url) {
-          imgEl.innerHTML = `<img src="${url}"
-            style="width:100%;border-radius:6px;display:block;cursor:pointer"
-            onclick="window.open('${url}','_blank')"
-            alt="${p.label||'Photo'}">`;
-        } else {
-          imgEl.textContent = 'Photo unavailable';
-        }
-      } catch(e) {
-        const imgEl = document.getElementById(popupId + '-img');
-        if (imgEl) imgEl.textContent = 'Photo unavailable';
+      const imgEl = document.getElementById(popupId + '-img');
+      if (!imgEl) return;
+
+      const path = p.storage_path || '';
+
+      // Handle links stored as link:// prefix
+      if (path.startsWith('link://')) {
+        const url = path.replace('link://','');
+        imgEl.innerHTML = `<a href="${url}" target="_blank" rel="noopener"
+          style="display:block;padding:10px;background:var(--panel2);border-radius:6px;
+            color:var(--accent);font-size:12px;text-decoration:none;word-break:break-all">
+          🔗 ${p.caption||url}
+        </a>`;
+        return;
       }
+
+      // Handle PDFs
+      if (path.toLowerCase().endsWith('.pdf')) {
+        try {
+          const { data } = await sb.storage.from('crime-photos').createSignedUrl(path, 3600);
+          if (data?.signedUrl) {
+            imgEl.innerHTML = `<a href="${data.signedUrl}" target="_blank" rel="noopener"
+              style="display:flex;align-items:center;gap:8px;padding:10px;
+                background:var(--panel2);border-radius:6px;color:var(--text);
+                text-decoration:none;font-size:12px">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
+                stroke="var(--danger)" stroke-width="1.5">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+              </svg>
+              <span>${p.caption||'Open PDF'}</span>
+            </a>`;
+          }
+        } catch(e) { imgEl.textContent = 'PDF unavailable'; }
+        return;
+      }
+
+      // Handle images (default)
+      try {
+        const { data } = await sb.storage.from('crime-photos').createSignedUrl(path, 3600);
+        if (data?.signedUrl) {
+          imgEl.innerHTML = `<img src="${data.signedUrl}"
+            style="width:100%;border-radius:6px;display:block;cursor:pointer;max-height:200px;object-fit:cover"
+            onclick="window.open('${data.signedUrl}','_blank')"
+            alt="${p.label||p.crimeType||'Photo'}">`;
+        }
+      } catch(e) { imgEl.textContent = 'Photo unavailable'; }
     });
 
     photoLayerGroup.addLayer(marker);
@@ -1149,7 +1229,7 @@ function renderCrimes() {
         const btn = document.getElementById('pop-save-' + c.id);
         if (btn) btn.onclick = () => saveRecord(c.id);
         const pbtn = document.getElementById('pop-photo-' + c.id);
-        if (pbtn) pbtn.onclick = () => { currentPhotoCtx = { id: c.id, type:'crime' }; document.getElementById('photo-input').click(); };
+        if (pbtn) pbtn.onclick = () => { currentPhotoCtx = { id: c.id, type:'crime' }; openModal('attach-modal'); };
       }, 50);
     });
     clusterGroup.addLayer(marker);
@@ -1181,7 +1261,7 @@ function buildPopupHTML(c) {
     <div class="pop-footer">
       <button class="pop-save" id="pop-save-${c.id}">Save Changes</button>
       <button class="pop-photo" id="pop-photo-${c.id}">
-        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>Photo
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>Attach
       </button>
     </div>` : '';
 
@@ -1407,6 +1487,23 @@ function cancelDraw() {
   document.dispatchEvent(new KeyboardEvent('keydown', { key:'Escape', keyCode:27, bubbles:true }));
 }
 
+async function saveAnnNotes(annId) {
+  const notes = document.getElementById('ann-edit-'+annId)?.value || '';
+  const { error } = await sb.from('map_annotations')
+    .update({ notes })
+    .eq('id', annId);
+  if (error) showToast('Error saving notes: '+error.message,'err');
+  else {
+    showToast('Notes saved ✓','ok');
+    await loadPublicAnnotations();
+  }
+}
+
+function openAnnotationAttach(annId) {
+  currentPhotoCtx = { id: annId, type: 'annotation' };
+  openModal('attach-modal');
+}
+
 function toggleSidebar() {
   const sb    = document.getElementById('sidebar');
   const tb    = document.getElementById('topbar');
@@ -1473,9 +1570,9 @@ async function saveAnnotation() {
 function triggerAnnPhoto() {
   if (!lastAddedAnnId) { closeModal('ann-modal'); return; }
   currentPhotoCtx = { id: lastAddedAnnId, type: 'annotation' };
-  document.getElementById('photo-input').click();
   closeModal('ann-modal');
   resetAnnForm();
+  openModal('attach-modal');
 }
 
 function resetAnnForm() {
@@ -1555,9 +1652,9 @@ async function submitCrime() {
 function triggerAddCrimePhoto() {
   if (!lastAddedCrimeId) { closeModal('add-modal'); return; }
   currentPhotoCtx = { id: lastAddedCrimeId, type: 'crime' };
-  document.getElementById('photo-input').click();
   closeModal('add-modal');
   resetAddForm();
+  openModal('attach-modal');
 }
 
 function resetAddForm() {

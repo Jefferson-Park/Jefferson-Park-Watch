@@ -133,10 +133,22 @@ tbody td{padding:7px 10px;vertical-align:middle}
 .pg-info{font-size:10px;color:var(--muted);font-family:var(--mono);margin-right:6px}
 
 /* photos */
-.photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding:14px;overflow-y:auto;flex:1}
-.photo-card{background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden}
-.photo-img{width:100%;height:110px;object-fit:cover;cursor:pointer;background:var(--panel2);display:block}
-.photo-meta{padding:7px}
+/* Photo list — rows instead of grid for readability */
+.photo-grid{display:flex;flex-direction:column;gap:8px;padding:12px;overflow-y:auto;flex:1}
+.photo-card{
+  background:var(--panel);border:1px solid var(--border);border-radius:8px;
+  display:flex;align-items:stretch;overflow:hidden;min-height:90px;
+}
+.photo-card:hover{border-color:var(--border);}
+.photo-img{
+  width:110px;height:auto;min-height:90px;max-height:130px;
+  object-fit:cover;cursor:pointer;background:var(--panel2);
+  flex-shrink:0;display:block;
+}
+.photo-meta{
+  padding:10px 12px;flex:1;display:flex;flex-direction:column;
+  gap:4px;min-width:0;
+}
 .photo-type{font-size:10px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .photo-date{font-size:9px;color:var(--muted);font-family:var(--mono)}
 
@@ -997,18 +1009,66 @@ async function renderPhotos() {
     </div>`;
   }).join('');
 
-  // Load signed URLs
+  // Load signed URLs for images; render PDFs and links differently
   for(const p of allPhotos){
-    const {data}=await sb.storage.from('crime-photos').createSignedUrl(p.storage_path,3600);
-    if(data?.signedUrl){
-      const img=document.querySelector(`img[data-path="${p.storage_path}"]`);
-      if(img) img.src=data.signedUrl;
+    const path = p.storage_path || '';
+    const imgEl = document.querySelector(`img[data-path="${path}"]`);
+
+    if (path.startsWith('link://')) {
+      // Render as a link button instead of image
+      const url = path.replace('link://','');
+      const card = document.getElementById('pcard-'+p.id);
+      if (card) {
+        const imgWrap = card.querySelector('img');
+        if (imgWrap) {
+          imgWrap.outerHTML = `<div style="width:110px;min-height:90px;background:var(--panel2);
+            display:flex;flex-direction:column;align-items:center;justify-content:center;
+            padding:8px;flex-shrink:0">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="var(--accent)" stroke-width="1.5">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+            </svg>
+            <div style="font-size:9px;color:var(--accent);margin-top:4px;text-align:center">LINK</div>
+          </div>`;
+        }
+      }
+      continue;
     }
+
+    if (path.toLowerCase().endsWith('.pdf')) {
+      const card = document.getElementById('pcard-'+p.id);
+      if (card) {
+        const imgWrap = card.querySelector('img');
+        if (imgWrap) {
+          imgWrap.outerHTML = `<div style="width:110px;min-height:90px;background:var(--panel2);
+            display:flex;flex-direction:column;align-items:center;justify-content:center;
+            padding:8px;cursor:pointer" onclick="openPDFCard('${path}')">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none"
+              stroke="var(--danger)" stroke-width="1.5">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+            </svg>
+            <div style="font-size:9px;color:var(--danger);margin-top:4px">PDF</div>
+          </div>`;
+        }
+      }
+      continue;
+    }
+
+    // Regular image
+    const {data}=await sb.storage.from('crime-photos').createSignedUrl(path,3600);
+    if(data?.signedUrl && imgEl) imgEl.src=data.signedUrl;
   }
 }
 
 function openLB(img){document.getElementById('lb-img').src=img.src;document.getElementById('lightbox').classList.add('open');}
 function closeLB(){document.getElementById('lightbox').classList.remove('open');}
+
+async function openPDFCard(path) {
+  const {data} = await sb.storage.from('crime-photos').createSignedUrl(path, 3600);
+  if (data?.signedUrl) window.open(data.signedUrl, '_blank');
+  else showToast('Could not load PDF','err');
+}
 
 async function togglePhotoPublic(id, current) {
   const newVal = !current;

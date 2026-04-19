@@ -336,10 +336,12 @@ tbody td{padding:7px 10px;vertical-align:middle}
       <div class="tbl-wrap">
         <table>
           <thead><tr>
-            <th>Label</th><th>Type</th><th>Notes</th>
-            <th>Centroid Lat</th><th>Centroid Lng</th>
-            <th>WKT Geometry</th>
-            <th>Created</th><th>Public</th><th>Actions</th>
+            <th onclick="sortAnn('label')" style="cursor:pointer">Label ↕</th>
+            <th onclick="sortAnn('annotation_type')" style="cursor:pointer">Type ↕</th>
+            <th onclick="sortAnn('notes')" style="cursor:pointer">Notes ↕</th>
+            <th onclick="sortAnn('created_at')" style="cursor:pointer">Created ↕</th>
+            <th>Lat</th><th>Lng</th>
+            <th>Public</th><th>Actions</th>
           </tr></thead>
           <tbody id="ann-tbody"></tbody>
         </table>
@@ -363,6 +365,22 @@ tbody td{padding:7px 10px;vertical-align:middle}
 
   </div><!-- #data-panel -->
 </div><!-- #app -->
+
+<!-- Edit Annotation Modal -->
+<div id="edit-ann-modal" style="position:fixed;inset:0;z-index:5000;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center">
+  <div class="em">
+    <div class="em-title">Edit Annotation</div>
+    <input type="hidden" id="edit-ann-id">
+    <div class="em-grid">
+      <div class="em-f full"><label>Label</label><input type="text" id="edit-ann-label"></div>
+      <div class="em-f full"><label>Notes</label><textarea id="edit-ann-notes" style="min-height:90px"></textarea></div>
+    </div>
+    <div class="em-footer">
+      <button class="btn" onclick="document.getElementById('edit-ann-modal').classList.remove('open')">Cancel</button>
+      <button class="btn btn-accent" onclick="saveEditAnn()">Save Changes</button>
+    </div>
+  </div>
+</div>
 
 <!-- Edit Crime Modal -->
 <div id="edit-modal">
@@ -727,7 +745,12 @@ function renderAnnotationMarkers() {
         <span class="badge b-${ann.annotation_type}">${ann.annotation_type}</span>
         <span style="font-size:10px;color:var(--muted);margin-left:4px">${ann.is_public?'Public':'Private'}</span>
         ${ann.notes?`<p style="margin-top:5px;font-size:11px">${ann.notes}</p>`:''}
-        <button class="btn btn-sm" style="margin-top:6px" onclick="flyToAnn('${ann.id}')">★ Star</button>
+        <div style="display:flex;gap:5px;margin-top:8px">
+          <button class="btn btn-sm" style="flex:1;justify-content:center"
+            onclick="openEditAnn('${ann.id}')">✏️ Edit</button>
+          <button class="btn btn-sm" style="flex:1;justify-content:center"
+            onclick="flyToAnn('${ann.id}')">⭐ Star</button>
+        </div>
       </div>`;
 
       // Use L.geoJSON for everything — handles coordinate order correctly
@@ -806,6 +829,16 @@ function filterCrimes() {
     (!st||c.status===st)&&(!tp||c.crime_type===tp)&&(!sr||c.source===sr));
   page=1;
   renderCrimesTable();
+}
+
+let annSortCol = 'created_at', annSortDir = -1;
+function sortAnn(col) {
+  if (annSortCol === col) annSortDir *= -1; else { annSortCol = col; annSortDir = 1; }
+  allAnnotations.sort((a,b) => {
+    const va = a[col]||'', vb = b[col]||'';
+    return va < vb ? -annSortDir : va > vb ? annSortDir : 0;
+  });
+  renderAnnotationsTable();
 }
 
 function sortTable(col) {
@@ -915,19 +948,23 @@ function renderAnnotationsTable() {
     return;
   }
   tbody.innerHTML=allAnnotations.map(a=>`
-    <tr style="cursor:pointer" onclick="flyToAnn('${a.id}')">
-      <td style="font-weight:500">${a.label||'—'}</td>
+    <tr id="annrow-${a.id}">
+      <td style="font-weight:500;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+        title="${a.label||''}">${a.label||'—'}</td>
       <td><span class="badge b-${a.annotation_type||'point'}">${a.annotation_type||'—'}</span></td>
       <td class="tc-desc" title="${a.notes||''}">${a.notes||'—'}</td>
-      <td class="tc-mono">${a.lat?parseFloat(a.lat).toFixed(6):'—'}</td>
-      <td class="tc-mono">${a.lng?parseFloat(a.lng).toFixed(6):'—'}</td>
-      <td class="tc-mono" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${a.wkt||''}">${a.wkt?a.wkt.slice(0,40)+'…':'—'}</td>
       <td class="tc-mono">${a.created_at?new Date(a.created_at).toLocaleDateString():'—'}</td>
+      <td class="tc-mono">${a.lat?parseFloat(a.lat).toFixed(5):'—'}</td>
+      <td class="tc-mono">${a.lng?parseFloat(a.lng).toFixed(5):'—'}</td>
       <td>
-        <div class="sw ${a.is_public?'on':''}" onclick="event.stopPropagation();togglePublic('${a.id}',${a.is_public})"></div>
+        <div class="sw ${a.is_public?'on':''}" onclick="togglePublic('${a.id}',${a.is_public})"></div>
       </td>
       <td>
-        <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteAnn('${a.id}')">Del</button>
+        <div class="tc-actions">
+          <button class="btn btn-sm" onclick="openEditAnn('${a.id}')">Edit</button>
+          <button class="btn btn-sm" onclick="flyToAnn('${a.id}')">⭐</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteAnn('${a.id}')">Del</button>
+        </div>
       </td>
     </tr>`).join('');
 }
@@ -950,6 +987,28 @@ async function togglePublic(id,current) {
   const a=allAnnotations.find(x=>x.id===id); if(a) a.is_public=nv;
   showToast(nv?'Made public':'Made private','ok');
   renderAnnotationMarkers();
+}
+
+function openEditAnn(id) {
+  const a = allAnnotations.find(x=>x.id===id);
+  if (!a) return;
+  document.getElementById('edit-ann-id').value = a.id;
+  document.getElementById('edit-ann-label').value = a.label || '';
+  document.getElementById('edit-ann-notes').value = a.notes || '';
+  document.getElementById('edit-ann-modal').classList.add('open');
+}
+
+async function saveEditAnn() {
+  const id    = document.getElementById('edit-ann-id').value;
+  const label = document.getElementById('edit-ann-label').value.trim();
+  const notes = document.getElementById('edit-ann-notes').value.trim();
+  const { error } = await sb.from('map_annotations')
+    .update({ label: label||null, notes: notes||null })
+    .eq('id', id);
+  if (error) { showToast('Error: '+error.message,'err'); return; }
+  showToast('Annotation updated','ok');
+  document.getElementById('edit-ann-modal').classList.remove('open');
+  await loadAnnotations();
 }
 
 async function deleteAnn(id) {
@@ -1009,55 +1068,14 @@ async function renderPhotos() {
     </div>`;
   }).join('');
 
-  // Load signed URLs for images; render PDFs and links differently
+  // Load signed URLs only for image elements
   for(const p of allPhotos){
     const path = p.storage_path || '';
+    if (path.startsWith('link://') || path.toLowerCase().endsWith('.pdf')) continue;
     const imgEl = document.querySelector(`img[data-path="${path}"]`);
-
-    if (path.startsWith('link://')) {
-      // Render as a link button instead of image
-      const url = path.replace('link://','');
-      const card = document.getElementById('pcard-'+p.id);
-      if (card) {
-        const imgWrap = card.querySelector('img');
-        if (imgWrap) {
-          imgWrap.outerHTML = `<div style="width:110px;min-height:90px;background:var(--panel2);
-            display:flex;flex-direction:column;align-items:center;justify-content:center;
-            padding:8px;flex-shrink:0">
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="var(--accent)" stroke-width="1.5">
-              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-            </svg>
-            <div style="font-size:9px;color:var(--accent);margin-top:4px;text-align:center">LINK</div>
-          </div>`;
-        }
-      }
-      continue;
-    }
-
-    if (path.toLowerCase().endsWith('.pdf')) {
-      const card = document.getElementById('pcard-'+p.id);
-      if (card) {
-        const imgWrap = card.querySelector('img');
-        if (imgWrap) {
-          imgWrap.outerHTML = `<div style="width:110px;min-height:90px;background:var(--panel2);
-            display:flex;flex-direction:column;align-items:center;justify-content:center;
-            padding:8px;cursor:pointer" onclick="openPDFCard('${path}')">
-            <svg viewBox="0 0 24 24" width="28" height="28" fill="none"
-              stroke="var(--danger)" stroke-width="1.5">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-            </svg>
-            <div style="font-size:9px;color:var(--danger);margin-top:4px">PDF</div>
-          </div>`;
-        }
-      }
-      continue;
-    }
-
-    // Regular image
-    const {data}=await sb.storage.from('crime-photos').createSignedUrl(path,3600);
-    if(data?.signedUrl && imgEl) imgEl.src=data.signedUrl;
+    if (!imgEl) continue;
+    const {data} = await sb.storage.from('crime-photos').createSignedUrl(path, 3600);
+    if (data?.signedUrl) imgEl.src = data.signedUrl;
   }
 }
 

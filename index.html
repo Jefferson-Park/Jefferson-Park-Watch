@@ -1022,12 +1022,28 @@ function renderPublicAnnotations() {
 // ══════════════════════════════════════════════════════════════════
 async function loadPublicPhotos() {
   try {
-    // Fetch all public photos — include both crime_id and annotation_id
-    const { data, error } = await sb
-      .from('photos')
-      .select('id, storage_path, caption, is_public, crime_id, annotation_id');
+    let data, error;
 
-    if (error) throw error;
+    if (userRole === 'admin' || userRole === 'field_officer') {
+      // Authenticated users: fetch all photos they can see
+      ({ data, error } = await sb
+        .from('photos')
+        .select('id, storage_path, caption, is_public, crime_id, annotation_id'));
+    } else {
+      // Public viewer: explicitly filter is_public=true so the query
+      // works even if RLS only allows anon reads on public rows
+      ({ data, error } = await sb
+        .from('photos')
+        .select('id, storage_path, caption, is_public, crime_id, annotation_id')
+        .eq('is_public', true));
+    }
+
+    if (error) {
+      console.error('loadPublicPhotos query error:', error.message, error.code);
+      throw error;
+    }
+
+    console.log('Photos fetched:', (data||[]).length, 'userRole:', userRole);
 
     // For non-admin/officer: only public photos
     // For admin/officer: all photos they have permission to see
@@ -1117,9 +1133,10 @@ function renderPhotoPin(photos) {
     // Load attachment when popup opens — handle photo, PDF, or link
     marker.on('popupopen', async () => {
       const imgEl = document.getElementById(popupId + '-img');
-      if (!imgEl) return;
+      if (!imgEl) { console.warn('popupopen: imgEl not found for', popupId); return; }
 
       const path = p.storage_path || '';
+      console.log('popupopen: path=', path, 'currentUser=', currentUser ? currentUser.email : 'PUBLIC');
 
       // Handle links stored as link:// prefix
       if (path.startsWith('link://')) {
@@ -1132,12 +1149,30 @@ function renderPhotoPin(photos) {
         return;
       }
 
+      // Helper: get a usable URL for the storage path.
+      // Public viewers have no auth session, so signed URLs fail for them.
+      // Use getPublicUrl() for public photos (works without auth),
+      // and createSignedUrl() only when the user is authenticated.
+      async function getStorageUrl(storagePath) {
+        if (currentUser) {
+          // Authenticated: signed URL works and respects private-bucket ACLs
+          const { data, error } = await sb.storage.from('crime-photos').createSignedUrl(storagePath, 3600);
+          console.log('createSignedUrl result:', data?.signedUrl ? 'OK' : 'null', error?.message);
+          return data?.signedUrl || null;
+        } else {
+          // Public viewer: use the public CDN URL (bucket must allow public reads)
+          const { data } = sb.storage.from('crime-photos').getPublicUrl(storagePath);
+          console.log('getPublicUrl result:', data?.publicUrl);
+          return data?.publicUrl || null;
+        }
+      }
+
       // Handle PDFs
       if (path.toLowerCase().endsWith('.pdf')) {
         try {
-          const { data } = await sb.storage.from('crime-photos').createSignedUrl(path, 3600);
-          if (data?.signedUrl) {
-            imgEl.innerHTML = `<a href="${data.signedUrl}" target="_blank" rel="noopener"
+          const url = await getStorageUrl(path);
+          if (url) {
+            imgEl.innerHTML = `<a href="${url}" target="_blank" rel="noopener"
               style="display:flex;align-items:center;gap:8px;padding:10px;
                 background:var(--panel2);border-radius:6px;color:var(--text);
                 text-decoration:none;font-size:12px">
@@ -1148,6 +1183,8 @@ function renderPhotoPin(photos) {
               </svg>
               <span>${p.caption||'Open PDF'}</span>
             </a>`;
+          } else {
+            imgEl.textContent = 'PDF unavailable';
           }
         } catch(e) { imgEl.textContent = 'PDF unavailable'; }
         return;
@@ -1155,16 +1192,22 @@ function renderPhotoPin(photos) {
 
       // Handle images (default)
       try {
-        const { data } = await sb.storage.from('crime-photos').createSignedUrl(path, 3600);
-        if (data?.signedUrl) {
-          const sUrl = data.signedUrl;
+        const sUrl = await getStorageUrl(path);
+        if (sUrl) {
           imgEl.innerHTML = '';
           const img = document.createElement('img');
-          img.src = sUrl;
           img.style.cssText = 'width:100%;border-radius:6px;display:block;cursor:pointer;max-height:200px;object-fit:cover';
           img.alt = p.label||p.crimeType||'Photo';
           img.onclick = () => window.open(sUrl, '_blank');
           imgEl.appendChild(img);
+          // Fetch as blob to avoid Supabase client injecting auth headers
+          // onto the img src request, which causes a 400 on public buckets
+          fetch(sUrl)
+            .then(r => r.blob())
+            .then(blob => { img.src = URL.createObjectURL(blob); })
+            .catch(() => { imgEl.textContent = 'Photo unavailable'; });
+        } else {
+          imgEl.textContent = 'Photo unavailable';
         }
       } catch(e) { imgEl.textContent = 'Photo unavailable'; }
     });

@@ -709,11 +709,10 @@ async function doLogin() {
   const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
   if (error) { err.textContent = error.message; btn.disabled = false; btn.textContent = 'Sign in'; return; }
   currentUser = data.user;
-  // Store email in profiles so admin can display author names
+  // Store email via RPC (SECURITY DEFINER bypasses RLS so field officers can save their email)
   try {
-    const {error:ue} = await sb.from('profiles').upsert({id:currentUser.id,email:currentUser.email},{onConflict:'id'});
-    if(ue){ await sb.from('profiles').update({email:currentUser.email}).eq('id',currentUser.id); }
-  } catch(e){ console.warn('Profile email save failed:',e); }
+    await sb.rpc('set_my_email', { p_email: currentUser.email });
+  } catch(e) { console.warn('set_my_email RPC failed:', e); }
   await loadRole();
   console.log('Login complete, role:', userRole, 'user:', currentUser.email);
   launch();

@@ -354,6 +354,21 @@ tbody td{padding:7px 10px;vertical-align:middle}
       <div class="tbar">
         <h3>Photos</h3>
         <span class="tbar-count" id="photos-tcount"></span>
+        <div class="tbar-spacer"></div>
+        <input type="text" class="tf tf-search" id="photos-search"
+          placeholder="Search crime, address, annotation…"
+          oninput="filterPhotos()" style="width:220px">
+        <select class="tf" id="photos-filter-type" onchange="filterPhotos()" style="width:110px">
+          <option value="">All types</option>
+          <option value="photo">📷 Photo</option>
+          <option value="pdf">📄 PDF</option>
+          <option value="link">🔗 Link</option>
+        </select>
+        <select class="tf" id="photos-filter-vis" onchange="filterPhotos()" style="width:100px">
+          <option value="">All</option>
+          <option value="public">🌐 Public</option>
+          <option value="private">🔒 Private</option>
+        </select>
       </div>
       <div class="photo-grid" id="photo-grid"></div>
     </div>
@@ -1023,15 +1038,46 @@ async function deleteAnn(id) {
 // ══════════════════════════════════════════════════════
 // PHOTOS
 // ══════════════════════════════════════════════════════
-async function renderPhotos() {
-  document.getElementById('photos-tcount').textContent=`${allPhotos.length} photos`;
+function filterPhotos() {
+  const q = (document.getElementById('photos-search').value || '').toLowerCase().trim();
+  const typeF = document.getElementById('photos-filter-type').value;
+  const visF  = document.getElementById('photos-filter-vis').value;
+
+  const filtered = allPhotos.filter(p => {
+    const path = p.storage_path || '';
+    const isLink = path.startsWith('link://');
+    const isPDF  = !isLink && path.toLowerCase().endsWith('.pdf');
+    const isImg  = !isLink && !isPDF;
+    if (typeF === 'photo' && !isImg)  return false;
+    if (typeF === 'pdf'   && !isPDF)  return false;
+    if (typeF === 'link'  && !isLink) return false;
+    if (visF === 'public'  && !p.is_public) return false;
+    if (visF === 'private' &&  p.is_public) return false;
+    if (q) {
+      const crime = p.crime_id ? allCrimes.find(c => c.id === p.crime_id) : null;
+      const ann   = p.annotation_id ? allAnnotations.find(a => a.id === p.annotation_id) : null;
+      const haystack = [
+        crime?.crime_type, crime?.address,
+        ann?.label, ann?.annotation_type,
+        p.caption,
+      ].filter(Boolean).join(' ').toLowerCase();
+      if (!haystack.includes(q)) return false;
+    }
+    return true;
+  });
+  renderPhotos(filtered);
+}
+
+async function renderPhotos(photos) {
+  photos = photos ?? allPhotos;
+  document.getElementById('photos-tcount').textContent=`${photos.length}${photos.length < allPhotos.length ? ' of '+allPhotos.length : ''} photos`;
   const grid=document.getElementById('photo-grid');
-  if(!allPhotos.length){
-    grid.innerHTML=`<div class="empty-state" style="grid-column:1/-1">No photos yet</div>`;
+  if(!photos.length){
+    grid.innerHTML=`<div class="empty-state" style="grid-column:1/-1">${allPhotos.length ? 'No photos match your search' : 'No photos yet'}</div>`;
     return;
   }
 
-  grid.innerHTML=allPhotos.map(p=>{
+  grid.innerHTML=photos.map(p=>{
     const crimeId  = p.crime_id;
     const annId    = p.annotation_id;
     const isPublic = p.is_public||false;

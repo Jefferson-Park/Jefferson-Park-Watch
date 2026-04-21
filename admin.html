@@ -520,7 +520,8 @@ async function launch() {
   });
 
   initMap();
-  await Promise.all([loadCrimes(), loadAnnotations(), loadPhotos(), loadUsers()]);
+  await loadUsers(); // must run first — builds profileMap used by annotations/photos
+  await Promise.all([loadCrimes(), loadAnnotations(), loadPhotos()]);
   setupResize();
 }
 
@@ -706,8 +707,10 @@ async function loadUsers() {
   const {data} = await sb.from('profiles').select('id,role,email,created_at');
   // Build id->email lookup used by annotations & photos tables
   profileMap = {};
-  (data||[]).forEach(u => { profileMap[u.id] = u.email || ('User …' + u.id.slice(-6)); });
+  (data||[]).forEach(u => { profileMap[u.id] = u.email || null; });
   if (currentUser) profileMap[currentUser.id] = currentUser.email;
+  // Re-render annotations if already loaded so author names appear
+  if (allAnnotations.length) renderAnnotationsTable();
   const el = document.getElementById('users-wrap');
   el.innerHTML = (data||[]).map(u=>`
     <div class="user-row">
@@ -786,8 +789,6 @@ function renderAnnotationMarkers() {
         <div style="display:flex;gap:5px;margin-top:8px">
           <button class="btn btn-sm" style="flex:1;justify-content:center"
             onclick="openEditAnn('${ann.id}')">✏️ Edit</button>
-          <button class="btn btn-sm" style="flex:1;justify-content:center"
-            onclick="flyToAnn('${ann.id}')">⭐ Star</button>
         </div>
       </div>`;
 
@@ -1016,7 +1017,7 @@ function renderAnnotationsTable(annotations) {
       <td class="tc-desc" title="${a.notes||''}">${a.notes||'—'}</td>
       <td class="tc-mono">${a.created_at?new Date(a.created_at).toLocaleDateString():'—'}</td>
       <td style="font-size:10px;color:var(--muted);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
-        title="${a.created_by||''}">${a.created_by?(profileMap[a.created_by]||('…'+a.created_by.slice(-6))):'—'}</td>
+        title="${a.created_by||''}">${a.created_by?(profileMap[a.created_by]||'(login to populate)'):'—'}</td>
       <td class="tc-mono">${a.lat?parseFloat(a.lat).toFixed(5):'—'}</td>
       <td class="tc-mono">${a.lng?parseFloat(a.lng).toFixed(5):'—'}</td>
       <td>
@@ -1025,7 +1026,6 @@ function renderAnnotationsTable(annotations) {
       <td>
         <div class="tc-actions">
           <button class="btn btn-sm" onclick="openEditAnn('${a.id}')">Edit</button>
-          <button class="btn btn-sm" onclick="flyToAnn('${a.id}')">⭐</button>
           <button class="btn btn-sm btn-danger" onclick="deleteAnn('${a.id}')">Del</button>
         </div>
       </td>

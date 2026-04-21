@@ -1770,6 +1770,34 @@ async function uploadAttachment(e) {
   if (userRole === 'admin') loadPublicPhotos();
 }
 
+async function saveLink() {
+  const url   = (document.getElementById('attach-url').value || '').trim();
+  const label = (document.getElementById('attach-url-label').value || '').trim();
+  if (!url) { showToast('Please enter a URL','err'); return; }
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    showToast('URL must start with https://','err'); return;
+  }
+  if (!currentPhotoCtx || !currentUser) { showToast('No attachment context','err'); return; }
+
+  const { error } = await sb.from('photos').insert({
+    uploaded_by:   currentUser.id,
+    storage_path:  'link://' + url,
+    caption:       label || url,
+    crime_id:      currentPhotoCtx.type === 'crime'      ? currentPhotoCtx.id : null,
+    annotation_id: currentPhotoCtx.type === 'annotation' ? currentPhotoCtx.id : null,
+    is_public:     false,
+  });
+
+  if (error) { showToast('Error saving link: ' + error.message, 'err'); return; }
+
+  showToast('Link saved ✓', 'ok');
+  document.getElementById('attach-url').value = '';
+  document.getElementById('attach-url-label').value = '';
+  closeModal('attach-modal');
+  currentPhotoCtx = null;
+  if (userRole === 'admin') loadPublicPhotos();
+}
+
 // ══════════════════════════════════════════════════════════════════
 // PDF IMPORT
 // ══════════════════════════════════════════════════════════════════

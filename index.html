@@ -938,9 +938,14 @@ async function loadPublicAnnotations() {
   try {
     const { data, error } = await sb.rpc('get_annotations_geojson');
     if (error) throw error;
-    // Only show public annotations on the public/field map
-    annotationsData = (data || []).filter(a => a.is_public);
-    console.log('Public annotations loaded:', annotationsData.length);
+    // Public viewers see only is_public annotations
+    // Field officers also see their own (regardless of is_public)
+    annotationsData = (data || []).filter(a => {
+      if (a.is_public) return true;
+      if (userRole === 'field_officer' && a.created_by === currentUser?.id) return true;
+      return false;
+    });
+    console.log('Annotations loaded:', annotationsData.length, 'userRole:', userRole);
     renderPublicAnnotations();
   } catch(e) {
     console.warn('Annotations not available:', e.message);
@@ -965,10 +970,20 @@ function renderPublicAnnotations() {
       const geom = (typeof ann.geometry_geojson === 'string')
         ? JSON.parse(ann.geometry_geojson) : ann.geometry_geojson;
 
+      // Own (non-public) annotations shown in amber so field officer can tell them apart
+      const isOwn = !ann.is_public && userRole === 'field_officer' && ann.created_by === currentUser?.id;
+      const annColor = isOwn ? '#f0a500' : color;
+
       const canEditAnn = userRole === 'admin' || userRole === 'field_officer';
+      const ownBadge = isOwn
+        ? `<span style="font-family:var(--mono);font-size:9px;padding:2px 5px;border-radius:3px;background:rgba(240,165,0,.15);color:var(--amber);margin-left:4px">✏️ Draft — not public</span>`
+        : '';
       const popup = `<div style="padding:10px;font-family:var(--font);color:var(--text)">
-        <div style="font-weight:600;font-size:12px;color:${color}">${ann.label||'Annotation'}</div>
-        <span style="font-family:var(--mono);font-size:9px;padding:2px 5px;border-radius:3px;background:rgba(0,194,168,.15);color:var(--accent)">${ann.annotation_type}</span>
+        <div style="font-weight:600;font-size:12px;color:${annColor}">${ann.label||'Annotation'}</div>
+        <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:3px">
+          <span style="font-family:var(--mono);font-size:9px;padding:2px 5px;border-radius:3px;background:rgba(0,194,168,.15);color:var(--accent)">${ann.annotation_type}</span>
+          ${ownBadge}
+        </div>
         ${ann.notes ? `<div style="font-size:11px;margin-top:6px;line-height:1.5">${ann.notes}</div>` : ''}
         ${canEditAnn ? `
           <div style="margin-top:10px;border-top:1px solid rgba(255,255,255,.08);padding-top:8px">
@@ -995,15 +1010,15 @@ function renderPublicAnnotations() {
 
       const layer = L.geoJSON(geom, {
         style: () => ({
-          color,
+          color: annColor,
           weight:      ann.annotation_type === 'line' ? 4 : 3,
           opacity:     0.9,
-          fillColor:   color,
+          fillColor:   annColor,
           fillOpacity: ann.annotation_type === 'polygon' ? 0.25 : 0,
           lineCap:     'round', lineJoin:'round',
         }),
         pointToLayer: (_f, latlng) => L.circleMarker(latlng, {
-          radius:9, color:'white', weight:2.5, fillColor:color, fillOpacity:1,
+          radius:9, color:'white', weight:2.5, fillColor:annColor, fillOpacity:1,
           // Points get highest z-index via pane
           pane: 'markerPane',
         }),

@@ -499,6 +499,8 @@ async function doLogin() {
   const {data:prof} = await sb.from('profiles').select('role').eq('id',data.user.id).single();
   if (prof?.role !== 'admin'){await sb.auth.signOut();err.textContent='Admin access required.';return;}
   currentUser = data.user;
+  // Store email in profiles for author lookup
+  await sb.from('profiles').update({ email: currentUser.email }).eq('id', currentUser.id);
   launch();
 }
 async function doLogout(){await sb.auth.signOut();location.reload();}

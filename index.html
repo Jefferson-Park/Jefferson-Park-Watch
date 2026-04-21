@@ -709,6 +709,8 @@ async function doLogin() {
   const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
   if (error) { err.textContent = error.message; btn.disabled = false; btn.textContent = 'Sign in'; return; }
   currentUser = data.user;
+  // Store email in profiles so admin can display author names
+  await sb.from('profiles').update({ email: currentUser.email }).eq('id', currentUser.id);
   await loadRole();
   console.log('Login complete, role:', userRole, 'user:', currentUser.email);
   launch();
@@ -974,7 +976,8 @@ function renderPublicAnnotations() {
       const isOwn = !ann.is_public && userRole === 'field_officer' && ann.created_by === currentUser?.id;
       const annColor = isOwn ? '#f0a500' : color;
 
-      const canEditAnn = userRole === 'admin' || userRole === 'field_officer';
+      // Admins can edit all; field officers only their own annotations
+      const canEditAnn = userRole === 'admin' || (userRole === 'field_officer' && ann.created_by === currentUser?.id);
       const ownBadge = isOwn
         ? `<span style="font-family:var(--mono);font-size:9px;padding:2px 5px;border-radius:3px;background:rgba(240,165,0,.15);color:var(--amber);margin-left:4px">✏️ Draft — not public</span>`
         : '';

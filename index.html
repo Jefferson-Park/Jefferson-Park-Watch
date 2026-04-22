@@ -709,10 +709,9 @@ async function doLogin() {
   const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
   if (error) { err.textContent = error.message; btn.disabled = false; btn.textContent = 'Sign in'; return; }
   currentUser = data.user;
-  // Store email via RPC (SECURITY DEFINER bypasses RLS so field officers can save their email)
-  try {
-    await sb.rpc('set_my_email', { p_email: currentUser.email });
-  } catch(e) { console.warn('set_my_email RPC failed:', e); }
+  // Store email via SECURITY DEFINER RPC so RLS can't block field officers
+  try { await sb.rpc('set_my_email', { p_email: currentUser.email }); }
+  catch(e) { console.warn('set_my_email failed:', e); }
   await loadRole();
   console.log('Login complete, role:', userRole, 'user:', currentUser.email);
   launch();
@@ -1570,6 +1569,31 @@ async function saveAnnNotes(annId) {
 function openAnnotationAttach(annId) {
   currentPhotoCtx = { id: annId, type: 'annotation' };
   openModal('attach-modal');
+}
+
+async function saveLink() {
+  const url   = document.getElementById('attach-url').value.trim();
+  const label = document.getElementById('attach-url-label').value.trim();
+  if (!url) { showToast('Please enter a URL','err'); return; }
+  if (!currentPhotoCtx || !currentUser) { showToast('No context — please retry','err'); return; }
+
+  const { error } = await sb.from('photos').insert({
+    uploaded_by:   currentUser.id,
+    storage_path:  'link://' + url,
+    caption:       label || url,
+    crime_id:      currentPhotoCtx.type === 'crime'      ? currentPhotoCtx.id : null,
+    annotation_id: currentPhotoCtx.type === 'annotation' ? currentPhotoCtx.id : null,
+    is_public:     false,
+  });
+
+  if (error) { showToast('Error saving link: ' + error.message, 'err'); return; }
+
+  showToast('Link saved ✓', 'ok');
+  document.getElementById('attach-url').value = '';
+  document.getElementById('attach-url-label').value = '';
+  currentPhotoCtx = null;
+  closeModal('attach-modal');
+  if (userRole === 'admin') loadPublicPhotos();
 }
 
 function toggleSidebar() {

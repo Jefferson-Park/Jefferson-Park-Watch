@@ -390,7 +390,32 @@ tbody td{padding:7px 10px;vertical-align:middle}
 
     <!-- USERS TAB -->
     <div class="tab-pane" id="tab-users">
-      <div class="tbar"><h3>Users</h3></div>
+      <div class="tbar">
+        <h3>Users</h3>
+        <button class="btn btn-sm" style="margin-left:auto"
+          onclick="const b=document.getElementById('invite-box');b.style.display=b.style.display==='none'?'block':'none'">
+          ➕ Add Field Officer
+        </button>
+      </div>
+
+      <div id="invite-box" style="display:none;margin:0 14px 14px;padding:14px;
+        background:var(--panel);border:1px solid var(--accent);border-radius:8px;font-size:12px">
+        <div style="font-weight:600;margin-bottom:8px;color:var(--accent)">Invite a new Field Officer</div>
+        <ol style="margin:0 0 10px 16px;line-height:2;color:var(--text)">
+          <li>Click the button below to open your Supabase dashboard</li>
+          <li>Click <strong>Invite user</strong> and enter their email</li>
+          <li>They'll receive a magic link to set their password</li>
+          <li>Once they log in once, they'll appear in this list</li>
+          <li>Set their role to <strong>Field Officer</strong> using the dropdown below</li>
+        </ol>
+        <a href="https://supabase.com/dashboard/project/sqiioihssmnqatjrednq/auth/users"
+          target="_blank"
+          style="display:inline-block;padding:8px 16px;background:var(--accent);color:#000;
+            border-radius:6px;font-weight:600;text-decoration:none;font-size:12px">
+          Open Supabase → Invite User ↗
+        </a>
+      </div>
+
       <div class="users-wrap" id="users-wrap"></div>
     </div>
 
@@ -646,9 +671,8 @@ async function loadCrimes() {
   const {data,error} = await sb.rpc('get_crimes',{p_exclude_closed:false,p_date_from:null,p_date_to:null});
   if (error){console.error(error);showToast('Error loading crimes','err');return;}
   allCrimes = data||[];
-  filteredCrimes = [...allCrimes];
   document.getElementById('cnt-crimes').textContent = allCrimes.length;
-  renderCrimesTable();
+  filterCrimes(); // reapplies current filter instead of resetting to all
   renderCrimeMarkers();
 }
 
@@ -698,7 +722,7 @@ async function loadPhotos() {
   if (error) { console.error('Photos error:', error); }
   allPhotos = data||[];
   document.getElementById('cnt-photos').textContent = allPhotos.length;
-  renderPhotos();
+  filterPhotos(); // reapplies current filter instead of resetting to all
 }
 
 async function loadUsers() {
@@ -1261,6 +1285,7 @@ async function togglePhotoPublic(id, current) {
   }
 
   showToast(newVal ? '🌐 Photo is now public' : '🔒 Photo made private','ok');
+  await Promise.all([loadCrimes(), loadAnnotations()]);
   await loadPhotos();
 }
 
@@ -1269,6 +1294,7 @@ async function deletePhoto(id,path){
   await sb.storage.from('crime-photos').remove([path]);
   await sb.from('photos').delete().eq('id',id);
   showToast('Photo deleted','ok');
+  await Promise.all([loadCrimes(), loadAnnotations()]);
   await loadPhotos();
 }
 

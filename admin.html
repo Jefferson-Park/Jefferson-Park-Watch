@@ -701,49 +701,24 @@ async function loadPhotos() {
 }
 
 async function loadUsers() {
-  const {data, error} = await sb.from('profiles').select('id,role,email,created_at');
-  console.log('loadUsers — rows:', data?.length, 'error:', error?.message);
-
-  const profiles = data || [];
-
-  // Always ensure current admin appears even if RLS filtered them out
-  if (currentUser && !profiles.find(u => u.id === currentUser.id)) {
-    profiles.unshift({ id: currentUser.id, email: currentUser.email, role: 'admin', created_at: null });
-  }
-
-  // Build profileMap used across annotations/photos for author display
+  const {data} = await sb.from('profiles').select('id,role,email,created_at');
+  // Build id->email lookup used by annotations & photos tables
   profileMap = {};
-  profiles.forEach(u => {
-    profileMap[u.id] = u.email || (u.id === currentUser?.id ? currentUser.email : 'user-' + u.id.slice(-8));
-  });
+  (data||[]).forEach(u => { profileMap[u.id] = u.email || ('User …' + u.id.slice(-6)); });
   if (currentUser) profileMap[currentUser.id] = currentUser.email;
-
   const el = document.getElementById('users-wrap');
-  el.innerHTML = profiles.map(u => {
-    const email = u.email || (u.id === currentUser?.id ? currentUser.email : null);
-    const isMe = u.id === currentUser?.id;
-    const roleIcon = u.role === 'admin' ? '👑' : '🔦';
-    return `
+  el.innerHTML = (data||[]).map(u=>`
     <div class="user-row">
-      <div class="user-icon">${isMe ? '🔑' : roleIcon}</div>
-      <div style="flex:1;min-width:0">
-        <div class="user-email">
-          ${email || `<span style="color:var(--muted);font-style:italic">Email not stored — user must log into field map once</span>`}
-          ${isMe ? `<span style="font-size:9px;color:var(--accent);margin-left:6px">(you)</span>` : ''}
-        </div>
+      <div class="user-icon">👤</div>
+      <div>
+        <div class="user-email">${u.email || (u.id===currentUser.id ? currentUser.email : '…'+u.id.slice(-8))}</div>
         <div class="user-id">${u.id}</div>
       </div>
       <select class="role-sel" onchange="updateRole('${u.id}',this.value)">
         <option value="field_officer" ${u.role==='field_officer'?'selected':''}>Field Officer</option>
         <option value="admin" ${u.role==='admin'?'selected':''}>Admin</option>
       </select>
-    </div>`;
-  }).join('') || `<div class="empty-state">No users found — RLS may be blocking the profiles table.<br><br>
-    <span style="font-size:11px;color:var(--amber)">Run in Supabase SQL editor:<br>
-    <code style="display:block;margin-top:6px;padding:8px;background:var(--bg);border-radius:4px;text-align:left;white-space:pre">CREATE POLICY "admin_select_all_profiles"
-ON profiles FOR SELECT TO authenticated
-USING (auth.uid() = id OR
-  (SELECT role FROM profiles WHERE id = auth.uid()) = 'admin');</code></span></div>`;
+    </div>`).join('');
 }
 
 // ══════════════════════════════════════════════════════

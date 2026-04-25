@@ -520,7 +520,8 @@ async function launch() {
   });
 
   initMap();
-  await Promise.all([loadCrimes(), loadAnnotations(), loadPhotos(), loadUsers()]);
+  await Promise.all([loadCrimes(), loadAnnotations(), loadUsers()]);
+  await loadPhotos();
   setupResize();
 }
 

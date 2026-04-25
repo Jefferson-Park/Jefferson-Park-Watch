@@ -1593,7 +1593,7 @@ async function saveLink() {
   document.getElementById('attach-url-label').value = '';
   currentPhotoCtx = null;
   closeModal('attach-modal');
-  if (userRole === 'admin') loadPublicPhotos();
+  if (userRole === 'admin') { await loadCrimes(); loadPublicPhotos(); }
 }
 
 function toggleSidebar() {
@@ -1728,8 +1728,11 @@ async function submitCrime() {
   });
   if (error) { showToast('Error: '+error.message,'err'); return; }
 
-  // insert_crime now returns the new crime's uuid directly
-  lastAddedCrimeId = data || null;
+  // Get the new crime ID for photo attachment
+  const { data: newCrime } = await sb.from('crimes')
+    .select('id').eq('address', addr).eq('source','manual')
+    .order('created_at',{ascending:false}).limit(1).single();
+  lastAddedCrimeId = newCrime?.id || null;
 
   // Show step 2 — photo option
   document.getElementById('add-step1').style.display = 'none';
@@ -1789,8 +1792,8 @@ async function uploadAttachment(e) {
   if (de) { showToast('Photo saved to storage but DB failed: '+de.message,'err'); }
   else { showToast('Photo uploaded ✓','ok'); }
   e.target.value=''; currentPhotoCtx=null;
-  // Refresh photo pins if admin
-  if (userRole === 'admin') loadPublicPhotos();
+  // Refresh crimes first so new crime lat/lng is in crimesData, then refresh photo pins
+  if (userRole === 'admin') { await loadCrimes(); loadPublicPhotos(); }
 }
 
 // ══════════════════════════════════════════════════════════════════

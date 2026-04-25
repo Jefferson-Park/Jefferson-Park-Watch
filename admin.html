@@ -701,7 +701,7 @@ async function loadPhotos() {
 }
 
 async function loadUsers() {
-  const {data} = await sb.from('profiles').select('id,role,email,created_at');
+  const {data} = await sb.from('all_profiles').select('id,role,email,created_at');
   // Build id->email lookup used by annotations & photos tables
   profileMap = {};
   (data||[]).forEach(u => { profileMap[u.id] = u.email || ('User …' + u.id.slice(-6)); });

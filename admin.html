@@ -496,23 +496,11 @@ async function doLogin() {
   if (!email||!pass){err.textContent='Enter email and password.';return;}
   const {data,error} = await sb.auth.signInWithPassword({email,password:pass});
   if (error){err.textContent=error.message;return;}
+  const {data:prof} = await sb.from('profiles').select('role').eq('id',data.user.id).single();
+  if (prof?.role !== 'admin'){await sb.auth.signOut();err.textContent='Admin access required.';return;}
   currentUser = data.user;
-
-  // Check role — try RPC first (bypasses RLS), fall back to direct query
-  let role = null;
-  try { const {data:r} = await sb.rpc('get_my_role'); if (r) role = r; } catch(e) {}
-  if (!role) {
-    const {data:prof} = await sb.from('profiles').select('role').eq('id',currentUser.id).single();
-    role = prof?.role;
-  }
-  if (role !== 'admin') {
-    await sb.auth.signOut();
-    err.textContent = 'Admin access required.';
-    currentUser = null;
-    return;
-  }
-
-  try { await sb.rpc('set_my_email', { p_email: currentUser.email }); } catch(e) {}
+  try { await sb.rpc('set_my_email', { p_email: currentUser.email }); }
+  catch(e) { console.warn('set_my_email failed:', e); }
   launch();
 }
 async function doLogout(){await sb.auth.signOut();location.reload();}
@@ -713,30 +701,12 @@ async function loadPhotos() {
 }
 
 async function loadUsers() {
-  // First try an admin RPC that bypasses RLS (SECURITY DEFINER)
-  // This is the most reliable way to see all users
-  let profiles = [];
-  let source = '';
+  const {data, error} = await sb.from('profiles').select('id,role,email,created_at');
+  console.log('loadUsers — rows:', data?.length, 'error:', error?.message);
 
-  try {
-    const {data, error} = await sb.rpc('get_all_profiles');
-    if (!error && data?.length) {
-      profiles = data;
-      source = 'rpc:get_all_profiles';
-    }
-  } catch(e) {}
+  const profiles = data || [];
 
-  // Fallback: direct table query (only works if RLS allows admin to SELECT all rows)
-  if (!profiles.length) {
-    const {data, error} = await sb.from('profiles').select('id,role,email,created_at');
-    console.log('profiles direct query — rows:', data?.length, 'error:', error?.message);
-    profiles = data || [];
-    source = 'direct table';
-  }
-
-  console.log(`loadUsers: ${profiles.length} profiles via ${source}`);
-
-  // Always make sure current admin is in the list
+  // Always ensure current admin appears even if RLS filtered them out
   if (currentUser && !profiles.find(u => u.id === currentUser.id)) {
     profiles.unshift({ id: currentUser.id, email: currentUser.email, role: 'admin', created_at: null });
   }
@@ -749,21 +719,6 @@ async function loadUsers() {
   if (currentUser) profileMap[currentUser.id] = currentUser.email;
 
   const el = document.getElementById('users-wrap');
-  if (!profiles.length) {
-    el.innerHTML = `<div class="empty-state">
-      No users found.<br><br>
-      <span style="font-size:11px;color:var(--amber)">⚠ RLS on the <code>profiles</code> table is blocking the admin from reading all rows.<br>
-      Run this in Supabase SQL editor:<br><br>
-      <code style="display:block;margin-top:6px;padding:8px;background:var(--bg);border-radius:4px;text-align:left">
-      CREATE POLICY "admin_read_all_profiles"<br>
-      ON profiles FOR SELECT<br>
-      TO authenticated<br>
-      USING (role = 'admin' OR auth.uid() = id);
-      </code></span>
-    </div>`;
-    return;
-  }
-
   el.innerHTML = profiles.map(u => {
     const email = u.email || (u.id === currentUser?.id ? currentUser.email : null);
     const isMe = u.id === currentUser?.id;
@@ -773,18 +728,22 @@ async function loadUsers() {
       <div class="user-icon">${isMe ? '🔑' : roleIcon}</div>
       <div style="flex:1;min-width:0">
         <div class="user-email">
-          ${email || `<span style="color:var(--muted);font-style:italic">Email not stored</span>`}
+          ${email || `<span style="color:var(--muted);font-style:italic">Email not stored — user must log into field map once</span>`}
           ${isMe ? `<span style="font-size:9px;color:var(--accent);margin-left:6px">(you)</span>` : ''}
         </div>
         <div class="user-id">${u.id}</div>
-        ${!email ? `<div style="font-size:9px;color:var(--amber);margin-top:2px">⚠ User must log into index.html once to register email</div>` : ''}
       </div>
       <select class="role-sel" onchange="updateRole('${u.id}',this.value)">
         <option value="field_officer" ${u.role==='field_officer'?'selected':''}>Field Officer</option>
         <option value="admin" ${u.role==='admin'?'selected':''}>Admin</option>
       </select>
     </div>`;
-  }).join('');
+  }).join('') || `<div class="empty-state">No users found — RLS may be blocking the profiles table.<br><br>
+    <span style="font-size:11px;color:var(--amber)">Run in Supabase SQL editor:<br>
+    <code style="display:block;margin-top:6px;padding:8px;background:var(--bg);border-radius:4px;text-align:left;white-space:pre">CREATE POLICY "admin_select_all_profiles"
+ON profiles FOR SELECT TO authenticated
+USING (auth.uid() = id OR
+  (SELECT role FROM profiles WHERE id = auth.uid()) = 'admin');</code></span></div>`;
 }
 
 // ══════════════════════════════════════════════════════
@@ -1423,17 +1382,12 @@ function showToast(msg,type='ok'){
 (async()=>{
   const {data:{session}}=await sb.auth.getSession();
   if(session?.user){
-    currentUser=session.user;
-    let role = null;
-    try { const {data:r} = await sb.rpc('get_my_role'); if (r) role = r; } catch(e) {}
-    if (!role) {
-      const {data:prof}=await sb.from('profiles').select('role').eq('id',session.user.id).single();
-      role = prof?.role;
-    }
-    if(role==='admin'){
+    const {data:prof}=await sb.from('profiles').select('role').eq('id',session.user.id).single();
+    if(prof?.role==='admin'){
+      currentUser=session.user;
       try { await sb.rpc('set_my_email', { p_email: currentUser.email }); } catch(e){}
       launch();
-    } else { currentUser = null; }
+    }
   }
 })();
 </script>

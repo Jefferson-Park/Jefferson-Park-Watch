@@ -784,8 +784,8 @@ function renderAnnotationMarkers() {
         <div style="display:flex;gap:5px;margin-top:8px">
           <button class="btn btn-sm" style="flex:1;justify-content:center"
             onclick="openEditAnn('${ann.id}')">✏️ Edit</button>
-          <button class="btn btn-sm" style="flex:1;justify-content:center"
-            onclick="flyToAnn('${ann.id}')">⭐ Star</button>
+          <button class="btn btn-sm" style="flex:1;justify-content:center;color:#fbbf24;border-color:#fbbf24"
+            onclick="notifyAuthor('${ann.id}')">✉️ Notify</button>
         </div>
       </div>`;
 
@@ -1069,6 +1069,26 @@ async function saveEditAnn() {
   showToast('Annotation updated','ok');
   document.getElementById('edit-ann-modal').classList.remove('open');
   await loadAnnotations();
+}
+
+function notifyAuthor(annId) {
+  const a = allAnnotations.find(x => x.id === annId);
+  if (!a) return;
+  const authorEmail = a.created_by ? profileMap[a.created_by] : null;
+  if (!authorEmail || !authorEmail.includes('@')) {
+    showToast('Author email not found', 'err');
+    return;
+  }
+  const label   = a.label || 'Annotation';
+  const type    = a.annotation_type || 'annotation';
+  const notes   = a.notes || '(no notes)';
+  const created = a.created_at ? new Date(a.created_at).toLocaleDateString() : '—';
+  const subject = encodeURIComponent(`[Jefferson Park] Update on your ${type}: "${label}"`);
+  const body    = encodeURIComponent(
+    `Hi,\n\nThe admin has reviewed your ${type} "${label}" (created ${created}).\n\nCurrent notes:\n${notes}\n\n— ${currentUser.email}\nJefferson Park Admin Portal`
+  );
+  window.location.href = `mailto:${authorEmail}?subject=${subject}&body=${body}`;
+  showToast(`Opening email to ${authorEmail}`, 'ok');
 }
 
 async function deleteAnn(id) {

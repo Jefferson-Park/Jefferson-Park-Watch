@@ -312,7 +312,7 @@ tbody td{padding:7px 10px;vertical-align:middle}
             <th onclick="sortTable('incident_time')">Time</th>
             <th>Description</th>
             <th>Notes</th>
-            <th onclick="sortTable('source')">Source</th>
+            <th onclick="sortTable('updated_by')">Author</th>
             <th>Lat</th><th>Lng</th>
             <th onclick="sortTable('created_at')">Added</th>
             <th>Actions</th>
@@ -701,7 +701,7 @@ async function loadPhotos() {
 }
 
 async function loadUsers() {
-  const {data} = await sb.from('all_profiles').select('id,role,email,created_at');
+  const {data} = await sb.rpc('get_all_profiles');
   // Build id->email lookup used by annotations & photos tables
   profileMap = {};
   (data||[]).forEach(u => { profileMap[u.id] = u.email || ('User …' + u.id.slice(-6)); });
@@ -903,7 +903,7 @@ function renderCrimesTable() {
       <td class="tc-mono">${c.incident_time||'—'}</td>
       <td class="tc-desc" title="${c.description||''}">${c.description||'—'}</td>
       <td class="tc-desc" title="${c.notes||''}">${c.notes||'—'}</td>
-      <td><span class="badge b-${c.source||'manual'}">${c.source||'manual'}</span></td>
+      <td style="font-size:10px;color:var(--muted);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${c.updated_by||''}">${c.updated_by?(profileMap[c.updated_by]||('…'+c.updated_by.slice(-6))):'—'}</td>
       <td class="tc-mono">${c.lat?c.lat.toFixed(6):'—'}</td>
       <td class="tc-mono">${c.lng?c.lng.toFixed(6):'—'}</td>
       <td class="tc-mono">${c.created_at?new Date(c.created_at).toLocaleDateString():'—'}</td>

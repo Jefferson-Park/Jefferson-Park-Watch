@@ -1087,7 +1087,7 @@ function notifyAuthor(annId) {
   const body    = encodeURIComponent(
     `Hi,\n\nThe admin has reviewed your ${type} "${label}" (created ${created}).\n\nCurrent notes:\n${notes}\n\n— ${currentUser.email}\nJefferson Park Admin Portal`
   );
-  window.location.href = `mailto:${authorEmail}?subject=${subject}&body=${body}`;
+  window.open(`mailto:${authorEmail}?subject=${subject}&body=${body}`, '_self');
   showToast(`Opening email to ${authorEmail}`, 'ok');
 }
 

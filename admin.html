@@ -496,11 +496,23 @@ async function doLogin() {
   if (!email||!pass){err.textContent='Enter email and password.';return;}
   const {data,error} = await sb.auth.signInWithPassword({email,password:pass});
   if (error){err.textContent=error.message;return;}
-  const {data:prof} = await sb.from('profiles').select('role').eq('id',data.user.id).single();
-  if (prof?.role !== 'admin'){await sb.auth.signOut();err.textContent='Admin access required.';return;}
   currentUser = data.user;
-  try { await sb.rpc('set_my_email', { p_email: currentUser.email }); }
-  catch(e) { console.warn('set_my_email failed:', e); }
+
+  // Check role — try RPC first (bypasses RLS), fall back to direct query
+  let role = null;
+  try { const {data:r} = await sb.rpc('get_my_role'); if (r) role = r; } catch(e) {}
+  if (!role) {
+    const {data:prof} = await sb.from('profiles').select('role').eq('id',currentUser.id).single();
+    role = prof?.role;
+  }
+  if (role !== 'admin') {
+    await sb.auth.signOut();
+    err.textContent = 'Admin access required.';
+    currentUser = null;
+    return;
+  }
+
+  try { await sb.rpc('set_my_email', { p_email: currentUser.email }); } catch(e) {}
   launch();
 }
 async function doLogout(){await sb.auth.signOut();location.reload();}
@@ -1411,12 +1423,17 @@ function showToast(msg,type='ok'){
 (async()=>{
   const {data:{session}}=await sb.auth.getSession();
   if(session?.user){
-    const {data:prof}=await sb.from('profiles').select('role').eq('id',session.user.id).single();
-    if(prof?.role==='admin'){
-      currentUser=session.user;
+    currentUser=session.user;
+    let role = null;
+    try { const {data:r} = await sb.rpc('get_my_role'); if (r) role = r; } catch(e) {}
+    if (!role) {
+      const {data:prof}=await sb.from('profiles').select('role').eq('id',session.user.id).single();
+      role = prof?.role;
+    }
+    if(role==='admin'){
       try { await sb.rpc('set_my_email', { p_email: currentUser.email }); } catch(e){}
       launch();
-    }
+    } else { currentUser = null; }
   }
 })();
 </script>

@@ -701,50 +701,71 @@ async function loadPhotos() {
 }
 
 async function loadUsers() {
-  const {data} = await sb.from('profiles').select('id,role,email,created_at');
-  const profiles = data || [];
+  // First try an admin RPC that bypasses RLS (SECURITY DEFINER)
+  // This is the most reliable way to see all users
+  let profiles = [];
+  let source = '';
 
-  // Try admin RPC that reads auth.users (needs SECURITY DEFINER function in Supabase)
-  let emailLookup = {};
   try {
-    const {data: rows} = await sb.rpc('get_all_user_emails');
-    (rows||[]).forEach(r => { if (r.id && r.email) emailLookup[r.id] = r.email; });
-  } catch(e) {
-    console.warn('get_all_user_emails not available — using profiles.email only');
+    const {data, error} = await sb.rpc('get_all_profiles');
+    if (!error && data?.length) {
+      profiles = data;
+      source = 'rpc:get_all_profiles';
+    }
+  } catch(e) {}
+
+  // Fallback: direct table query (only works if RLS allows admin to SELECT all rows)
+  if (!profiles.length) {
+    const {data, error} = await sb.from('profiles').select('id,role,email,created_at');
+    console.log('profiles direct query — rows:', data?.length, 'error:', error?.message);
+    profiles = data || [];
+    source = 'direct table';
   }
 
-  // Build profileMap for use across annotations/photos author display
+  console.log(`loadUsers: ${profiles.length} profiles via ${source}`);
+
+  // Always make sure current admin is in the list
+  if (currentUser && !profiles.find(u => u.id === currentUser.id)) {
+    profiles.unshift({ id: currentUser.id, email: currentUser.email, role: 'admin', created_at: null });
+  }
+
+  // Build profileMap used across annotations/photos for author display
   profileMap = {};
   profiles.forEach(u => {
-    const resolvedEmail = emailLookup[u.id] || u.email || (u.id === currentUser?.id ? currentUser.email : null);
-    profileMap[u.id] = resolvedEmail || ('user-' + u.id.slice(-8));
+    profileMap[u.id] = u.email || (u.id === currentUser?.id ? currentUser.email : 'user-' + u.id.slice(-8));
   });
   if (currentUser) profileMap[currentUser.id] = currentUser.email;
 
   const el = document.getElementById('users-wrap');
   if (!profiles.length) {
-    el.innerHTML = `<div class="empty-state">No users found — check RLS policy on profiles table allows admin SELECT.</div>`;
+    el.innerHTML = `<div class="empty-state">
+      No users found.<br><br>
+      <span style="font-size:11px;color:var(--amber)">⚠ RLS on the <code>profiles</code> table is blocking the admin from reading all rows.<br>
+      Run this in Supabase SQL editor:<br><br>
+      <code style="display:block;margin-top:6px;padding:8px;background:var(--bg);border-radius:4px;text-align:left">
+      CREATE POLICY "admin_read_all_profiles"<br>
+      ON profiles FOR SELECT<br>
+      TO authenticated<br>
+      USING (role = 'admin' OR auth.uid() = id);
+      </code></span>
+    </div>`;
     return;
   }
 
   el.innerHTML = profiles.map(u => {
-    const email = emailLookup[u.id] || u.email || (u.id === currentUser?.id ? currentUser.email : null);
-    const isCurrentUser = u.id === currentUser?.id;
+    const email = u.email || (u.id === currentUser?.id ? currentUser.email : null);
+    const isMe = u.id === currentUser?.id;
     const roleIcon = u.role === 'admin' ? '👑' : '🔦';
     return `
     <div class="user-row">
-      <div class="user-icon">${isCurrentUser ? '🔑' : roleIcon}</div>
+      <div class="user-icon">${isMe ? '🔑' : roleIcon}</div>
       <div style="flex:1;min-width:0">
         <div class="user-email">
-          ${email
-            ? `${email}${isCurrentUser ? ' <span style="font-size:9px;color:var(--accent);margin-left:4px">(you)</span>' : ''}`
-            : `<span style="color:var(--muted);font-style:italic">Email not stored yet</span>`
-          }
+          ${email || `<span style="color:var(--muted);font-style:italic">Email not stored</span>`}
+          ${isMe ? `<span style="font-size:9px;color:var(--accent);margin-left:6px">(you)</span>` : ''}
         </div>
         <div class="user-id">${u.id}</div>
-        ${!email ? `<div style="font-size:9px;color:var(--amber);margin-top:2px">
-          ⚠ This user needs to log in to index.html once to register their email
-        </div>` : ''}
+        ${!email ? `<div style="font-size:9px;color:var(--amber);margin-top:2px">⚠ User must log into index.html once to register email</div>` : ''}
       </div>
       <select class="role-sel" onchange="updateRole('${u.id}',this.value)">
         <option value="field_officer" ${u.role==='field_officer'?'selected':''}>Field Officer</option>

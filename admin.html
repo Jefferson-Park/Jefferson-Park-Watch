@@ -702,23 +702,56 @@ async function loadPhotos() {
 
 async function loadUsers() {
   const {data} = await sb.from('profiles').select('id,role,email,created_at');
-  // Build id->email lookup used by annotations & photos tables
+  const profiles = data || [];
+
+  // Try admin RPC that reads auth.users (needs SECURITY DEFINER function in Supabase)
+  let emailLookup = {};
+  try {
+    const {data: rows} = await sb.rpc('get_all_user_emails');
+    (rows||[]).forEach(r => { if (r.id && r.email) emailLookup[r.id] = r.email; });
+  } catch(e) {
+    console.warn('get_all_user_emails not available — using profiles.email only');
+  }
+
+  // Build profileMap for use across annotations/photos author display
   profileMap = {};
-  (data||[]).forEach(u => { profileMap[u.id] = u.email || ('User …' + u.id.slice(-6)); });
+  profiles.forEach(u => {
+    const resolvedEmail = emailLookup[u.id] || u.email || (u.id === currentUser?.id ? currentUser.email : null);
+    profileMap[u.id] = resolvedEmail || ('user-' + u.id.slice(-8));
+  });
   if (currentUser) profileMap[currentUser.id] = currentUser.email;
+
   const el = document.getElementById('users-wrap');
-  el.innerHTML = (data||[]).map(u=>`
+  if (!profiles.length) {
+    el.innerHTML = `<div class="empty-state">No users found — check RLS policy on profiles table allows admin SELECT.</div>`;
+    return;
+  }
+
+  el.innerHTML = profiles.map(u => {
+    const email = emailLookup[u.id] || u.email || (u.id === currentUser?.id ? currentUser.email : null);
+    const isCurrentUser = u.id === currentUser?.id;
+    const roleIcon = u.role === 'admin' ? '👑' : '🔦';
+    return `
     <div class="user-row">
-      <div class="user-icon">👤</div>
-      <div>
-        <div class="user-email">${u.email || (u.id===currentUser.id ? currentUser.email : '…'+u.id.slice(-8))}</div>
+      <div class="user-icon">${isCurrentUser ? '🔑' : roleIcon}</div>
+      <div style="flex:1;min-width:0">
+        <div class="user-email">
+          ${email
+            ? `${email}${isCurrentUser ? ' <span style="font-size:9px;color:var(--accent);margin-left:4px">(you)</span>' : ''}`
+            : `<span style="color:var(--muted);font-style:italic">Email not stored yet</span>`
+          }
+        </div>
         <div class="user-id">${u.id}</div>
+        ${!email ? `<div style="font-size:9px;color:var(--amber);margin-top:2px">
+          ⚠ This user needs to log in to index.html once to register their email
+        </div>` : ''}
       </div>
       <select class="role-sel" onchange="updateRole('${u.id}',this.value)">
         <option value="field_officer" ${u.role==='field_officer'?'selected':''}>Field Officer</option>
         <option value="admin" ${u.role==='admin'?'selected':''}>Admin</option>
       </select>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 // ══════════════════════════════════════════════════════

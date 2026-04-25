@@ -1728,11 +1728,8 @@ async function submitCrime() {
   });
   if (error) { showToast('Error: '+error.message,'err'); return; }
 
-  // Get the new crime ID for photo attachment
-  const { data: newCrime } = await sb.from('crimes')
-    .select('id').eq('address', addr).eq('source','manual')
-    .order('created_at',{ascending:false}).limit(1).single();
-  lastAddedCrimeId = newCrime?.id || null;
+  // insert_crime now returns the new crime's uuid directly
+  lastAddedCrimeId = data || null;
 
   // Show step 2 — photo option
   document.getElementById('add-step1').style.display = 'none';

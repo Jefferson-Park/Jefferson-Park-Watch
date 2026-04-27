@@ -534,10 +534,11 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
     </div>
     <!-- Step 2: Photo upload (shown after crime saved) -->
     <div id="add-step2" style="display:none">
-      <div style="text-align:center;padding:10px 0 18px">
+      <div style="text-align:center;padding:10px 0 14px">
         <div style="font-size:28px;margin-bottom:8px">✅</div>
         <div style="font-weight:600;margin-bottom:4px" id="add-success-label">Crime recorded</div>
-        <div style="font-size:12px;color:var(--muted)">Would you like to attach a photo?</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Would you like to attach a photo?</div>
+        <div id="add-crime-id-display" style="font-family:var(--mono);font-size:10px;color:var(--muted);background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;display:inline-block"></div>
       </div>
       <div style="display:flex;gap:8px">
         <button class="btn-cancel" style="flex:1" onclick="closeModal('add-modal');resetAddForm()">Done — No Photo</button>
@@ -1112,10 +1113,7 @@ function renderPhotoPin(photos) {
   photoLayerGroup.clearLayers();
   photos.forEach(p => {
     const icon = L.divIcon({
-      html: `<div style="position:relative;width:0;height:0">
-        <div style="
-          position:absolute;
-          transform:translate(-50%,-100%);
+      html: `<div style="
           display:flex;flex-direction:column;align-items:center;
           filter:drop-shadow(0 2px 5px rgba(0,0,0,.6));
         ">
@@ -1125,9 +1123,8 @@ function renderPhotoPin(photos) {
             max-width:90px;overflow:hidden;text-overflow:ellipsis">
             ${(p.storage_path||'').startsWith('link://') ? '🔗' : (p.storage_path||'').toLowerCase().endsWith('.pdf') ? '📄' : '📷'} ${(p.label||p.crimeType||'Photo').slice(0,15)}
           </div>
-        </div>
-      </div>`,
-      className: '', iconSize: [0,0], iconAnchor: [0,0],
+        </div>`,
+      className: '', iconSize: [90, 38], iconAnchor: [45, 38],
     });
 
     const popupId = 'photo-popup-' + p.id;
@@ -1588,12 +1585,12 @@ async function saveLink() {
 
   if (error) { showToast('Error saving link: ' + error.message, 'err'); return; }
 
-  showToast('Link saved ✓', 'ok');
+  showToast('Link saved and linked ✓', 'ok');
   document.getElementById('attach-url').value = '';
   document.getElementById('attach-url-label').value = '';
   currentPhotoCtx = null;
   closeModal('attach-modal');
-  if (userRole === 'admin') { await loadCrimes(); loadPublicPhotos(); }
+  if (userRole === 'admin' || userRole === 'field_officer') { await loadCrimes(); loadPublicPhotos(); }
 }
 
 function toggleSidebar() {
@@ -1728,16 +1725,15 @@ async function submitCrime() {
   });
   if (error) { showToast('Error: '+error.message,'err'); return; }
 
-  // Get the new crime ID for photo attachment
-  const { data: newCrime } = await sb.from('crimes')
-    .select('id').eq('address', addr).eq('source','manual')
-    .order('created_at',{ascending:false}).limit(1).single();
-  lastAddedCrimeId = newCrime?.id || null;
+  // insert_crime returns the new uuid directly
+  lastAddedCrimeId = data || null;
 
   // Show step 2 — photo option
   document.getElementById('add-step1').style.display = 'none';
   document.getElementById('add-step2').style.display = 'block';
   document.getElementById('add-success-label').textContent = type + ' at ' + addr.slice(0,30);
+  const idDisplay = document.getElementById('add-crime-id-display');
+  if (idDisplay) idDisplay.textContent = lastAddedCrimeId ? 'Crime ID: ' + lastAddedCrimeId.slice(0,8) + '…' : '';
   await loadCrimes();
 }
 
@@ -1756,6 +1752,8 @@ function resetAddForm() {
   document.getElementById('add-desc').value = '';
   document.getElementById('geocode-status').textContent = '';
   document.getElementById('add-coords').textContent = '';
+  const idDisplay = document.getElementById('add-crime-id-display');
+  if (idDisplay) idDisplay.textContent = '';
   geocodeLng = geocodeLat = null;
   lastAddedCrimeId = null;
 }
@@ -1790,10 +1788,20 @@ async function uploadAttachment(e) {
     is_public:     false, // admin sets public via admin portal
   });
   if (de) { showToast('Photo saved to storage but DB failed: '+de.message,'err'); }
-  else { showToast('Photo uploaded ✓','ok'); }
+  else {
+    showToast('Photo uploaded and linked ✓','ok');
+    // Show visual confirmation of the crime↔photo link
+    if (currentPhotoCtx?.type === 'crime' && currentPhotoCtx?.id) {
+      const linked = crimesData.find(c => c.id === currentPhotoCtx.id);
+      if (linked) {
+        showToast(`📎 Photo linked to: ${linked.crime_type} @ ${(linked.address||'').slice(0,30)}`, 'ok');
+      }
+    }
+  }
   e.target.value=''; currentPhotoCtx=null;
   // Refresh crimes first so new crime lat/lng is in crimesData, then refresh photo pins
-  if (userRole === 'admin') { await loadCrimes(); loadPublicPhotos(); }
+  // Both admin AND field_officer need photo pin refresh
+  if (userRole === 'admin' || userRole === 'field_officer') { await loadCrimes(); loadPublicPhotos(); }
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -1942,9 +1950,69 @@ function showToast(msg, type='ok') {
 }
 
 // ══════════════════════════════════════════════════════════════════
+// PASSWORD RESET HANDLER
+// ══════════════════════════════════════════════════════════════════
+function showResetForm() {
+  const overlay = document.getElementById('login-overlay');
+  overlay.innerHTML = `
+    <div class="login-box">
+      <div class="login-badge">
+        <div class="login-badge-icon">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round"><path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7z"/></svg>
+        </div>
+        <div>
+          <div class="login-title">Jefferson Park</div>
+          <div class="login-sub">LAPD SW · UNNC</div>
+        </div>
+      </div>
+      <div class="login-heading">Set New Password</div>
+      <div class="login-desc">Enter your new password below.</div>
+      <div class="fg"><label>New Password</label>
+        <input type="password" id="rp-pass" placeholder="••••••••" autocomplete="new-password">
+      </div>
+      <div class="fg"><label>Confirm Password</label>
+        <input type="password" id="rp-pass2" placeholder="••••••••" autocomplete="new-password"
+          onkeydown="if(event.key==='Enter')doResetPassword()">
+      </div>
+      <button class="btn-primary" id="rp-btn" onclick="doResetPassword()">Set Password</button>
+      <div class="login-err" id="rp-err"></div>
+    </div>`;
+}
+
+async function doResetPassword() {
+  const pass  = document.getElementById('rp-pass').value;
+  const pass2 = document.getElementById('rp-pass2').value;
+  const btn   = document.getElementById('rp-btn');
+  const err   = document.getElementById('rp-err');
+  if (!pass || pass.length < 6) { err.textContent = 'Password must be at least 6 characters.'; return; }
+  if (pass !== pass2) { err.textContent = 'Passwords do not match.'; return; }
+  btn.disabled = true; btn.textContent = 'Saving…';
+  const { error } = await sb.auth.updateUser({ password: pass });
+  if (error) {
+    err.textContent = error.message;
+    btn.disabled = false; btn.textContent = 'Set Password';
+  } else {
+    err.style.color = 'var(--accent)';
+    err.textContent = '✓ Password updated! Signing you in…';
+    setTimeout(() => location.replace(location.pathname), 1500);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
 // STARTUP — check for existing session
 // ══════════════════════════════════════════════════════════════════
 (async () => {
+  // Check if this is a password-reset link (Supabase puts token in URL hash)
+  const hash = Object.fromEntries(
+    (location.hash.replace('#','').split('&')).map(p => p.split('=').map(decodeURIComponent))
+  );
+  if (hash.type === 'recovery' && hash.access_token) {
+    // Set the session from the recovery token so updateUser() works
+    await sb.auth.setSession({ access_token: hash.access_token, refresh_token: hash.refresh_token || '' });
+    showResetForm();
+    return;
+  }
+
   const { data: { session } } = await sb.auth.getSession();
   if (session?.user) { currentUser = session.user; await loadRole(); launch(); }
 })();

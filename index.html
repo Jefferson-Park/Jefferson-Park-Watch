@@ -537,7 +537,7 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
               style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:12px;padding:0">✕ Cancel</button>
           </div>
           <div id="geocode-status"></div>
-          <div class="mf-hint">Use ** for redacted block numbers, or drop a pin on the map.</div>
+          <div class="mf-hint">Use ** for redacted block numbers, or drop a pin. Pin coordinates are exact — address is approximate.</div>
         </div>
         <div class="mf"><label>Date</label><input type="date" id="add-date"></div>
         <div class="mf"><label>Time</label><input type="time" id="add-time"></div>
@@ -1803,24 +1803,45 @@ async function onPinDropped(e) {
   if (btn) { btn.style.borderColor = ''; btn.style.color = ''; }
   if (banner) banner.style.display = 'none';
 
-  // Reverse geocode with Nominatim to fill the address field
+  // Reverse geocode with Nominatim — used for approximate address label only.
+  // Raw pin coordinates (geocodeLat/geocodeLng) are already set from e.latlng above
+  // and are NOT overwritten by the reverse-geocode result.
   try {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
       { headers: { 'Accept-Language': 'en' } }
     );
     const data = await res.json();
-    if (data?.display_name) {
-      // Use the road + house number portion, falling back to full display_name
-      const addr = [data.address?.house_number, data.address?.road]
-        .filter(Boolean).join(' ') || data.display_name.split(',').slice(0,2).join(',').trim();
-      document.getElementById('add-addr').value = addr;
-      document.getElementById('geocode-status').textContent = '✓ ' + data.display_name.split(',').slice(0,3).join(',');
+    if (data?.address) {
+      const a = data.address;
+      let addrLabel;
+      if (a.house_number && a.road) {
+        // Landed squarely in front of a building — still prefix with "Near"
+        // to signal this is approximate, not a verified address
+        addrLabel = `Near ${a.house_number} ${a.road}`;
+      } else if (a.road) {
+        // Between buildings or at an intersection — use road only
+        // Try to get a cross-street from the full display_name (second token)
+        const parts = (data.display_name || '').split(',').map(s => s.trim());
+        const crossStreet = parts[1] && !parts[1].match(/\d{5}/) && parts[1] !== a.road
+          ? ' / ' + parts[1] : '';
+        addrLabel = `Near ${a.road}${crossStreet}`;
+      } else {
+        addrLabel = `Near ${(data.display_name||'').split(',').slice(0,2).join(',').trim()}`;
+      }
+      document.getElementById('add-addr').value = addrLabel;
+      document.getElementById('geocode-status').textContent =
+        '📍 Approximate — edit if you know the exact address';
     } else {
-      document.getElementById('geocode-status').textContent = '⚠ Could not reverse geocode — coordinates saved';
+      // Reverse geocode returned nothing useful — leave field blank for manual entry
+      document.getElementById('add-addr').value = '';
+      document.getElementById('geocode-status').textContent =
+        '⚠ Could not determine street — enter address manually';
     }
   } catch(err) {
-    document.getElementById('geocode-status').textContent = '⚠ Reverse geocode failed — coordinates saved';
+    document.getElementById('add-addr').value = '';
+    document.getElementById('geocode-status').textContent =
+      '⚠ Reverse geocode failed — enter address manually';
   }
 }
 

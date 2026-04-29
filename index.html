@@ -1523,9 +1523,12 @@ function renderBoundaries() {
       unncLayerGroup.addLayer(layer);
     }
   });
-}
 
-function updateGroupCount(groupId, count) {
+  // Update the Boundaries group header badge with total boundary layer count
+  const totalBoundaries = boundariesData.length;
+  updateGroupCount('boundaries', totalBoundaries);
+}
+(groupId, count) {
   const el = document.getElementById('cnt-' + groupId);
   if (!el) return;
   if (count > 0) { el.textContent = count; el.style.display = 'inline'; }
@@ -1591,28 +1594,21 @@ function toggleCrime(type, row) {
 // STATS
 // ══════════════════════════════════════════════════════════════════
 function updateStats(filtered) {
-  document.getElementById('stats-total').textContent = filtered.length;
   const counts = {};
   filtered.forEach(c => { counts[c.crime_type] = (counts[c.crime_type]||0) + 1; });
 
-  // Update per-type counts
+  // Update per-type counts in sidebar toggles
   Object.entries(counts).forEach(([t,n]) => {
     const el = document.getElementById('ct-' + t.replace(/\W/g,'_'));
     if (el) el.textContent = n;
   });
-  // Reset zeros
+  // Reset zeros for types not in filtered set
   Object.keys(CRIMES).forEach(t => {
     if (!counts[t]) { const el = document.getElementById('ct-' + t.replace(/\W/g,'_')); if (el) el.textContent = 0; }
   });
 
-  const top3 = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,3);
-  document.getElementById('stats-pills').innerHTML = top3.map(([t,n]) => {
-    const c = CRIMES[t]?.color || '#888';
-    return `<div class="pill" style="background:${c}18"><div class="pill-dot" style="background:${c}"></div><span style="color:${c}">${n} ${t}</span></div>`;
-  }).join('');
-
-  document.getElementById('stats-range').textContent =
-    (dateFrom||dateTo) ? `${dateFrom||'—'} → ${dateTo||'—'}` : 'All dates';
+  // Update the Safety & Crime group header badge — show total loaded crimes
+  updateGroupCount('safety', crimesData.length);
 }
 
 // ══════════════════════════════════════════════════════════════════

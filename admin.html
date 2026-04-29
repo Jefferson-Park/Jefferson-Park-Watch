@@ -1122,7 +1122,8 @@ async function deleteAnn(id) {
   if(error){ showToast('Delete error: '+error.message,'err'); return; }
   if(!data||data.length===0){ showToast('Delete blocked — RLS prevented deletion','err'); return; }
   showToast('Deleted','ok');
-  await loadAnnotations();
+  await loadAnnotations();   // reloads allAnnotations from DB
+  filterAnnotations();       // re-applies current filter state — does not reset dropdowns
 }
 
 // ══════════════════════════════════════════════════════

@@ -1062,10 +1062,10 @@ async function loadPublicAnnotations() {
     const { data, error } = await sb.rpc('get_annotations_geojson');
     if (error) throw error;
     // Public viewers see only is_public annotations
-    // Field officers also see their own (regardless of is_public)
+    // Field officers, project managers, and admins also see their own pending (non-public) annotations
     annotationsData = (data || []).filter(a => {
       if (a.is_public) return true;
-      if (userRole === 'field_officer' && a.created_by === currentUser?.id) return true;
+      if (['field_officer','project_manager','admin'].includes(userRole) && a.created_by === currentUser?.id) return true;
       return false;
     });
     console.log('Annotations loaded:', annotationsData.length, 'userRole:', userRole);
@@ -1094,11 +1094,11 @@ function renderPublicAnnotations() {
         ? JSON.parse(ann.geometry_geojson) : ann.geometry_geojson;
 
       // Own (non-public) annotations shown in amber so field officer can tell them apart
-      const isOwn = !ann.is_public && userRole === 'field_officer' && ann.created_by === currentUser?.id;
+      const isOwn = !ann.is_public && (userRole === 'field_officer' || userRole === 'project_manager' || userRole === 'admin') && ann.created_by === currentUser?.id;
       const annColor = isOwn ? '#f0a500' : color;
 
       // Admins can edit all; field officers only their own annotations
-      const canEditAnn = userRole === 'admin' || (userRole === 'field_officer' && ann.created_by === currentUser?.id);
+      const canEditAnn = ['admin','project_manager'].includes(userRole) || (userRole === 'field_officer' && ann.created_by === currentUser?.id);
       const ownBadge = isOwn
         ? `<span style="font-family:var(--mono);font-size:9px;padding:2px 5px;border-radius:3px;background:rgba(240,165,0,.15);color:var(--amber);margin-left:4px">✏️ Draft — not public</span>`
         : '';
@@ -1975,9 +1975,13 @@ async function submitCrime() {
 
   if (!type || !addr || !geocodeLng) { showToast('Fill address and wait for geocoding','err'); return; }
 
+  // Reformat date from YYYY-MM-DD (HTML input default) to MM/DD/YYYY to match existing admin table sort order
+  let fmtDate = null;
+  if (date) { const [y,m,d] = date.split('-'); fmtDate = `${m}/${d}/${y}`; }
+
   const { data, error } = await sb.rpc('insert_crime', {
     p_crime_type: type, p_status: status, p_address: addr,
-    p_description: desc, p_incident_date: date||null, p_incident_time: time||null,
+    p_description: desc, p_incident_date: fmtDate||null, p_incident_time: time||null,
     p_lng: geocodeLng, p_lat: geocodeLat,
     p_source: 'manual', p_updated_by: currentUser?.id||null,
   });

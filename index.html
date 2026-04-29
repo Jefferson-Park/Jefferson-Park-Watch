@@ -1528,7 +1528,7 @@ function renderBoundaries() {
   const totalBoundaries = boundariesData.length;
   updateGroupCount('boundaries', totalBoundaries);
 }
-(groupId, count) {
+function updateGroupCount(groupId, count) {
   const el = document.getElementById('cnt-' + groupId);
   if (!el) return;
   if (count > 0) { el.textContent = count; el.style.display = 'inline'; }

@@ -1564,6 +1564,9 @@ function renderCategoryAnnotations() {
           }).filter(Boolean).join('')}
         </div>` : '';
 
+      const attachments = attachByAnn[ann.id] || [];
+      const attachStripId = 'att-' + ann.id.replace(/-/g,'');
+
       const popup = `<div style="padding:10px;font-family:var(--font);color:var(--text)">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
           <span style="font-size:16px">${catCfg?.icon || '📍'}</span>
@@ -1577,6 +1580,9 @@ function renderCategoryAnnotations() {
         </div>
         ${fieldsHtml}
         ${ann.notes ? `<div style="font-size:11px;margin-top:8px;line-height:1.5;color:var(--muted)">${ann.notes}</div>` : ''}
+        ${attachments.length ? `<div style="margin-top:10px;border-top:1px solid rgba(255,255,255,.06);padding-top:8px">
+          <div id="${attachStripId}" style="display:none"></div>
+        </div>` : ''}
         ${canEdit ? `
           <div style="margin-top:10px;border-top:1px solid rgba(255,255,255,.08);padding-top:8px">
             <textarea id="ann-edit-${ann.id}"
@@ -1631,8 +1637,11 @@ function renderCategoryAnnotations() {
         },
       });
 
-      layer.bindPopup(popup, { closeButton: true, autoClose: false, maxWidth: 280 });
+      layer.bindPopup(popup, { closeButton: true, autoClose: false, maxWidth: 300 });
       if (ann.label) layer.bindTooltip(ann.label, { permanent: false, direction: 'top', className: 'ann-tooltip' });
+      if (attachments.length) {
+        layer.on('popupopen', () => buildAttachmentStrip(attachStripId, attachments));
+      }
 
       // Only add to map if toggle is on
       grp.addLayer(layer);
@@ -1708,198 +1717,185 @@ function renderPublicAnnotations() {
 // ══════════════════════════════════════════════════════════════════
 // PUBLIC PHOTO PINS
 // ══════════════════════════════════════════════════════════════════
+// PHOTOS & ATTACHMENTS
+// ══════════════════════════════════════════════════════════════════
+// Indexes populated by loadPublicPhotos — keyed by annotation/crime id
+let attachByAnn   = {};  // annotation_id → [photo, …]
+let attachByCrime = {};  // crime_id      → [photo, …]
+
 async function loadPublicPhotos() {
   try {
     let data, error;
-
     if (userRole === 'admin' || userRole === 'field_officer') {
-      // Authenticated users: fetch all photos they can see
-      ({ data, error } = await sb
-        .from('photos')
+      ({ data, error } = await sb.from('photos')
         .select('id, storage_path, caption, is_public, crime_id, annotation_id'));
     } else {
-      // Public viewer: explicitly filter is_public=true so the query
-      // works even if RLS only allows anon reads on public rows
-      ({ data, error } = await sb
-        .from('photos')
+      ({ data, error } = await sb.from('photos')
         .select('id, storage_path, caption, is_public, crime_id, annotation_id')
         .eq('is_public', true));
     }
+    if (error) throw error;
 
-    if (error) {
-      console.error('loadPublicPhotos query error:', error.message, error.code);
-      throw error;
-    }
-
-    console.log('Photos fetched:', (data||[]).length, 'userRole:', userRole);
-
-    // For non-admin/officer: only public photos
-    // For admin/officer: all photos they have permission to see
     const visible = (data || []).filter(p => {
       if (userRole === 'admin') return true;
       if (userRole === 'field_officer') return p.is_public || p.uploaded_by === currentUser?.id;
-      return p.is_public; // public sees only public
+      return p.is_public;
     });
 
+    // Build attachment indexes so popups can look up their assets
+    attachByAnn   = {};
+    attachByCrime = {};
+    visible.forEach(p => {
+      if (p.annotation_id) {
+        (attachByAnn[p.annotation_id]   = attachByAnn[p.annotation_id]   || []).push(p);
+      }
+      if (p.crime_id) {
+        (attachByCrime[p.crime_id] = attachByCrime[p.crime_id] || []).push(p);
+      }
+    });
+
+    // Build standalone photo pins for the Photos layer toggle
     const photosWithLoc = visible.map(p => {
-      // Try crime location first
       if (p.crime_id) {
         const crime = crimesData.find(c => c.id === p.crime_id);
-        if (crime?.lat && crime?.lng) {
-          return {
-            ...p,
-            lat: crime.lat, lng: crime.lng,
-            label: crime.crime_type,
-            address: crime.address,
-          };
-        }
+        if (crime?.lat && crime?.lng)
+          return { ...p, lat: crime.lat, lng: crime.lng, label: crime.crime_type, address: crime.address };
       }
-      // Fall back to annotation centroid lat/lng
       if (p.annotation_id) {
         const ann = annotationsData.find(a => a.id === p.annotation_id);
-        if (ann?.lat && ann?.lng) {
-          return {
-            ...p,
-            lat: parseFloat(ann.lat), lng: parseFloat(ann.lng),
-            label: ann.label || ann.annotation_type || 'Annotation',
-            address: ann.label || '',
-          };
-        }
+        if (ann?.lat && ann?.lng)
+          return { ...p, lat: parseFloat(ann.lat), lng: parseFloat(ann.lng),
+                   label: ann.label || ann.annotation_type || 'Annotation', address: ann.label || '' };
       }
       return null;
     }).filter(Boolean);
 
     renderPhotoPin(photosWithLoc);
-    console.log('Photo pins — crimes:', photosWithLoc.filter(p=>p.crime_id).length,
-      'annotations:', photosWithLoc.filter(p=>p.annotation_id).length);
+    console.log('Attachments indexed — annotations:', Object.keys(attachByAnn).length,
+      '| crimes:', Object.keys(attachByCrime).length);
+
+    // Re-render annotation layers so popups pick up the newly loaded attachments
+    renderCategoryAnnotations();
+    renderPublicAnnotations();
   } catch(e) {
     console.warn('Photo pins not available:', e.message);
+  }
+}
+
+// ── Shared storage URL helper ─────────────────────────────────────
+async function getStorageUrl(storagePath) {
+  if (!storagePath) return null;
+  if (storagePath.startsWith('link://')) return storagePath.replace('link://','');
+  if (currentUser) {
+    const { data } = await sb.storage.from('crime-photos').createSignedUrl(storagePath, 3600);
+    return data?.signedUrl || null;
+  }
+  const { data } = sb.storage.from('crime-photos').getPublicUrl(storagePath);
+  return data?.publicUrl || null;
+}
+
+// ── Build an attachment strip and inject into a container element ──
+// containerId: id of the DOM element to populate
+// attachments: array of photo rows from `photos` table
+async function buildAttachmentStrip(containerId, attachments) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  if (!attachments || !attachments.length) {
+    el.style.display = 'none';
+    return;
+  }
+  el.style.display = 'block';
+  el.innerHTML = `<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:5px">Attachments (${attachments.length})</div>`;
+
+  for (const p of attachments) {
+    const path   = p.storage_path || '';
+    const isLink = path.startsWith('link://');
+    const isPDF  = !isLink && path.toLowerCase().endsWith('.pdf');
+    const itemEl = document.createElement('div');
+    itemEl.style.cssText = 'margin-bottom:6px';
+
+    if (isLink) {
+      const url = path.replace('link://','');
+      itemEl.innerHTML = `<a href="${url}" target="_blank" rel="noopener"
+        style="display:flex;align-items:center;gap:6px;padding:7px 9px;
+          background:var(--panel2);border:1px solid var(--border);border-radius:6px;
+          color:var(--accent);font-size:11px;text-decoration:none;word-break:break-all">
+        🔗 <span>${p.caption || url}</span>
+      </a>`;
+    } else if (isPDF) {
+      const url = await getStorageUrl(path);
+      if (url) {
+        itemEl.innerHTML = `<a href="${url}" target="_blank" rel="noopener"
+          style="display:flex;align-items:center;gap:8px;padding:7px 9px;
+            background:var(--panel2);border:1px solid var(--border);border-radius:6px;
+            color:var(--text);text-decoration:none;font-size:11px">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="var(--danger)" stroke-width="1.5">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+          </svg>
+          <span>${p.caption || 'Open PDF'}</span>
+        </a>`;
+      }
+    } else {
+      // Image
+      const url = await getStorageUrl(path);
+      if (url) {
+        const img = document.createElement('img');
+        img.style.cssText = 'width:100%;border-radius:6px;display:block;cursor:pointer;max-height:180px;object-fit:cover;border:1px solid var(--border)';
+        img.alt = p.caption || 'Photo';
+        img.title = p.caption || '';
+        img.onclick = () => window.open(url, '_blank');
+        // Fetch as blob to avoid Supabase auth headers causing 400 on public buckets
+        fetch(url).then(r => r.blob()).then(blob => { img.src = URL.createObjectURL(blob); }).catch(() => {});
+        itemEl.appendChild(img);
+        if (p.caption) {
+          const cap = document.createElement('div');
+          cap.style.cssText = 'font-size:10px;color:var(--muted);margin-top:3px;font-style:italic';
+          cap.textContent = p.caption;
+          itemEl.appendChild(cap);
+        }
+      }
+    }
+    el.appendChild(itemEl);
   }
 }
 
 function renderPhotoPin(photos) {
   photoLayerGroup.clearLayers();
   photos.forEach(p => {
+    const isLink = (p.storage_path||'').startsWith('link://');
+    const isPDF  = !isLink && (p.storage_path||'').toLowerCase().endsWith('.pdf');
     const icon = L.divIcon({
-      html: `<div style="
-          display:flex;flex-direction:column;align-items:center;
-          filter:drop-shadow(0 2px 5px rgba(0,0,0,.6));
-        ">
-          <div style="font-size:24px;line-height:1">⭐</div>
+      html: `<div style="display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 2px 5px rgba(0,0,0,.6))">
+          <div style="font-size:24px;line-height:1">${isLink ? '🔗' : isPDF ? '📄' : '📷'}</div>
           <div style="font-size:9px;background:#fbbf24;color:#000;font-weight:700;
             padding:1px 5px;border-radius:3px;white-space:nowrap;margin-top:1px;
             max-width:90px;overflow:hidden;text-overflow:ellipsis">
-            ${(p.storage_path||'').startsWith('link://') ? '🔗' : (p.storage_path||'').toLowerCase().endsWith('.pdf') ? '📄' : '📷'} ${(p.label||p.crimeType||'Photo').slice(0,15)}
+            ${(p.label||'Photo').slice(0,15)}
           </div>
         </div>`,
       className: '', iconSize: [90, 38], iconAnchor: [45, 38],
     });
 
-    const popupId = 'photo-popup-' + p.id;
-    const marker = L.marker([p.lat, p.lng], { icon, zIndexOffset: 800 });
+    const stripId = 'pstrip-' + p.id;
+    const marker  = L.marker([p.lat, p.lng], { icon, zIndexOffset: 800 });
 
-    // Build popup with placeholder — load image URL async on open
     marker.bindPopup(`
-      <div id="${popupId}" style="padding:10px;font-family:var(--font);color:var(--text);min-width:200px">
-        <div style="font-weight:600;font-size:12px;color:#fbbf24;margin-bottom:6px">
-          ${(p.storage_path||'').startsWith('link://') ? '🔗 Link' : (p.storage_path||'').toLowerCase().endsWith('.pdf') ? '📄 PDF' : '📷 Photo'}
+      <div style="padding:10px;font-family:var(--font);color:var(--text);min-width:220px">
+        <div style="font-weight:600;font-size:12px;color:#fbbf24;margin-bottom:4px">
+          ${isLink ? '🔗 Link' : isPDF ? '📄 PDF' : '📷 Photo'}
           — ${p.annotation_id ? 'Annotation' : 'Crime'}
         </div>
-        <div style="font-size:11px;font-weight:500;margin-bottom:2px">${p.label||p.crimeType||'—'}</div>
+        <div style="font-size:11px;font-weight:500;margin-bottom:2px">${p.label||'—'}</div>
         <div style="font-size:11px;color:var(--muted);margin-bottom:8px">${p.address||'—'}</div>
-        <div id="${popupId}-img" style="width:100%;min-height:60px;background:var(--panel2);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted)">
-          ${(p.storage_path||'').startsWith('link://') ? '' : 'Loading…'}
-        </div>
-        ${p.caption ? `<div style="font-size:11px;margin-top:6px;font-style:italic;color:var(--muted)">${p.caption}</div>` : ''}
-      </div>`, { closeButton: true, autoClose: false, maxWidth: 260 }
+        <div id="${stripId}"></div>
+      </div>`, { closeButton: true, autoClose: false, maxWidth: 280 }
     );
 
-    // Load attachment when popup opens — handle photo, PDF, or link
-    marker.on('popupopen', async () => {
-      const imgEl = document.getElementById(popupId + '-img');
-      if (!imgEl) { console.warn('popupopen: imgEl not found for', popupId); return; }
-
-      const path = p.storage_path || '';
-      console.log('popupopen: path=', path, 'currentUser=', currentUser ? currentUser.email : 'PUBLIC');
-
-      // Handle links stored as link:// prefix
-      if (path.startsWith('link://')) {
-        const url = path.replace('link://','');
-        imgEl.innerHTML = `<a href="${url}" target="_blank" rel="noopener"
-          style="display:block;padding:10px;background:var(--panel2);border-radius:6px;
-            color:var(--accent);font-size:12px;text-decoration:none;word-break:break-all">
-          🔗 ${p.caption||url}
-        </a>`;
-        return;
-      }
-
-      // Helper: get a usable URL for the storage path.
-      // Public viewers have no auth session, so signed URLs fail for them.
-      // Use getPublicUrl() for public photos (works without auth),
-      // and createSignedUrl() only when the user is authenticated.
-      async function getStorageUrl(storagePath) {
-        if (currentUser) {
-          // Authenticated: signed URL works and respects private-bucket ACLs
-          const { data, error } = await sb.storage.from('crime-photos').createSignedUrl(storagePath, 3600);
-          console.log('createSignedUrl result:', data?.signedUrl ? 'OK' : 'null', error?.message);
-          return data?.signedUrl || null;
-        } else {
-          // Public viewer: use the public CDN URL (bucket must allow public reads)
-          const { data } = sb.storage.from('crime-photos').getPublicUrl(storagePath);
-          console.log('getPublicUrl result:', data?.publicUrl);
-          return data?.publicUrl || null;
-        }
-      }
-
-      // Handle PDFs
-      if (path.toLowerCase().endsWith('.pdf')) {
-        try {
-          const url = await getStorageUrl(path);
-          if (url) {
-            imgEl.innerHTML = `<a href="${url}" target="_blank" rel="noopener"
-              style="display:flex;align-items:center;gap:8px;padding:10px;
-                background:var(--panel2);border-radius:6px;color:var(--text);
-                text-decoration:none;font-size:12px">
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
-                stroke="var(--danger)" stroke-width="1.5">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <polyline points="14 2 14 8 20 8"/>
-              </svg>
-              <span>${p.caption||'Open PDF'}</span>
-            </a>`;
-          } else {
-            imgEl.textContent = 'PDF unavailable';
-          }
-        } catch(e) { imgEl.textContent = 'PDF unavailable'; }
-        return;
-      }
-
-      // Handle images (default)
-      try {
-        const sUrl = await getStorageUrl(path);
-        if (sUrl) {
-          imgEl.innerHTML = '';
-          const img = document.createElement('img');
-          img.style.cssText = 'width:100%;border-radius:6px;display:block;cursor:pointer;max-height:200px;object-fit:cover';
-          img.alt = p.label||p.crimeType||'Photo';
-          img.onclick = () => window.open(sUrl, '_blank');
-          imgEl.appendChild(img);
-          // Fetch as blob to avoid Supabase client injecting auth headers
-          // onto the img src request, which causes a 400 on public buckets
-          fetch(sUrl)
-            .then(r => r.blob())
-            .then(blob => { img.src = URL.createObjectURL(blob); })
-            .catch(() => { imgEl.textContent = 'Photo unavailable'; });
-        } else {
-          imgEl.textContent = 'Photo unavailable';
-        }
-      } catch(e) { imgEl.textContent = 'Photo unavailable'; }
-    });
-
+    marker.on('popupopen', () => buildAttachmentStrip(stripId, [p]));
     photoLayerGroup.addLayer(marker);
   });
 
-  // Only show if toggle is ON
   if (layerVisible.photos) {
     if (!map.hasLayer(photoLayerGroup)) photoLayerGroup.addTo(map);
   }

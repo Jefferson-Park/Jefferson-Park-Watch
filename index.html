@@ -329,6 +329,12 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
 .btn-submit { flex:2; background:var(--accent); color:#000; border:none; border-radius:6px; padding:10px; font-size:13px; font-weight:600; cursor:pointer; font-family:var(--font); }
 #geocode-status { font-size:11px; color:var(--accent); margin-top:3px; min-height:15px; }
 
+/* Category picker grid */
+#cat-picker-grid { max-height: 240px; overflow-y: auto; }
+#cat-picker-grid::-webkit-scrollbar { width: 3px; }
+#cat-picker-grid::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+#cat-picker-grid button:hover { background: var(--panel2) !important; }
+
 /* PDF modal */
 .pdf-drop { border:2px dashed var(--border); border-radius:10px; padding:28px; text-align:center; cursor:pointer; transition:all .2s; margin-bottom:14px; }
 .pdf-drop:hover { border-color:var(--accent); background:rgba(0,194,168,.04); }
@@ -575,87 +581,124 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
 
 </div><!-- #app -->
 
-<!-- ═══════ ADD CRIME MODAL ═══════ -->
+<!-- ═══════ UNIFIED ADD RECORD MODAL ═══════ -->
 <div class="modal-overlay" id="add-modal">
-  <div class="modal-box">
-    <div class="modal-title">Add Crime Incident</div>
-    <!-- Step 1: Crime details -->
+  <div class="modal-box" style="width:520px">
+
+    <!-- Step 1: Category picker + fields -->
     <div id="add-step1">
-      <div class="mf-grid">
-        <div class="mf"><label>Crime Type</label><select id="add-type"></select></div>
-        <div class="mf"><label>Status</label>
-          <select id="add-status">
-            <option value="open">Open</option>
-            <option value="in_progress">In Progress</option>
-            <option value="closed">Closed</option>
-          </select>
+      <div class="modal-title" id="add-modal-title">＋ Add Record</div>
+
+      <!-- Category picker -->
+      <div class="mf" id="cat-picker-wrap">
+        <label>Category</label>
+        <div id="cat-picker-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;margin-bottom:2px"></div>
+        <div id="cat-picker-select-wrap" style="display:none">
+          <select id="cat-select" onchange="onCategoryChange(this.value)" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);font-size:13px;font-family:var(--font);outline:none"></select>
         </div>
-        <div class="mf mf-full">
-          <label>Address</label>
-          <div style="display:flex;gap:6px;margin-bottom:5px">
-            <input type="text" id="add-addr" placeholder="e.g. 28** Crenshaw Bl" oninput="geocodeAddr()" style="flex:1">
-            <button type="button" id="pin-drop-btn" onclick="startPinDrop()"
-              title="Click to drop a pin on the map instead of typing an address"
-              style="flex-shrink:0;padding:0 10px;background:var(--panel2);border:1px solid var(--border);
-                border-radius:6px;color:var(--muted);font-size:12px;cursor:pointer;
-                font-family:var(--font);white-space:nowrap;transition:all .2s">
-              📍 Drop Pin
-            </button>
-          </div>
-          <!-- Shown only while pin-drop mode is active -->
-          <div id="pin-drop-banner" style="display:none;background:rgba(0,194,168,.1);border:1px solid var(--accent);
-            border-radius:6px;padding:7px 10px;font-size:11px;color:var(--accent);
-            align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px">
-            <span>🗺 Click anywhere on the map to place the pin</span>
-            <button type="button" onclick="cancelPinDrop()"
-              style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:12px;padding:0">✕ Cancel</button>
-          </div>
-          <div id="geocode-status"></div>
-          <div class="mf-hint">Use ** for redacted block numbers, or drop a pin. Pin coordinates are exact — address is approximate.</div>
-        </div>
-        <div class="mf"><label>Date</label><input type="date" id="add-date"></div>
-        <div class="mf"><label>Time</label><input type="time" id="add-time"></div>
-        <div class="mf mf-full"><label>Description</label><textarea id="add-desc" placeholder="Describe the incident…"></textarea></div>
       </div>
-      <div id="add-coords" style="font-family:var(--mono);font-size:10px;color:var(--muted)"></div>
+
+      <!-- Address / location row (shared by all categories) -->
+      <div class="mf">
+        <label>Address / Location</label>
+        <div style="display:flex;gap:6px;margin-bottom:5px">
+          <input type="text" id="add-addr" placeholder="e.g. 28** Crenshaw Bl" oninput="geocodeAddr()" style="flex:1">
+          <button type="button" id="pin-drop-btn" onclick="startPinDrop()"
+            title="Drop a pin on the map"
+            style="flex-shrink:0;padding:0 10px;background:var(--panel2);border:1px solid var(--border);
+              border-radius:6px;color:var(--muted);font-size:12px;cursor:pointer;
+              font-family:var(--font);white-space:nowrap;transition:all .2s">
+            📍 Drop Pin
+          </button>
+        </div>
+        <div id="pin-drop-banner" style="display:none;background:rgba(0,194,168,.1);border:1px solid var(--accent);
+          border-radius:6px;padding:7px 10px;font-size:11px;color:var(--accent);
+          align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px">
+          <span>🗺 Click anywhere on the map to place the pin</span>
+          <button type="button" onclick="cancelPinDrop()"
+            style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:12px;padding:0">✕ Cancel</button>
+        </div>
+        <div id="geocode-status"></div>
+        <div class="mf-hint">Use ** for redacted block numbers, or drop a pin.</div>
+      </div>
+      <div id="add-coords" style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:8px"></div>
+
+      <!-- Crime-specific fields (shown when category = __crime__) -->
+      <div id="crime-fields" style="display:none">
+        <div class="mf-grid">
+          <div class="mf"><label>Crime Type</label><select id="add-type"></select></div>
+          <div class="mf"><label>Status</label>
+            <select id="add-status">
+              <option value="open">Open</option>
+              <option value="in_progress">In Progress</option>
+              <option value="closed">Closed</option>
+            </select>
+          </div>
+          <div class="mf"><label>Date</label><input type="date" id="add-date"></div>
+          <div class="mf"><label>Time</label><input type="time" id="add-time"></div>
+          <div class="mf mf-full"><label>Description</label><textarea id="add-desc" placeholder="Describe the incident…"></textarea></div>
+        </div>
+      </div>
+
+      <!-- Annotation-specific fields (shown for all non-crime categories) -->
+      <div id="ann-fields" style="display:none">
+        <!-- Category-dynamic fields injected here -->
+        <div id="cat-dynamic-fields"></div>
+        <!-- Shared annotation fields -->
+        <div class="mf">
+          <label>Title / Label</label>
+          <input type="text" id="ann-label" placeholder="Short name for this record">
+        </div>
+        <div class="mf">
+          <label>Notes</label>
+          <textarea id="ann-notes" placeholder="Additional details…" style="min-height:70px"></textarea>
+        </div>
+        <!-- Geometry hint when drawing is involved -->
+        <div id="ann-geom-hint" style="display:none;font-size:11px;color:var(--accent);background:rgba(0,194,168,.08);border:1px solid var(--accent);border-radius:6px;padding:7px 10px;margin-bottom:8px">
+          📐 This record has a drawn shape attached.
+        </div>
+      </div>
+
       <div class="modal-footer">
         <button class="btn-cancel" onclick="cancelPinDrop();closeModal('add-modal')">Cancel</button>
-        <button class="btn-submit" onclick="submitCrime()">Save Incident</button>
+        <button class="btn-submit" id="add-submit-btn" onclick="submitRecord()">Save Record</button>
       </div>
     </div>
-    <!-- Step 2: Photo upload (shown after crime saved) -->
+
+    <!-- Step 2: Success + attach -->
     <div id="add-step2" style="display:none">
       <div style="text-align:center;padding:10px 0 14px">
-        <div style="font-size:28px;margin-bottom:8px">✅</div>
-        <div style="font-weight:600;margin-bottom:4px" id="add-success-label">Crime recorded</div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Would you like to attach a photo?</div>
-        <div id="add-crime-id-display" style="font-family:var(--mono);font-size:10px;color:var(--muted);background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;display:inline-block"></div>
+        <div style="font-size:32px;margin-bottom:8px">✅</div>
+        <div style="font-weight:600;font-size:15px;margin-bottom:4px" id="add-success-label">Record saved</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Would you like to attach a photo or file?</div>
+        <div id="add-record-id-display" style="font-family:var(--mono);font-size:10px;color:var(--muted);background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;display:inline-block"></div>
       </div>
       <div style="display:flex;gap:8px">
-        <button class="btn-cancel" style="flex:1" onclick="closeModal('add-modal');resetAddForm()">Done — No Photo</button>
-        <button class="btn-submit" style="flex:1" onclick="triggerAddCrimePhoto()">📎 Add Attachment</button>
+        <button class="btn-cancel" style="flex:1" onclick="closeModal('add-modal');resetAddForm()">Done — No Attachment</button>
+        <button class="btn-submit" style="flex:1" onclick="triggerRecordAttach()">📎 Add Attachment</button>
       </div>
     </div>
+
   </div>
 </div>
 
-<!-- ═══════ ANNOTATION MODAL ═══════ -->
+<!-- ═══════ ANNOTATION MODAL (draw-tool only — label/notes for drawn shapes) ═══════ -->
 <div class="modal-overlay" id="ann-modal">
   <div class="modal-box" style="width:360px">
-    <div class="modal-title">Save Annotation</div>
+    <div class="modal-title">Save Drawn Shape</div>
     <div id="ann-step1">
-      <div class="mf"><label>Label</label><input type="text" id="ann-label" placeholder="e.g. Hotspot, Patrol route…"></div>
-      <div class="mf"><label>Notes</label><textarea id="ann-notes" placeholder="Additional notes…" style="min-height:70px"></textarea></div>
+      <div class="mf"><label>Label</label><input type="text" id="ann-draw-label" placeholder="e.g. Hotspot, Patrol route…"></div>
+      <div class="mf"><label>Notes</label><textarea id="ann-draw-notes" placeholder="Additional notes…" style="min-height:70px"></textarea></div>
       <div class="modal-footer">
         <button class="btn-cancel" onclick="closeModal('ann-modal')">Cancel</button>
-        <button class="btn-submit" onclick="saveAnnotation()">Save Annotation</button>
+        <button class="btn-submit" onclick="openAddRecordFromDraw()">Continue →</button>
       </div>
     </div>
     <div id="ann-step2" style="display:none">
       <div style="text-align:center;padding:10px 0 18px">
         <div style="font-size:28px;margin-bottom:8px">✅</div>
-        <div style="font-weight:600;margin-bottom:4px">Annotation saved</div>
-        <div style="font-size:12px;color:var(--muted)">Attach a photo to this annotation?</div>
+        <div style="font-weight:600;margin-bottom:4px">Shape saved</div>
+        <div style="font-size:12px;color:var(--muted)">Attach a photo to this record?</div>
       </div>
       <div style="display:flex;gap:8px">
         <button class="btn-cancel" style="flex:1" onclick="closeModal('ann-modal');resetAnnForm()">Done</button>
@@ -756,7 +799,7 @@ const CLAUDE_API_KEY = '';  // optional — only needed for PDF import
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
 
-let map, currentUser, userRole = 'public';
+let map, currentUser, userRole = 'public', userProfile = null;
 let crimesData = [], boundariesData = [], annotationsData = [];
 let showClosed = false, dateFrom = null, dateTo = null;
 let activeCrimeTypes = new Set();
@@ -769,6 +812,202 @@ let currentPhotoCtx = null;
 let pdfRecords = [];
 let drawHandler = null;
 let pendingGeometry = null;
+
+// ── Category map (Section 5 of planning notes) ───────────────────
+// group → array of { label, value, table, icon, color, fields, sensitiveDefault }
+const CATEGORY_MAP = {
+  'Traffic Safety & Crime': [
+    {
+      label: 'Crime Incident', value: '__crime__', table: 'crimes',
+      icon: '🚨', color: '#e8453c',
+      fields: [] // handled by existing crime flow
+    },
+    {
+      label: 'Traffic Accident', value: 'traffic', table: 'map_annotations',
+      icon: '🚗', color: '#f0a500',
+      fields: [
+        { id: 'parties',     label: 'Parties Involved', type: 'text',   placeholder: 'e.g. 2 vehicles, 1 pedestrian' },
+        { id: 'injuries',    label: 'Injuries',          type: 'select', options: ['None','Minor','Serious','Fatal'] },
+        { id: 'intersection',label: 'Intersection / Block', type: 'text', placeholder: 'e.g. Adams & Crenshaw' },
+      ]
+    },
+    {
+      label: 'Street Infrastructure', value: 'lighting', table: 'map_annotations',
+      icon: '💡', color: '#2d8bff',
+      fields: [
+        { id: 'infra_type', label: 'Infrastructure Type', type: 'select', options: ['Street Light Out','Pothole','Sidewalk Damage','Sign Issue','Other'] },
+        { id: 'severity',   label: 'Severity', type: 'select', options: ['Low','Medium','High'] },
+        { id: 'report_no',  label: 'Report / 311 #', type: 'text', placeholder: 'Optional 311 number' },
+      ]
+    },
+  ],
+  'Business & Econ Dev': [
+    {
+      label: 'Business Directory', value: 'business', table: 'map_annotations',
+      icon: '🏪', color: '#00c2a8',
+      fields: [
+        { id: 'biz_name',  label: 'Business Name',  type: 'text', placeholder: 'e.g. Corner Mart' },
+        { id: 'biz_type',  label: 'Business Type',  type: 'select', options: ['Retail','Restaurant','Service','Health','Other'] },
+        { id: 'status',    label: 'Status',          type: 'select', options: ['Open','Closed','Unknown'] },
+        { id: 'phone',     label: 'Phone',           type: 'text', placeholder: 'Optional' },
+      ]
+    },
+    {
+      label: 'Mix Use / Future Construction', value: 'mix_use_residential', table: 'map_annotations',
+      icon: '🏗', color: '#9b59b6',
+      fields: [
+        { id: 'project_name', label: 'Project Name',   type: 'text', placeholder: 'e.g. Adams Crossing' },
+        { id: 'stage',        label: 'Stage',           type: 'select', options: ['Proposed','Permitted','Under Construction','Complete'] },
+        { id: 'units',        label: 'Units / Sq Ft',   type: 'text', placeholder: 'Optional' },
+      ]
+    },
+    {
+      label: 'Vacant Lot', value: 'vacant_lot', table: 'map_annotations',
+      icon: '🟫', color: '#8b6914',
+      fields: [
+        { id: 'owner',        label: 'Owner (if known)', type: 'text', placeholder: 'Optional' },
+        { id: 'lot_status',   label: 'Status',           type: 'select', options: ['Vacant','Fenced','Blighted','For Sale','Other'] },
+        { id: 'parcel',       label: 'APN / Parcel #',   type: 'text', placeholder: 'Optional' },
+      ]
+    },
+    {
+      label: 'Storefront', value: 'storefront', table: 'map_annotations',
+      icon: '🏬', color: '#2ecc71',
+      fields: [
+        { id: 'sf_status',    label: 'Status',     type: 'select', options: ['Active','Vacant','For Lease','Renovation'] },
+        { id: 'sf_name',      label: 'Name / DBA', type: 'text', placeholder: 'Optional' },
+      ]
+    },
+  ],
+  'Green Infrastructure': [
+    {
+      label: 'Tree Site', value: 'tree', table: 'map_annotations',
+      icon: '🌳', color: '#27ae60',
+      fields: [
+        { id: 'tree_sub',  label: 'Type',    type: 'select', options: ['Tree','Stump','Vacant Well'] },
+        { id: 'species',   label: 'Species', type: 'text',   placeholder: 'e.g. Jacaranda (optional)' },
+        { id: 'health',    label: 'Health',  type: 'select', options: ['Good','Fair','Poor','Dead','Unknown'] },
+        { id: 'diameter',  label: 'DBH (inches)', type: 'text', placeholder: 'Optional' },
+      ]
+    },
+    {
+      label: 'Planting Site', value: 'planting_site', table: 'map_annotations',
+      icon: '🌱', color: '#52be80',
+      fields: [
+        { id: 'soil',     label: 'Soil / Site Condition', type: 'select', options: ['Good','Fair','Poor','Unknown'] },
+        { id: 'priority', label: 'Priority',              type: 'select', options: ['High','Medium','Low'] },
+      ]
+    },
+    {
+      label: 'Park', value: 'parks', table: 'map_annotations',
+      icon: '⛳', color: '#1abc9c',
+      fields: [
+        { id: 'park_name',   label: 'Park Name',       type: 'text', placeholder: 'e.g. Jefferson Park' },
+        { id: 'park_status', label: 'Condition',       type: 'select', options: ['Good','Fair','Needs Repair','Hazardous'] },
+        { id: 'amenities',   label: 'Amenities',       type: 'text', placeholder: 'e.g. playground, restrooms' },
+      ]
+    },
+    {
+      label: 'Fruit Tree', value: 'fruit_tree', table: 'map_annotations',
+      icon: '🍊', color: '#f39c12',
+      fields: [
+        { id: 'fruit_type',   label: 'Fruit Type',    type: 'text', placeholder: 'e.g. Citrus, Fig' },
+        { id: 'share',        label: 'Sharing?',      type: 'select', options: ['Yes – Free','Ask Owner','Unknown'] },
+        { id: 'fruit_health', label: 'Tree Health',   type: 'select', options: ['Good','Fair','Poor'] },
+      ]
+    },
+    {
+      label: 'Garden', value: 'garden', table: 'map_annotations',
+      icon: '🥕', color: '#7dcea0',
+      fields: [
+        { id: 'garden_type', label: 'Garden Type', type: 'select', options: ['Community','School','Private','Edible','Ornamental'] },
+        { id: 'access',      label: 'Public Access', type: 'select', options: ['Yes','No','Limited'] },
+      ]
+    },
+  ],
+  'Community Improvements': [
+    {
+      label: 'Improvement / Project', value: 'improvement', table: 'map_annotations',
+      icon: '🏗', color: '#5dade2',
+      fields: [
+        { id: 'proj_status', label: 'Project Status', type: 'select', options: ['Wishlist','In Progress','Complete'] },
+        { id: 'lead',        label: 'Lead Org / Contact', type: 'text', placeholder: 'Optional' },
+        { id: 'funding',     label: 'Funding Source',    type: 'text', placeholder: 'Optional' },
+      ]
+    },
+    {
+      label: 'Encampment', value: 'encampment', table: 'map_annotations',
+      icon: '⛺', color: '#e74c3c', sensitiveDefault: true,
+      fields: [
+        { id: 'est_count',   label: 'Est. # People',    type: 'text', placeholder: 'Approx.' },
+        { id: 'enc_status',  label: 'Status',           type: 'select', options: ['Active','Disbanding','Cleared','Unknown'] },
+        { id: 'services',    label: 'Services On Site', type: 'text', placeholder: 'e.g. Outreach, PORT' },
+      ]
+    },
+    {
+      label: 'Trash / Recycling', value: 'trash', table: 'map_annotations',
+      icon: '🗑', color: '#7f8c8d',
+      fields: [
+        { id: 'trash_type', label: 'Issue Type', type: 'select', options: ['Illegal Dumping','Overflowing Bin','Bulky Items','Debris','Other'] },
+        { id: 'size',       label: 'Size / Volume', type: 'select', options: ['Small','Medium','Large'] },
+        { id: 'reported',   label: 'Reported to LADOT/Sanitation?', type: 'select', options: ['Yes','No'] },
+      ]
+    },
+    {
+      label: 'Hazard Site', value: 'hazard', table: 'map_annotations',
+      icon: '⚠️', color: '#f39c12',
+      fields: [
+        { id: 'haz_type',   label: 'Hazard Type',  type: 'select', options: ['Structural','Chemical','Fire','Flooding','Other'] },
+        { id: 'severity',   label: 'Severity',     type: 'select', options: ['Low','Medium','High','Immediate'] },
+        { id: 'notified',   label: 'Notified Agency', type: 'text', placeholder: 'e.g. LAPD, DWP, Fire Dept' },
+      ]
+    },
+  ],
+  'Arts & Culture': [
+    {
+      label: 'Mural (existing)', value: 'mural', table: 'map_annotations',
+      icon: '🎨', color: '#e91e63',
+      fields: [
+        { id: 'artist',    label: 'Artist',      type: 'text', placeholder: 'Name if known' },
+        { id: 'year',      label: 'Year',        type: 'text', placeholder: 'e.g. 2019' },
+        { id: 'condition', label: 'Condition',   type: 'select', options: ['Good','Fair','Fading','Vandalized'] },
+        { id: 'owner',     label: 'Wall Owner',  type: 'text', placeholder: 'Optional' },
+      ]
+    },
+    {
+      label: 'Cultural Site', value: 'cultural', table: 'map_annotations',
+      icon: '🏛', color: '#8e44ad',
+      fields: [
+        { id: 'site_type', label: 'Site Type',  type: 'select', options: ['Religious','Memorial','Community Center','Museum','Other'] },
+        { id: 'active',    label: 'Active?',    type: 'select', options: ['Yes','No','Seasonal'] },
+      ]
+    },
+    {
+      label: 'Historic Landmark', value: 'historic', table: 'map_annotations',
+      icon: '🏺', color: '#d4ac0d',
+      fields: [
+        { id: 'hps_no',     label: 'HPS / Designation #', type: 'text', placeholder: 'Optional' },
+        { id: 'era',        label: 'Era / Period',        type: 'text', placeholder: 'e.g. 1920s Craftsman' },
+        { id: 'designated', label: 'Designated?',         type: 'select', options: ['Yes – City','Yes – State','Yes – National','No','Pending'] },
+      ]
+    },
+  ],
+};
+
+// Flat lookup: category value → config object
+const CATEGORY_LOOKUP = {};
+Object.values(CATEGORY_MAP).forEach(arr => arr.forEach(c => { CATEGORY_LOOKUP[c.value] = c; }));
+
+// Team → category value pre-selection
+const TEAM_DEFAULT = {
+  tree:      'tree',
+  traffic:   'traffic',
+  safety:    '__crime__',
+  business:  'business',
+  community: 'improvement',
+  arts:      'mural',
+  general:   null,
+};
 
 // ── Crime config ──────────────────────────────────────────────────
 const CRIMES = {
@@ -905,6 +1144,17 @@ function launch() {
   const sel = document.getElementById('add-type');
   Object.keys(CRIMES).forEach(t => { sel.innerHTML += `<option value="${t}">${t}</option>`; });
 
+  // Load user profile (team field) — needed for category picker pre-selection
+  if (currentUser) {
+    try {
+      const { data } = await sb.from('profiles').select('team').eq('id', currentUser.id).single();
+      userProfile = data || null;
+    } catch(e) { userProfile = null; }
+  }
+
+  // Update Add Record button label based on team
+  updateAddRecordLabel();
+
   buildToggles();
   initMap();
 }
@@ -987,6 +1237,11 @@ function initMap() {
         drawnItems.addLayer(layer);
         const geojson = layer.toGeoJSON().geometry;
         pendingGeometry = geojson;
+        // Clear previous draw-modal values and open it
+        document.getElementById('ann-draw-label').value = '';
+        document.getElementById('ann-draw-notes').value = '';
+        document.getElementById('ann-step1').style.display = 'block';
+        document.getElementById('ann-step2').style.display = 'none';
         openModal('ann-modal');
       });
       console.log('✅ Draw tools loaded');
@@ -1757,43 +2012,19 @@ function toggleSidebar() {
 }
 
 // ══════════════════════════════════════════════════════════════════
-// ANNOTATIONS
+// ANNOTATIONS (draw-tool save — routed through unified modal)
 // ══════════════════════════════════════════════════════════════════
-let lastAddedAnnId = null;
+let lastAddedAnnId = null; // kept for triggerAnnPhoto compat
 
 async function saveAnnotation() {
-  if (!pendingGeometry) { closeModal('ann-modal'); return; }
-  const label = document.getElementById('ann-label').value.trim();
-  const notes = document.getElementById('ann-notes').value.trim();
-  const type  = pendingGeometry.type === 'Polygon' ? 'polygon'
-              : pendingGeometry.type === 'LineString' ? 'line' : 'point';
-
-  const { error } = await sb.rpc('insert_annotation', {
-    p_created_by: currentUser.id,
-    p_label:      label || null,
-    p_type:       type,
-    p_geojson:    JSON.stringify(pendingGeometry),
-    p_notes:      notes || null,
-  });
-
-  if (error) { showToast('Error: ' + error.message, 'err'); return; }
-
-  // Get the new annotation id for photo attachment
-  const { data: newAnn } = await sb.from('map_annotations')
-    .select('id').eq('created_by', currentUser.id)
-    .order('created_at',{ascending:false}).limit(1).single();
-  lastAddedAnnId = newAnn?.id || null;
-
-  pendingGeometry = null;
-  cancelDraw();
-  // Show photo option
-  document.getElementById('ann-step1').style.display = 'none';
-  document.getElementById('ann-step2').style.display = 'block';
+  // Now handled by openAddRecordFromDraw → submitAnnotationRecord
+  openAddRecordFromDraw();
 }
 
 function triggerAnnPhoto() {
-  if (!lastAddedAnnId) { closeModal('ann-modal'); return; }
-  currentPhotoCtx = { id: lastAddedAnnId, type: 'annotation' };
+  const id = lastAddedAnnId || lastAddedRecordId;
+  if (!id) { closeModal('ann-modal'); return; }
+  currentPhotoCtx = { id, type: 'annotation' };
   closeModal('ann-modal');
   resetAnnForm();
   openModal('attach-modal');
@@ -1802,22 +2033,325 @@ function triggerAnnPhoto() {
 function resetAnnForm() {
   document.getElementById('ann-step1').style.display = 'block';
   document.getElementById('ann-step2').style.display = 'none';
-  document.getElementById('ann-label').value = '';
-  document.getElementById('ann-notes').value = '';
+  document.getElementById('ann-draw-label').value = '';
+  document.getElementById('ann-draw-notes').value = '';
   lastAddedAnnId = null;
 }
 
 // ══════════════════════════════════════════════════════════════════
-// ADD CRIME
+// ADD RECORD — Unified Modal
 // ══════════════════════════════════════════════════════════════════
-function openAddCrime() {
+let lastAddedRecordId   = null; // uuid of last saved record (any type)
+let lastAddedRecordType = null; // 'crime' | 'annotation'
+let currentCategory     = null; // selected category value
+
+function updateAddRecordLabel() {
+  const btn = document.getElementById('btn-add-crime');
+  if (!btn) return;
+  const team = userProfile?.team;
+  if (team && TEAM_DEFAULT[team] && team !== 'general') {
+    const cat = CATEGORY_LOOKUP[TEAM_DEFAULT[team]];
+    if (cat) { btn.innerHTML = btn.innerHTML.replace(/＋ Add Record.*/, `＋ Add ${cat.label}`); }
+  }
+}
+
+function openAddCrime() { openAddRecord(); } // backward-compat alias
+
+function openAddRecord(preselectedCategory) {
   document.getElementById('add-date').value = new Date().toISOString().split('T')[0];
   geocodeLng = geocodeLat = null;
   document.getElementById('geocode-status').textContent = '';
   document.getElementById('add-coords').textContent = '';
-  cancelPinDrop(); // ensure any stale pin-drop state is cleared
+  cancelPinDrop();
+
+  // Determine starting category
+  let startCat = preselectedCategory || null;
+  if (!startCat) {
+    const team = userProfile?.team;
+    startCat = (team && TEAM_DEFAULT[team]) ? TEAM_DEFAULT[team] : null;
+  }
+
+  buildCategoryPicker(startCat);
+  onCategoryChange(startCat || '__crime__');
   openModal('add-modal');
 }
+
+function buildCategoryPicker(selected) {
+  const isPM     = userRole === 'admin' || userRole === 'project_manager';
+  const isOfficer = userRole === 'field_officer';
+  const team      = userProfile?.team;
+
+  // If team-locked (non-general field officer), show a simpler single-select
+  const teamLocked = isOfficer && team && team !== 'general';
+
+  const grid = document.getElementById('cat-picker-grid');
+  const selWrap = document.getElementById('cat-picker-select-wrap');
+  const pickerWrap = document.getElementById('cat-picker-wrap');
+  grid.innerHTML = '';
+
+  if (teamLocked) {
+    // Single category pre-selected, no picker shown
+    const defVal = TEAM_DEFAULT[team] || '__crime__';
+    const cat = CATEGORY_LOOKUP[defVal] || { label: 'Record', icon: '📝', color: '#00c2a8' };
+    pickerWrap.style.display = 'none';
+    document.getElementById('add-modal-title').textContent = `＋ Add ${cat.label}`;
+    currentCategory = defVal;
+    return;
+  }
+
+  pickerWrap.style.display = 'block';
+  document.getElementById('add-modal-title').textContent = '＋ Add Record';
+
+  // PM/Admin: build segmented grid picker
+  if (isPM) {
+    Object.entries(CATEGORY_MAP).forEach(([group, cats]) => {
+      const groupLabel = document.createElement('div');
+      groupLabel.style.cssText = 'grid-column:1/-1;font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;padding:6px 0 2px;font-family:var(--mono)';
+      groupLabel.textContent = group;
+      grid.appendChild(groupLabel);
+      cats.forEach(cat => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.dataset.val = cat.value;
+        btn.innerHTML = `${cat.icon} <span style="font-size:11px">${cat.label}</span>`;
+        btn.style.cssText = `display:flex;align-items:center;gap:5px;padding:7px 9px;background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--text);cursor:pointer;font-family:var(--font);transition:all .15s;text-align:left;`;
+        if (cat.value === (selected || '__crime__')) {
+          btn.style.borderColor = cat.color || 'var(--accent)';
+          btn.style.background  = (cat.color || '#00c2a8') + '18';
+        }
+        btn.onclick = () => {
+          grid.querySelectorAll('button').forEach(b => { b.style.borderColor='var(--border)'; b.style.background='var(--bg)'; });
+          btn.style.borderColor = cat.color || 'var(--accent)';
+          btn.style.background  = (cat.color || '#00c2a8') + '18';
+          onCategoryChange(cat.value);
+        };
+        grid.appendChild(btn);
+      });
+    });
+    selWrap.style.display = 'none';
+  } else {
+    // Field officer: dropdown select
+    grid.style.display = 'none';
+    selWrap.style.display = 'block';
+    const sel = document.getElementById('cat-select');
+    sel.innerHTML = '';
+    Object.entries(CATEGORY_MAP).forEach(([group, cats]) => {
+      const og = document.createElement('optgroup');
+      og.label = group;
+      cats.forEach(cat => {
+        const opt = document.createElement('option');
+        opt.value = cat.value;
+        opt.textContent = `${cat.icon} ${cat.label}`;
+        if (cat.value === (selected || '__crime__')) opt.selected = true;
+        og.appendChild(opt);
+      });
+      sel.appendChild(og);
+    });
+  }
+}
+
+function onCategoryChange(val) {
+  currentCategory = val;
+  const cat = CATEGORY_LOOKUP[val];
+  const isCrime = val === '__crime__';
+
+  document.getElementById('crime-fields').style.display = isCrime ? 'block' : 'none';
+  document.getElementById('ann-fields').style.display   = isCrime ? 'none' : 'block';
+
+  // Show geometry hint if a draw is pending
+  const geomHint = document.getElementById('ann-geom-hint');
+  if (geomHint) geomHint.style.display = pendingGeometry ? 'block' : 'none';
+
+  // Build dynamic category fields
+  const dynEl = document.getElementById('cat-dynamic-fields');
+  dynEl.innerHTML = '';
+  if (cat && cat.fields && cat.fields.length) {
+    const grid = document.createElement('div');
+    grid.className = 'mf-grid';
+    cat.fields.forEach(f => {
+      const wrap = document.createElement('div');
+      wrap.className = 'mf' + (f.wide ? ' mf-full' : '');
+      const lbl = document.createElement('label');
+      lbl.textContent = f.label;
+      wrap.appendChild(lbl);
+      let input;
+      if (f.type === 'select') {
+        input = document.createElement('select');
+        input.innerHTML = f.options.map(o => `<option value="${o}">${o}</option>`).join('');
+      } else if (f.type === 'textarea') {
+        input = document.createElement('textarea');
+        input.placeholder = f.placeholder || '';
+        input.style.minHeight = '65px';
+      } else {
+        input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = f.placeholder || '';
+      }
+      input.id = 'catf-' + f.id;
+      input.style.cssText = 'width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);font-size:13px;font-family:var(--font);outline:none';
+      wrap.appendChild(input);
+      grid.appendChild(wrap);
+    });
+    dynEl.appendChild(grid);
+  }
+
+  // Update submit button label
+  const submitBtn = document.getElementById('add-submit-btn');
+  if (submitBtn) submitBtn.textContent = isCrime ? 'Save Incident' : `Save ${cat?.label || 'Record'}`;
+}
+
+async function submitRecord() {
+  if (currentCategory === '__crime__' || !currentCategory) {
+    await submitCrime();
+  } else {
+    await submitAnnotationRecord();
+  }
+}
+
+async function submitCrime() {
+  const type   = document.getElementById('add-type').value;
+  const status = document.getElementById('add-status').value;
+  const addr   = document.getElementById('add-addr').value.trim();
+  const date   = document.getElementById('add-date').value;
+  const time   = document.getElementById('add-time').value;
+  const desc   = document.getElementById('add-desc').value.trim();
+
+  if (!type || !addr || !geocodeLng) { showToast('Fill address and wait for geocoding','err'); return; }
+
+  let fmtDate = null;
+  if (date) { const [y,m,d] = date.split('-'); fmtDate = `${m}/${d}/${y}`; }
+
+  const { data, error } = await sb.rpc('insert_crime', {
+    p_crime_type: type, p_status: status, p_address: addr,
+    p_description: desc, p_incident_date: fmtDate||null, p_incident_time: time||null,
+    p_lng: geocodeLng, p_lat: geocodeLat,
+    p_source: 'manual', p_updated_by: currentUser?.id||null,
+  });
+  if (error) { showToast('Error: '+error.message,'err'); return; }
+
+  lastAddedRecordId   = data || null;
+  lastAddedRecordType = 'crime';
+  showStep2(`${type} at ${addr.slice(0,30)}`, lastAddedRecordId);
+  await loadCrimes();
+}
+
+async function submitAnnotationRecord() {
+  const addr  = document.getElementById('add-addr').value.trim();
+  const label = document.getElementById('ann-label').value.trim();
+  const notes = document.getElementById('ann-notes').value.trim();
+  const cat   = CATEGORY_LOOKUP[currentCategory];
+
+  if (!addr || !geocodeLng) { showToast('Fill address and wait for geocoding','err'); return; }
+  if (!currentUser) { showToast('You must be signed in to add records','err'); return; }
+
+  // Collect category-specific fields into category_data jsonb
+  const catData = {};
+  if (cat && cat.fields) {
+    cat.fields.forEach(f => {
+      const el = document.getElementById('catf-' + f.id);
+      if (el) catData[f.id] = el.value;
+    });
+  }
+
+  // Determine geometry: use pendingGeometry (drawn) or create point from geocode
+  let geomType = 'point';
+  let geojson;
+  if (pendingGeometry) {
+    geojson = JSON.stringify(pendingGeometry);
+    geomType = pendingGeometry.type === 'Polygon' ? 'polygon'
+             : pendingGeometry.type === 'LineString' ? 'line' : 'point';
+  } else {
+    geojson = JSON.stringify({ type: 'Point', coordinates: [geocodeLng, geocodeLat] });
+  }
+
+  const { error } = await sb.rpc('insert_annotation', {
+    p_created_by: currentUser.id,
+    p_label:      label || addr.slice(0, 60),
+    p_type:       geomType,
+    p_geojson:    geojson,
+    p_notes:      notes || null,
+  });
+
+  if (error) { showToast('Error: ' + error.message, 'err'); return; }
+
+  // Fetch the new record id, then patch category fields
+  const { data: newAnn } = await sb.from('map_annotations')
+    .select('id').eq('created_by', currentUser.id)
+    .order('created_at', { ascending: false }).limit(1).single();
+  const annId = newAnn?.id || null;
+
+  if (annId) {
+    const patch = {
+      category:      currentCategory,
+      category_data: Object.keys(catData).length ? catData : null,
+      status:        'draft',
+      is_sensitive:  cat?.sensitiveDefault || false,
+    };
+    await sb.from('map_annotations').update(patch).eq('id', annId);
+  }
+
+  pendingGeometry = null;
+  lastAddedRecordId   = annId;
+  lastAddedRecordType = 'annotation';
+  showStep2(`${cat?.icon || ''} ${cat?.label || currentCategory} — ${(label||addr).slice(0,30)}`, annId);
+  await loadPublicAnnotations();
+}
+
+function showStep2(label, id) {
+  document.getElementById('add-step1').style.display = 'none';
+  document.getElementById('add-step2').style.display = 'block';
+  document.getElementById('add-success-label').textContent = label;
+  const idDisplay = document.getElementById('add-record-id-display');
+  if (idDisplay) idDisplay.textContent = id ? 'ID: ' + id.slice(0,8) + '…' : '';
+}
+
+function triggerRecordAttach() {
+  if (!lastAddedRecordId) { closeModal('add-modal'); return; }
+  currentPhotoCtx = { id: lastAddedRecordId, type: lastAddedRecordType };
+  closeModal('add-modal');
+  resetAddForm();
+  openModal('attach-modal');
+}
+
+// Legacy alias kept for any remaining inline references
+function triggerAddCrimePhoto() { triggerRecordAttach(); }
+
+function resetAddForm() {
+  document.getElementById('add-step1').style.display = 'block';
+  document.getElementById('add-step2').style.display = 'none';
+  document.getElementById('add-addr').value = '';
+  document.getElementById('add-desc').value = '';
+  document.getElementById('ann-label').value = '';
+  document.getElementById('ann-notes').value = '';
+  document.getElementById('geocode-status').textContent = '';
+  document.getElementById('add-coords').textContent = '';
+  const idDisplay = document.getElementById('add-record-id-display');
+  if (idDisplay) idDisplay.textContent = '';
+  geocodeLng = geocodeLat = null;
+  lastAddedRecordId = null;
+  lastAddedRecordType = null;
+  currentCategory = null;
+  cancelPinDrop();
+}
+
+// Draw-tool flow: opened from annotation draw event
+function openAddRecordFromDraw() {
+  const label = document.getElementById('ann-draw-label').value.trim();
+  const notes = document.getElementById('ann-draw-notes').value.trim();
+  closeModal('ann-modal');
+  // Pre-fill label/notes in unified modal
+  openAddRecord();
+  // Defer to let modal render
+  setTimeout(() => {
+    if (label) document.getElementById('ann-label').value = label;
+    if (notes) document.getElementById('ann-notes').value = notes;
+    // Show geometry hint
+    const hint = document.getElementById('ann-geom-hint');
+    if (hint && pendingGeometry) hint.style.display = 'block';
+  }, 50);
+}
+
+
 
 function geocodeAddr() {
   clearTimeout(geocodeTimer);
@@ -1965,61 +2499,6 @@ async function onPinDropped(e) {
 
 
 
-async function submitCrime() {
-  const type  = document.getElementById('add-type').value;
-  const status= document.getElementById('add-status').value;
-  const addr  = document.getElementById('add-addr').value.trim();
-  const date  = document.getElementById('add-date').value;
-  const time  = document.getElementById('add-time').value;
-  const desc  = document.getElementById('add-desc').value.trim();
-
-  if (!type || !addr || !geocodeLng) { showToast('Fill address and wait for geocoding','err'); return; }
-
-  // Reformat date from YYYY-MM-DD (HTML input default) to MM/DD/YYYY to match existing admin table sort order
-  let fmtDate = null;
-  if (date) { const [y,m,d] = date.split('-'); fmtDate = `${m}/${d}/${y}`; }
-
-  const { data, error } = await sb.rpc('insert_crime', {
-    p_crime_type: type, p_status: status, p_address: addr,
-    p_description: desc, p_incident_date: fmtDate||null, p_incident_time: time||null,
-    p_lng: geocodeLng, p_lat: geocodeLat,
-    p_source: 'manual', p_updated_by: currentUser?.id||null,
-  });
-  if (error) { showToast('Error: '+error.message,'err'); return; }
-
-  // insert_crime returns the new uuid directly
-  lastAddedCrimeId = data || null;
-
-  // Show step 2 — photo option
-  document.getElementById('add-step1').style.display = 'none';
-  document.getElementById('add-step2').style.display = 'block';
-  document.getElementById('add-success-label').textContent = type + ' at ' + addr.slice(0,30);
-  const idDisplay = document.getElementById('add-crime-id-display');
-  if (idDisplay) idDisplay.textContent = lastAddedCrimeId ? 'Crime ID: ' + lastAddedCrimeId.slice(0,8) + '…' : '';
-  await loadCrimes();
-}
-
-function triggerAddCrimePhoto() {
-  if (!lastAddedCrimeId) { closeModal('add-modal'); return; }
-  currentPhotoCtx = { id: lastAddedCrimeId, type: 'crime' };
-  closeModal('add-modal');
-  resetAddForm();
-  openModal('attach-modal');
-}
-
-function resetAddForm() {
-  document.getElementById('add-step1').style.display = 'block';
-  document.getElementById('add-step2').style.display = 'none';
-  document.getElementById('add-addr').value = '';
-  document.getElementById('add-desc').value = '';
-  document.getElementById('geocode-status').textContent = '';
-  document.getElementById('add-coords').textContent = '';
-  const idDisplay = document.getElementById('add-crime-id-display');
-  if (idDisplay) idDisplay.textContent = '';
-  geocodeLng = geocodeLat = null;
-  lastAddedCrimeId = null;
-  cancelPinDrop(); // clean up any active pin-drop listener + temp marker
-}
 
 // ══════════════════════════════════════════════════════════════════
 // SHOW/HIDE CLOSED

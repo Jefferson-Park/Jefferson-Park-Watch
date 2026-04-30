@@ -488,59 +488,6 @@ tbody td{padding:7px 10px;vertical-align:middle}
   </div>
 </div>
 
-<script>
-const RLS_SQL = `-- Run once in Supabase SQL Editor to give admins full access
--- 1. Allow admins to DELETE crimes
-CREATE POLICY IF NOT EXISTS "Admin delete crimes"
-  ON crimes FOR DELETE TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
-  ));
-
--- 2. Allow admins to UPDATE crimes
-CREATE POLICY IF NOT EXISTS "Admin update crimes"
-  ON crimes FOR UPDATE TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
-  )) WITH CHECK (true);
-
--- 3. Allow admins to DELETE annotations
-CREATE POLICY IF NOT EXISTS "Admin delete annotations"
-  ON map_annotations FOR DELETE TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
-  ));
-
--- 4. Allow admins to UPDATE annotations (needed for is_public toggle)
-CREATE POLICY IF NOT EXISTS "Admin update annotations"
-  ON map_annotations FOR UPDATE TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
-  )) WITH CHECK (true);
-
--- 5. Allow admins to UPDATE photos (public toggle)
-CREATE POLICY IF NOT EXISTS "Admin update photos"
-  ON photos FOR UPDATE TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
-  )) WITH CHECK (true);
-
--- 6. Allow admins to DELETE photos
-CREATE POLICY IF NOT EXISTS "Admin delete photos"
-  ON photos FOR DELETE TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
-  ));`;
-
-function showRLSFix() {
-  document.getElementById('rls-sql').textContent = RLS_SQL;
-  document.getElementById('rls-modal').style.display = 'flex';
-}
-function copyRLSSQL() {
-  navigator.clipboard.writeText(RLS_SQL).then(() => showToast('SQL copied — paste into Supabase SQL Editor','ok'));
-}
-</script>
-
 <div id="toast"></div>
 
 <script>
@@ -1483,6 +1430,63 @@ function showToast(msg,type='ok'){
   const t=document.getElementById('toast');
   t.textContent=msg;t.className=type;t.style.display='block';
   clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.style.display='none',3500);
+}
+
+// ══════════════════════════════════════════════════════
+// RLS FIX HELPER
+// ══════════════════════════════════════════════════════
+const RLS_SQL = `-- Run once in Supabase SQL Editor to give admins full access
+
+-- 1. Allow admins to DELETE crimes
+CREATE POLICY IF NOT EXISTS "Admin delete crimes"
+  ON crimes FOR DELETE TO authenticated
+  USING (EXISTS (
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+  ));
+
+-- 2. Allow admins to UPDATE crimes
+CREATE POLICY IF NOT EXISTS "Admin update crimes"
+  ON crimes FOR UPDATE TO authenticated
+  USING (EXISTS (
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+  )) WITH CHECK (true);
+
+-- 3. Allow admins to DELETE annotations
+CREATE POLICY IF NOT EXISTS "Admin delete annotations"
+  ON map_annotations FOR DELETE TO authenticated
+  USING (EXISTS (
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+  ));
+
+-- 4. Allow admins to UPDATE annotations (is_public toggle)
+CREATE POLICY IF NOT EXISTS "Admin update annotations"
+  ON map_annotations FOR UPDATE TO authenticated
+  USING (EXISTS (
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+  )) WITH CHECK (true);
+
+-- 5. Allow admins to UPDATE photos (public toggle)
+CREATE POLICY IF NOT EXISTS "Admin update photos"
+  ON photos FOR UPDATE TO authenticated
+  USING (EXISTS (
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+  )) WITH CHECK (true);
+
+-- 6. Allow admins to DELETE photos
+CREATE POLICY IF NOT EXISTS "Admin delete photos"
+  ON photos FOR DELETE TO authenticated
+  USING (EXISTS (
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+  ));`;
+
+function showRLSFix() {
+  document.getElementById('rls-sql').textContent = RLS_SQL;
+  document.getElementById('rls-modal').style.display = 'flex';
+}
+function copyRLSSQL() {
+  navigator.clipboard.writeText(RLS_SQL)
+    .then(() => showToast('SQL copied — paste into Supabase SQL Editor', 'ok'))
+    .catch(() => showToast('Copy failed — select and copy manually', 'err'));
 }
 
 // ══════════════════════════════════════════════════════

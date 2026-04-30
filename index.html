@@ -461,6 +461,66 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
         </div>
       </div>
 
+      <!-- Traffic Safety (non-crime) group -->
+      <div class="layer-group" id="grp-traffic">
+        <div class="grp-head" onclick="toggleGroup('traffic')">
+          <span>🚗 Traffic & Infrastructure<span class="grp-count" id="cnt-traffic"></span></span>
+          <span class="grp-chevron" id="chv-traffic" style="transform:rotate(-90deg)">▾</span>
+        </div>
+        <div class="grp-body collapsed" id="gb-traffic">
+          <div class="tog-row" onclick="toggleCatLayer('traffic')">
+            <div class="tog-icon" style="background:rgba(240,165,0,.15)">
+              <span style="font-size:14px">🚗</span>
+            </div>
+            <span class="tog-label">Traffic Accidents</span>
+            <span class="tog-count" id="ct-cat-traffic">0</span>
+            <div class="tog-sw" id="sw-cat-traffic"></div>
+          </div>
+          <div class="tog-row" onclick="toggleCatLayer('lighting')">
+            <div class="tog-icon" style="background:rgba(45,139,255,.15)">
+              <span style="font-size:14px">💡</span>
+            </div>
+            <span class="tog-label">Street Infrastructure</span>
+            <span class="tog-count" id="ct-cat-lighting">0</span>
+            <div class="tog-sw" id="sw-cat-lighting"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Business & Econ Dev group -->
+      <div class="layer-group" id="grp-business">
+        <div class="grp-head" onclick="toggleGroup('business')">
+          <span>🏪 Business & Econ Dev<span class="grp-count" id="cnt-business"></span></span>
+          <span class="grp-chevron" id="chv-business" style="transform:rotate(-90deg)">▾</span>
+        </div>
+        <div class="grp-body collapsed" id="gb-business">
+          <div class="tog-row" onclick="toggleCatLayer('business')">
+            <div class="tog-icon" style="background:rgba(0,194,168,.15)"><span style="font-size:14px">🏪</span></div>
+            <span class="tog-label">Business Directory</span>
+            <span class="tog-count" id="ct-cat-business">0</span>
+            <div class="tog-sw" id="sw-cat-business"></div>
+          </div>
+          <div class="tog-row" onclick="toggleCatLayer('mix_use_residential')">
+            <div class="tog-icon" style="background:rgba(155,89,182,.15)"><span style="font-size:14px">🏗</span></div>
+            <span class="tog-label">Mix Use / Construction</span>
+            <span class="tog-count" id="ct-cat-mix_use_residential">0</span>
+            <div class="tog-sw" id="sw-cat-mix_use_residential"></div>
+          </div>
+          <div class="tog-row" onclick="toggleCatLayer('vacant_lot')">
+            <div class="tog-icon" style="background:rgba(139,105,20,.15)"><span style="font-size:14px">🟫</span></div>
+            <span class="tog-label">Vacant Lots</span>
+            <span class="tog-count" id="ct-cat-vacant_lot">0</span>
+            <div class="tog-sw" id="sw-cat-vacant_lot"></div>
+          </div>
+          <div class="tog-row" onclick="toggleCatLayer('storefront')">
+            <div class="tog-icon" style="background:rgba(46,204,113,.15)"><span style="font-size:14px">🏬</span></div>
+            <span class="tog-label">Storefronts</span>
+            <span class="tog-count" id="ct-cat-storefront">0</span>
+            <div class="tog-sw" id="sw-cat-storefront"></div>
+          </div>
+        </div>
+      </div>
+
       <!-- Trees & Green group -->
       <div class="layer-group" id="grp-trees">
         <div class="grp-head" onclick="toggleGroup('trees')">
@@ -468,7 +528,36 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
           <span class="grp-chevron" id="chv-trees" style="transform:rotate(-90deg)">▾</span>
         </div>
         <div class="grp-body collapsed" id="gb-trees">
-          <div class="tog-placeholder">Coming in Phase 2 — trees, stumps, fruit sharing, planting sites</div>
+          <div class="tog-row" onclick="toggleCatLayer('tree')">
+            <div class="tog-icon" style="background:rgba(39,174,96,.15)"><span style="font-size:14px">🌳</span></div>
+            <span class="tog-label">Tree Sites</span>
+            <span class="tog-count" id="ct-cat-tree">0</span>
+            <div class="tog-sw" id="sw-cat-tree"></div>
+          </div>
+          <div class="tog-row" onclick="toggleCatLayer('planting_site')">
+            <div class="tog-icon" style="background:rgba(82,190,128,.15)"><span style="font-size:14px">🌱</span></div>
+            <span class="tog-label">Planting Sites</span>
+            <span class="tog-count" id="ct-cat-planting_site">0</span>
+            <div class="tog-sw" id="sw-cat-planting_site"></div>
+          </div>
+          <div class="tog-row" onclick="toggleCatLayer('parks')">
+            <div class="tog-icon" style="background:rgba(26,188,156,.15)"><span style="font-size:14px">⛳</span></div>
+            <span class="tog-label">Parks</span>
+            <span class="tog-count" id="ct-cat-parks">0</span>
+            <div class="tog-sw" id="sw-cat-parks"></div>
+          </div>
+          <div class="tog-row" onclick="toggleCatLayer('fruit_tree')">
+            <div class="tog-icon" style="background:rgba(243,156,18,.15)"><span style="font-size:14px">🍊</span></div>
+            <span class="tog-label">Fruit Trees</span>
+            <span class="tog-count" id="ct-cat-fruit_tree">0</span>
+            <div class="tog-sw" id="sw-cat-fruit_tree"></div>
+          </div>
+          <div class="tog-row" onclick="toggleCatLayer('garden')">
+            <div class="tog-icon" style="background:rgba(125,206,160,.15)"><span style="font-size:14px">🥕</span></div>
+            <span class="tog-label">Gardens</span>
+            <span class="tog-count" id="ct-cat-garden">0</span>
+            <div class="tog-sw" id="sw-cat-garden"></div>
+          </div>
         </div>
       </div>
 
@@ -479,7 +568,30 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
           <span class="grp-chevron" id="chv-community" style="transform:rotate(-90deg)">▾</span>
         </div>
         <div class="grp-body collapsed" id="gb-community">
-          <div class="tog-placeholder">Coming in Phase 2 — murals, projects, parks, alleys</div>
+          <div class="tog-row" onclick="toggleCatLayer('improvement')">
+            <div class="tog-icon" style="background:rgba(93,173,226,.15)"><span style="font-size:14px">🔨</span></div>
+            <span class="tog-label">Improvements / Projects</span>
+            <span class="tog-count" id="ct-cat-improvement">0</span>
+            <div class="tog-sw" id="sw-cat-improvement"></div>
+          </div>
+          <div class="tog-row" onclick="toggleCatLayer('encampment')">
+            <div class="tog-icon" style="background:rgba(231,76,60,.15)"><span style="font-size:14px">⛺</span></div>
+            <span class="tog-label">Encampments</span>
+            <span class="tog-count" id="ct-cat-encampment">0</span>
+            <div class="tog-sw" id="sw-cat-encampment"></div>
+          </div>
+          <div class="tog-row" onclick="toggleCatLayer('trash')">
+            <div class="tog-icon" style="background:rgba(127,140,141,.15)"><span style="font-size:14px">🗑</span></div>
+            <span class="tog-label">Trash / Recycling</span>
+            <span class="tog-count" id="ct-cat-trash">0</span>
+            <div class="tog-sw" id="sw-cat-trash"></div>
+          </div>
+          <div class="tog-row" onclick="toggleCatLayer('hazard')">
+            <div class="tog-icon" style="background:rgba(243,156,18,.15)"><span style="font-size:14px">⚠️</span></div>
+            <span class="tog-label">Hazard Sites</span>
+            <span class="tog-count" id="ct-cat-hazard">0</span>
+            <div class="tog-sw" id="sw-cat-hazard"></div>
+          </div>
         </div>
       </div>
 
@@ -490,7 +602,24 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
           <span class="grp-chevron" id="chv-arts" style="transform:rotate(-90deg)">▾</span>
         </div>
         <div class="grp-body collapsed" id="gb-arts">
-          <div class="tog-placeholder">Coming in Phase 2 — cultural sites, gardens, landmarks</div>
+          <div class="tog-row" onclick="toggleCatLayer('mural')">
+            <div class="tog-icon" style="background:rgba(233,30,99,.15)"><span style="font-size:14px">🎨</span></div>
+            <span class="tog-label">Murals</span>
+            <span class="tog-count" id="ct-cat-mural">0</span>
+            <div class="tog-sw" id="sw-cat-mural"></div>
+          </div>
+          <div class="tog-row" onclick="toggleCatLayer('cultural')">
+            <div class="tog-icon" style="background:rgba(142,68,173,.15)"><span style="font-size:14px">🏛</span></div>
+            <span class="tog-label">Cultural Sites</span>
+            <span class="tog-count" id="ct-cat-cultural">0</span>
+            <div class="tog-sw" id="sw-cat-cultural"></div>
+          </div>
+          <div class="tog-row" onclick="toggleCatLayer('historic')">
+            <div class="tog-icon" style="background:rgba(212,172,13,.15)"><span style="font-size:14px">🏺</span></div>
+            <span class="tog-label">Historic Landmarks</span>
+            <span class="tog-count" id="ct-cat-historic">0</span>
+            <div class="tog-sw" id="sw-cat-historic"></div>
+          </div>
         </div>
       </div>
 
@@ -1209,6 +1338,7 @@ function initMap() {
   unncLayerGroup       = L.layerGroup();
   annotationLayerGroup = L.layerGroup(); // off by default — user toggles on
   photoLayerGroup      = L.layerGroup(); // off by default
+  initCatLayers(); // create per-category layer groups
 
   // Draw controls — wrapped in try/catch so CDN failure doesn't crash map
   if (userRole === 'admin' || userRole === 'field_officer') {
@@ -1310,32 +1440,79 @@ async function loadBoundaries() {
 }
 
 // ══════════════════════════════════════════════════════════════════
-// PUBLIC ANNOTATIONS
+// CATEGORY LAYER SYSTEM
+// ══════════════════════════════════════════════════════════════════
+// One Leaflet layerGroup per category value + the legacy 'observation' group
+const CAT_LAYER_GROUPS = {};
+
+// Category value → sidebar group id (for group count badges)
+const CAT_TO_GROUP = {
+  traffic:           'traffic',
+  lighting:          'traffic',
+  business:          'business',
+  mix_use_residential:'business',
+  vacant_lot:        'business',
+  storefront:        'business',
+  tree:              'trees',
+  planting_site:     'trees',
+  parks:             'trees',
+  fruit_tree:        'trees',
+  garden:            'trees',
+  improvement:       'community',
+  encampment:        'community',
+  trash:             'community',
+  hazard:            'community',
+  mural:             'arts',
+  cultural:          'arts',
+  historic:          'arts',
+  observation:       'internal',
+};
+
+function initCatLayers() {
+  // Create a layer group for every known category
+  Object.keys(CAT_TO_GROUP).forEach(cat => {
+    CAT_LAYER_GROUPS[cat] = L.layerGroup();
+  });
+}
+
+function toggleCatLayer(cat) {
+  const key = 'cat_' + cat;
+  layerVisible[key] = !layerVisible[key];
+  const sw = document.getElementById('sw-cat-' + cat);
+  if (sw) sw.classList.toggle('on', layerVisible[key]);
+  const grp = CAT_LAYER_GROUPS[cat];
+  if (!grp) return;
+  if (layerVisible[key]) grp.addTo(map);
+  else map.removeLayer(grp);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// PUBLIC ANNOTATIONS — load + render by category
 // ══════════════════════════════════════════════════════════════════
 async function loadPublicAnnotations() {
   try {
     const { data, error } = await sb.rpc('get_annotations_geojson');
     if (error) throw error;
-    // Public viewers see only is_public annotations
-    // Field officers, project managers, and admins also see their own pending (non-public) annotations
     annotationsData = (data || []).filter(a => {
       if (a.is_public) return true;
       if (['field_officer','project_manager','admin'].includes(userRole) && a.created_by === currentUser?.id) return true;
       return false;
     });
-    console.log('Annotations loaded:', annotationsData.length, 'userRole:', userRole);
-    renderPublicAnnotations();
+    console.log('Annotations loaded:', annotationsData.length);
+    renderCategoryAnnotations();
+    renderPublicAnnotations(); // keep legacy 'observation' layer for Internal Layers toggle
   } catch(e) {
     console.warn('Annotations not available:', e.message);
   }
 }
 
-function renderPublicAnnotations() {
-  annotationLayerGroup.clearLayers();
-  const color = '#00c2a8';
+function renderCategoryAnnotations() {
+  // Clear all category layers
+  Object.values(CAT_LAYER_GROUPS).forEach(grp => grp.clearLayers());
 
-  // Render in order: polygons first, then lines, then points
-  // so points are always on top and selectable
+  // Count per category for badges
+  const counts = {};
+
   const ordered = [
     ...annotationsData.filter(a => a.annotation_type === 'polygon'),
     ...annotationsData.filter(a => a.annotation_type === 'line'),
@@ -1343,68 +1520,168 @@ function renderPublicAnnotations() {
   ];
 
   ordered.forEach(ann => {
-    if (!ann.geometry_geojson) return;
+    const cat = ann.category || 'observation';
+    const grp = CAT_LAYER_GROUPS[cat];
+    if (!grp || !ann.geometry_geojson) return;
+
+    counts[cat] = (counts[cat] || 0) + 1;
+
     try {
-      const geom = (typeof ann.geometry_geojson === 'string')
-        ? JSON.parse(ann.geometry_geojson) : ann.geometry_geojson;
+      const catCfg  = CATEGORY_LOOKUP[cat];
+      const geom    = (typeof ann.geometry_geojson === 'string') ? JSON.parse(ann.geometry_geojson) : ann.geometry_geojson;
+      const isOwn   = !ann.is_public && ann.created_by === currentUser?.id;
+      const baseColor = catCfg?.color || '#00c2a8';
+      const annColor  = isOwn ? '#f0a500' : baseColor;
 
-      // Own (non-public) annotations shown in amber so field officer can tell them apart
-      const isOwn = !ann.is_public && (userRole === 'field_officer' || userRole === 'project_manager' || userRole === 'admin') && ann.created_by === currentUser?.id;
-      const annColor = isOwn ? '#f0a500' : color;
+      const canEdit = ['admin','project_manager'].includes(userRole) || (userRole === 'field_officer' && ann.created_by === currentUser?.id);
+      const ownBadge = isOwn ? `<span style="font-family:var(--mono);font-size:9px;padding:2px 5px;border-radius:3px;background:rgba(240,165,0,.15);color:var(--amber)">✏️ Draft</span>` : '';
 
-      // Admins can edit all; field officers only their own annotations
-      const canEditAnn = ['admin','project_manager'].includes(userRole) || (userRole === 'field_officer' && ann.created_by === currentUser?.id);
-      const ownBadge = isOwn
-        ? `<span style="font-family:var(--mono);font-size:9px;padding:2px 5px;border-radius:3px;background:rgba(240,165,0,.15);color:var(--amber);margin-left:4px">✏️ Draft — not public</span>`
-        : '';
+      // Build category-specific fields display
+      const catData = ann.category_data || {};
+      const catFields = catCfg?.fields || [];
+      const fieldsHtml = catFields.length ? `
+        <div style="margin-top:8px;border-top:1px solid rgba(255,255,255,.06);padding-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:4px 10px">
+          ${catFields.map(f => {
+            const val = catData[f.id];
+            return val ? `<div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">${f.label}</div><div style="font-size:11px">${val}</div></div>` : '';
+          }).filter(Boolean).join('')}
+        </div>` : '';
+
       const popup = `<div style="padding:10px;font-family:var(--font);color:var(--text)">
-        <div style="font-weight:600;font-size:12px;color:${annColor}">${ann.label||'Annotation'}</div>
-        <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:3px">
-          <span style="font-family:var(--mono);font-size:9px;padding:2px 5px;border-radius:3px;background:rgba(0,194,168,.15);color:var(--accent)">${ann.annotation_type}</span>
-          ${ownBadge}
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+          <span style="font-size:16px">${catCfg?.icon || '📍'}</span>
+          <div>
+            <div style="font-weight:600;font-size:12px;color:${annColor}">${ann.label || catCfg?.label || 'Record'}</div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:2px">
+              <span style="font-family:var(--mono);font-size:9px;padding:1px 5px;border-radius:3px;background:${annColor}18;color:${annColor}">${catCfg?.label || cat}</span>
+              ${ownBadge}
+            </div>
+          </div>
         </div>
-        ${ann.notes ? `<div style="font-size:11px;margin-top:6px;line-height:1.5">${ann.notes}</div>` : ''}
-        ${canEditAnn ? `
+        ${fieldsHtml}
+        ${ann.notes ? `<div style="font-size:11px;margin-top:8px;line-height:1.5;color:var(--muted)">${ann.notes}</div>` : ''}
+        ${canEdit ? `
           <div style="margin-top:10px;border-top:1px solid rgba(255,255,255,.08);padding-top:8px">
-            <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em">Edit Notes</div>
             <textarea id="ann-edit-${ann.id}"
               style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:5px;
                 padding:6px 8px;color:var(--text);font-size:11px;font-family:var(--font);
-                outline:none;resize:vertical;min-height:55px"
-              placeholder="Add or edit notes…">${ann.notes||''}</textarea>
+                outline:none;resize:vertical;min-height:50px"
+              placeholder="Edit notes…">${ann.notes||''}</textarea>
             <div style="display:flex;gap:5px;margin-top:5px">
               <button onclick="saveAnnNotes('${ann.id}')"
                 style="flex:1;background:var(--accent);color:#000;border:none;border-radius:5px;
-                  padding:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font)">
-                Save
-              </button>
+                  padding:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font)">Save</button>
               <button onclick="openAnnotationAttach('${ann.id}')"
                 style="flex:1;background:var(--panel2);border:1px solid var(--border);border-radius:5px;
-                  padding:6px;font-size:11px;cursor:pointer;font-family:var(--font);color:var(--text)">
-                📎 Attach
-              </button>
+                  padding:6px;font-size:11px;cursor:pointer;font-family:var(--font);color:var(--text)">📎 Attach</button>
             </div>
           </div>` : ''}
       </div>`;
 
       const layer = L.geoJSON(geom, {
         style: () => ({
-          color: annColor,
-          weight:      ann.annotation_type === 'line' ? 4 : 3,
-          opacity:     0.9,
-          fillColor:   annColor,
-          fillOpacity: ann.annotation_type === 'polygon' ? 0.25 : 0,
-          lineCap:     'round', lineJoin:'round',
+          color: annColor, weight: ann.annotation_type === 'line' ? 4 : 2.5,
+          opacity: 0.9, fillColor: annColor,
+          fillOpacity: ann.annotation_type === 'polygon' ? 0.2 : 0,
+          lineCap: 'round', lineJoin: 'round',
         }),
-        pointToLayer: (_f, latlng) => L.circleMarker(latlng, {
-          radius:9, color:'white', weight:2.5, fillColor:annColor, fillOpacity:1,
-          // Points get highest z-index via pane
-          pane: 'markerPane',
-        }),
+        pointToLayer: (_f, latlng) => {
+          // Use emoji marker for points if category has an icon
+          if (catCfg?.icon) {
+            return L.marker(latlng, {
+              icon: L.divIcon({
+                html: `<div style="
+                  display:flex;flex-direction:column;align-items:center;
+                  filter:drop-shadow(0 1px 4px rgba(0,0,0,.6));
+                ">
+                  <div style="
+                    width:30px;height:30px;border-radius:50%;
+                    background:${annColor};border:2.5px solid white;
+                    display:flex;align-items:center;justify-content:center;
+                    font-size:14px;line-height:1;
+                    box-shadow:0 0 0 3px ${annColor}44;
+                  ">${catCfg.icon}</div>
+                </div>`,
+                className: '', iconSize: [30, 30], iconAnchor: [15, 15], popupAnchor: [0, -18],
+              }),
+              pane: 'markerPane',
+            });
+          }
+          return L.circleMarker(latlng, {
+            radius: 9, color: 'white', weight: 2.5, fillColor: annColor, fillOpacity: 1,
+            pane: 'markerPane',
+          });
+        },
       });
 
-      layer.bindPopup(popup, { closeButton:true, autoClose:false });
-      if (ann.label) layer.bindTooltip(ann.label, { permanent:false, direction:'top', className:'ann-tooltip' });
+      layer.bindPopup(popup, { closeButton: true, autoClose: false, maxWidth: 280 });
+      if (ann.label) layer.bindTooltip(ann.label, { permanent: false, direction: 'top', className: 'ann-tooltip' });
+
+      // Only add to map if toggle is on
+      grp.addLayer(layer);
+      if (layerVisible['cat_' + cat] && !map.hasLayer(grp)) grp.addTo(map);
+    } catch(e) { console.warn('Cat annotation render error:', e); }
+  });
+
+  // Update per-toggle counts
+  Object.entries(counts).forEach(([cat, n]) => {
+    const el = document.getElementById('ct-cat-' + cat);
+    if (el) el.textContent = n;
+  });
+  // Zero out any categories with no records
+  Object.keys(CAT_TO_GROUP).forEach(cat => {
+    if (!counts[cat]) {
+      const el = document.getElementById('ct-cat-' + cat);
+      if (el) el.textContent = 0;
+    }
+  });
+
+  // Update group header badges
+  const groupTotals = {};
+  Object.entries(counts).forEach(([cat, n]) => {
+    const g = CAT_TO_GROUP[cat];
+    if (g && g !== 'internal') groupTotals[g] = (groupTotals[g] || 0) + n;
+  });
+  ['traffic','business','trees','community','arts'].forEach(g => {
+    updateGroupCount(g, groupTotals[g] || 0);
+  });
+}
+
+function renderPublicAnnotations() {
+  // Legacy render for the Internal Layers > Annotations toggle (observation category + uncategorised)
+  annotationLayerGroup.clearLayers();
+  const legacyAnns = annotationsData.filter(a => !a.category || a.category === 'observation');
+  const ordered = [
+    ...legacyAnns.filter(a => a.annotation_type === 'polygon'),
+    ...legacyAnns.filter(a => a.annotation_type === 'line'),
+    ...legacyAnns.filter(a => a.annotation_type === 'point'),
+  ];
+  const color = '#00c2a8';
+  ordered.forEach(ann => {
+    if (!ann.geometry_geojson) return;
+    try {
+      const geom = (typeof ann.geometry_geojson === 'string') ? JSON.parse(ann.geometry_geojson) : ann.geometry_geojson;
+      const isOwn = !ann.is_public && ann.created_by === currentUser?.id;
+      const annColor = isOwn ? '#f0a500' : color;
+      const canEditAnn = ['admin','project_manager'].includes(userRole) || (userRole === 'field_officer' && ann.created_by === currentUser?.id);
+      const popup = `<div style="padding:10px;font-family:var(--font);color:var(--text)">
+        <div style="font-weight:600;font-size:12px;color:${annColor}">${ann.label||'Annotation'}</div>
+        ${ann.notes ? `<div style="font-size:11px;margin-top:6px;line-height:1.5">${ann.notes}</div>` : ''}
+        ${canEditAnn ? `
+          <div style="margin-top:10px;border-top:1px solid rgba(255,255,255,.08);padding-top:8px">
+            <textarea id="ann-edit-${ann.id}" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:6px 8px;color:var(--text);font-size:11px;font-family:var(--font);outline:none;resize:vertical;min-height:55px" placeholder="Edit notes…">${ann.notes||''}</textarea>
+            <div style="display:flex;gap:5px;margin-top:5px">
+              <button onclick="saveAnnNotes('${ann.id}')" style="flex:1;background:var(--accent);color:#000;border:none;border-radius:5px;padding:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font)">Save</button>
+              <button onclick="openAnnotationAttach('${ann.id}')" style="flex:1;background:var(--panel2);border:1px solid var(--border);border-radius:5px;padding:6px;font-size:11px;cursor:pointer;font-family:var(--font);color:var(--text)">📎 Attach</button>
+            </div>
+          </div>` : ''}
+      </div>`;
+      const layer = L.geoJSON(geom, {
+        style: () => ({ color: annColor, weight: ann.annotation_type === 'line' ? 4 : 3, opacity: 0.9, fillColor: annColor, fillOpacity: ann.annotation_type === 'polygon' ? 0.25 : 0, lineCap: 'round', lineJoin: 'round' }),
+        pointToLayer: (_f, latlng) => L.circleMarker(latlng, { radius: 9, color: 'white', weight: 2.5, fillColor: annColor, fillOpacity: 1, pane: 'markerPane' }),
+      });
+      layer.bindPopup(popup, { closeButton: true, autoClose: false });
+      if (ann.label) layer.bindTooltip(ann.label, { permanent: false, direction: 'top', className: 'ann-tooltip' });
       annotationLayerGroup.addLayer(layer);
     } catch(e) { console.warn('Annotation render error:', e); }
   });
@@ -2672,7 +2949,7 @@ function setupRealtime() {
       loadPublicPhotos(); // refresh photo pins since they depend on crime locations
     })
     .on('postgres_changes',{event:'*',schema:'public',table:'map_annotations'}, () => {
-      loadPublicAnnotations(); // refresh annotations when any change
+      loadPublicAnnotations();
     })
     .subscribe();
 }

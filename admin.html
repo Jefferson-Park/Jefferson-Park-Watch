@@ -249,6 +249,7 @@ tbody td{padding:7px 10px;vertical-align:middle}
 
     <div class="nav-r">
       <span class="nav-user" id="nav-user"></span>
+      <button onclick="showRLSFix()" title="Fix delete/update permissions" style="border-color:#f0a500;color:#f0a500">🔧 RLS Fix</button>
       <a href="index.html">← Field Map</a>
       <button onclick="doLogout()">Sign out</button>
     </div>
@@ -470,6 +471,75 @@ tbody td{padding:7px 10px;vertical-align:middle}
   <span id="lb-close">×</span>
   <img id="lb-img" src="" alt="">
 </div>
+
+<!-- RLS Fix Modal -->
+<div id="rls-modal" style="position:fixed;inset:0;z-index:8000;background:rgba(0,0,0,.8);display:none;align-items:center;justify-content:center">
+  <div style="background:var(--panel);border:1px solid var(--amber);border-radius:12px;padding:24px;width:560px;max-width:95vw;max-height:85vh;overflow-y:auto;position:relative">
+    <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--amber),var(--accent));border-radius:12px 12px 0 0"></div>
+    <div style="font-size:15px;font-weight:600;margin-bottom:4px;color:var(--amber)">🔧 Fix Admin Permissions (RLS)</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:16px">Run this SQL in your <a href="https://supabase.com/dashboard/project/sqiioihssmnqatjrednq/sql" target="_blank" style="color:var(--accent)">Supabase SQL Editor ↗</a> to allow admins to delete and update records.</div>
+    <pre id="rls-sql" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;font-family:var(--mono);font-size:10px;color:var(--text);white-space:pre-wrap;line-height:1.6;margin-bottom:14px;overflow-x:auto"></pre>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-accent" onclick="copyRLSSQL()" style="flex:1">📋 Copy SQL</button>
+      <a href="https://supabase.com/dashboard/project/sqiioihssmnqatjrednq/sql" target="_blank"
+        class="btn" style="flex:1;text-align:center;text-decoration:none;justify-content:center">Open SQL Editor ↗</a>
+      <button class="btn" onclick="document.getElementById('rls-modal').style.display='none'">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const RLS_SQL = `-- Run once in Supabase SQL Editor to give admins full access
+-- 1. Allow admins to DELETE crimes
+CREATE POLICY IF NOT EXISTS "Admin delete crimes"
+  ON crimes FOR DELETE TO authenticated
+  USING (EXISTS (
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+  ));
+
+-- 2. Allow admins to UPDATE crimes
+CREATE POLICY IF NOT EXISTS "Admin update crimes"
+  ON crimes FOR UPDATE TO authenticated
+  USING (EXISTS (
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+  )) WITH CHECK (true);
+
+-- 3. Allow admins to DELETE annotations
+CREATE POLICY IF NOT EXISTS "Admin delete annotations"
+  ON map_annotations FOR DELETE TO authenticated
+  USING (EXISTS (
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+  ));
+
+-- 4. Allow admins to UPDATE annotations (needed for is_public toggle)
+CREATE POLICY IF NOT EXISTS "Admin update annotations"
+  ON map_annotations FOR UPDATE TO authenticated
+  USING (EXISTS (
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+  )) WITH CHECK (true);
+
+-- 5. Allow admins to UPDATE photos (public toggle)
+CREATE POLICY IF NOT EXISTS "Admin update photos"
+  ON photos FOR UPDATE TO authenticated
+  USING (EXISTS (
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+  )) WITH CHECK (true);
+
+-- 6. Allow admins to DELETE photos
+CREATE POLICY IF NOT EXISTS "Admin delete photos"
+  ON photos FOR DELETE TO authenticated
+  USING (EXISTS (
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+  ));`;
+
+function showRLSFix() {
+  document.getElementById('rls-sql').textContent = RLS_SQL;
+  document.getElementById('rls-modal').style.display = 'flex';
+}
+function copyRLSSQL() {
+  navigator.clipboard.writeText(RLS_SQL).then(() => showToast('SQL copied — paste into Supabase SQL Editor','ok'));
+}
+</script>
 
 <div id="toast"></div>
 
@@ -992,11 +1062,33 @@ async function saveEdit() {
 
 async function deleteCrime(id) {
   if(!confirm('Delete this crime record? Cannot be undone.')) return;
-  const {data, error} = await sb.from('crimes').delete().eq('id',id).select('id');
-  if(error){ showToast('Delete error: '+error.message,'err'); return; }
-  if(!data||data.length===0){ showToast('Delete blocked — RLS prevented deletion','err'); return; }
+  // Use RPC to bypass RLS — direct .delete() with anon key is blocked by row-level security
+  const {data, error} = await sb.rpc('admin_delete_crime', { p_id: id });
+  if(error) {
+    // RPC doesn't exist yet — fall back to direct delete and show clear message
+    const {data:d2, error:e2} = await sb.from('crimes').delete().eq('id',id).select('id');
+    if(e2){ showToast('Delete blocked — add admin_delete_crime RPC or relax RLS on crimes','err'); console.error('Delete error:',e2); return; }
+    if(!d2||d2.length===0){ showToast('Delete blocked by RLS — see console for fix','err');
+      console.error('RLS blocked delete. Run in Supabase SQL editor:\nCREATE POLICY "Admin delete crimes" ON crimes FOR DELETE TO authenticated USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = \'admin\'));');
+      return; }
+  }
   showToast('Deleted','ok');
   await loadCrimes();
+}
+
+async function deleteAnn(id) {
+  if(!confirm('Delete this annotation?')) return;
+  const {data, error} = await sb.rpc('admin_delete_annotation', { p_id: id });
+  if(error) {
+    const {data:d2, error:e2} = await sb.from('map_annotations').delete().eq('id',id).select('id');
+    if(e2){ showToast('Delete blocked — add admin_delete_annotation RPC or relax RLS','err'); console.error('Delete error:',e2); return; }
+    if(!d2||d2.length===0){ showToast('Delete blocked by RLS — see console for fix','err');
+      console.error('RLS blocked delete. Run in Supabase SQL editor:\nCREATE POLICY "Admin delete annotations" ON map_annotations FOR DELETE TO authenticated USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = \'admin\'));');
+      return; }
+  }
+  showToast('Deleted','ok');
+  await loadAnnotations();
+  filterAnnotations();
 }
 
 // ══════════════════════════════════════════════════════
@@ -1065,12 +1157,16 @@ function flyToAnn(id) {
   adminMap.flyTo([lat,lng],17);
 }
 
-async function togglePublic(id,current) {
-  const nv=!current;
-  const {data,error}=await sb.from('map_annotations').update({is_public:nv}).eq('id',id).select('id,is_public');
-  if(error){showToast('Error: '+error.message,'err');return;}
-  if(!data||data.length===0){showToast('Update blocked — RLS prevented change','err');return;}
-  showToast(nv?'Made public — will appear on field map':'Made private','ok');
+async function togglePublic(id, current) {
+  const nv = !current;
+  const {data, error} = await sb.from('map_annotations').update({is_public: nv}).eq('id',id).select('id,is_public');
+  if(error){ showToast('Error: '+error.message,'err'); return; }
+  if(!data||data.length===0){
+    showToast('Update blocked by RLS — see console','err');
+    console.error('RLS blocked UPDATE on map_annotations. Run in Supabase SQL editor:\nCREATE POLICY "Admin update annotations" ON map_annotations FOR UPDATE TO authenticated USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = \'admin\')) WITH CHECK (true);');
+    return;
+  }
+  showToast(nv ? '🌐 Public — will appear on field map' : '🔒 Made private','ok');
   await loadAnnotations();
 }
 
@@ -1114,16 +1210,6 @@ function notifyAuthor(annId) {
   );
   window.open(`mailto:${authorEmail}?subject=${subject}&body=${body}`, '_self');
   showToast(`Opening email to ${authorEmail}`, 'ok');
-}
-
-async function deleteAnn(id) {
-  if(!confirm('Delete this annotation?')) return;
-  const {data, error} = await sb.from('map_annotations').delete().eq('id',id).select('id');
-  if(error){ showToast('Delete error: '+error.message,'err'); return; }
-  if(!data||data.length===0){ showToast('Delete blocked — RLS prevented deletion','err'); return; }
-  showToast('Deleted','ok');
-  await loadAnnotations();   // reloads allAnnotations from DB
-  filterAnnotations();       // re-applies current filter state — does not reset dropdowns
 }
 
 // ══════════════════════════════════════════════════════

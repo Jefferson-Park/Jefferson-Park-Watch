@@ -1491,16 +1491,33 @@ function toggleCatLayer(cat) {
 // ══════════════════════════════════════════════════════════════════
 async function loadPublicAnnotations() {
   try {
-    const { data, error } = await sb.rpc('get_annotations_geojson');
-    if (error) throw error;
-    annotationsData = (data || []).filter(a => {
+    // Fetch geometry via RPC (has PostGIS processing for GeoJSON)
+    const { data: rpcData, error: rpcErr } = await sb.rpc('get_annotations_geojson');
+    if (rpcErr) throw rpcErr;
+
+    // Fetch category/subcategory/category_data/status/is_sensitive directly —
+    // these columns were added after the RPC was written and may not be in it
+    const { data: catData } = await sb.from('map_annotations')
+      .select('id, category, subcategory, category_data, status, is_sensitive, is_public, created_by');
+
+    // Merge: RPC rows get category fields stitched in by id
+    const catById = {};
+    (catData || []).forEach(r => { catById[r.id] = r; });
+
+    const merged = (rpcData || []).map(a => ({
+      ...a,
+      ...(catById[a.id] || {}), // overlay category fields, also refreshes is_public
+    }));
+
+    annotationsData = merged.filter(a => {
       if (a.is_public) return true;
       if (['field_officer','project_manager','admin'].includes(userRole) && a.created_by === currentUser?.id) return true;
       return false;
     });
-    console.log('Annotations loaded:', annotationsData.length);
+
+    console.log('Annotations loaded:', annotationsData.length, '| categories:', [...new Set(annotationsData.map(a=>a.category||'none'))]);
     renderCategoryAnnotations();
-    renderPublicAnnotations(); // keep legacy 'observation' layer for Internal Layers toggle
+    renderPublicAnnotations(); // legacy observation layer
   } catch(e) {
     console.warn('Annotations not available:', e.message);
   }

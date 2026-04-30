@@ -339,6 +339,16 @@ tbody td{padding:7px 10px;vertical-align:middle}
           <option value="line">Line</option>
           <option value="polygon">Polygon</option>
         </select>
+        <select class="tf" id="ann-filter-cat" onchange="filterAnnotations()" style="width:160px">
+          <option value="">All categories</option>
+        </select>
+        <select class="tf" id="ann-filter-status" onchange="filterAnnotations()" style="width:110px">
+          <option value="">All statuses</option>
+          <option value="draft">🟡 Draft</option>
+          <option value="approved">✅ Approved</option>
+          <option value="published">🌐 Published</option>
+          <option value="rejected">❌ Rejected</option>
+        </select>
         <select class="tf" id="ann-filter-vis" onchange="filterAnnotations()" style="width:100px">
           <option value="">All</option>
           <option value="public">🌐 Public</option>
@@ -353,11 +363,13 @@ tbody td{padding:7px 10px;vertical-align:middle}
         <table>
           <thead><tr>
             <th onclick="sortAnn('label')" style="cursor:pointer">Label ↕</th>
+            <th onclick="sortAnn('category')" style="cursor:pointer">Category ↕</th>
             <th onclick="sortAnn('annotation_type')" style="cursor:pointer">Type ↕</th>
+            <th>Details</th>
             <th onclick="sortAnn('notes')" style="cursor:pointer">Notes ↕</th>
             <th onclick="sortAnn('created_at')" style="cursor:pointer">Created ↕</th>
             <th>Author</th>
-            <th>Lat</th><th>Lng</th>
+            <th onclick="sortAnn('status')" style="cursor:pointer">Status ↕</th>
             <th>Public</th><th>Actions</th>
           </tr></thead>
           <tbody id="ann-tbody"></tbody>
@@ -430,7 +442,18 @@ tbody td{padding:7px 10px;vertical-align:middle}
     <input type="hidden" id="edit-ann-id">
     <div class="em-grid">
       <div class="em-f full"><label>Label</label><input type="text" id="edit-ann-label"></div>
-      <div class="em-f full"><label>Notes</label><textarea id="edit-ann-notes" style="min-height:90px"></textarea></div>
+      <div class="em-f full"><label>Category</label>
+        <select id="edit-ann-cat" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:12px;font-family:var(--font);outline:none"></select>
+      </div>
+      <div class="em-f full"><label>Status / Approval</label>
+        <select id="edit-ann-status" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:12px;font-family:var(--font);outline:none">
+          <option value="draft">🟡 Draft — not visible publicly</option>
+          <option value="approved">✅ Approved — ready to publish</option>
+          <option value="published">🌐 Published — visible on field map</option>
+          <option value="rejected">❌ Rejected</option>
+        </select>
+      </div>
+      <div class="em-f full"><label>Notes</label><textarea id="edit-ann-notes" style="min-height:80px"></textarea></div>
     </div>
     <div class="em-footer">
       <button class="btn" onclick="document.getElementById('edit-ann-modal').classList.remove('open')">Cancel</button>
@@ -517,6 +540,59 @@ let page = 1; const PG = 50;
 const CRIMES_LIST = ['Aggravated Assault','Battery','Robbery','Homicide',
   'Criminal Threat','Shots Fired','Burglary','Theft','Vandalism',
   'GTA','Attempt GTA','TFMV','BFMV','BTFV'];
+
+// ── Category map (mirrors index.html) ────────────────────────────
+const CATEGORY_MAP = {
+  'Traffic Safety & Crime': [
+    { label:'Crime Incident',        value:'__crime__',          icon:'🚨', color:'#e8453c', fields:[] },
+    { label:'Traffic Accident',      value:'traffic',            icon:'🚗', color:'#f0a500',
+      fields:[{id:'parties',label:'Parties'},{id:'injuries',label:'Injuries'},{id:'intersection',label:'Intersection'}] },
+    { label:'Street Infrastructure', value:'lighting',           icon:'💡', color:'#2d8bff',
+      fields:[{id:'infra_type',label:'Type'},{id:'severity',label:'Severity'},{id:'report_no',label:'Report #'}] },
+  ],
+  'Business & Econ Dev': [
+    { label:'Business Directory',    value:'business',           icon:'🏪', color:'#00c2a8',
+      fields:[{id:'biz_name',label:'Name'},{id:'biz_type',label:'Type'},{id:'status',label:'Status'},{id:'phone',label:'Phone'}] },
+    { label:'Mix Use / Construction',value:'mix_use_residential',icon:'🏗', color:'#9b59b6',
+      fields:[{id:'project_name',label:'Project'},{id:'stage',label:'Stage'},{id:'units',label:'Units/SqFt'}] },
+    { label:'Vacant Lot',            value:'vacant_lot',         icon:'🟫', color:'#8b6914',
+      fields:[{id:'owner',label:'Owner'},{id:'lot_status',label:'Status'},{id:'parcel',label:'APN'}] },
+    { label:'Storefront',            value:'storefront',         icon:'🏬', color:'#2ecc71',
+      fields:[{id:'sf_status',label:'Status'},{id:'sf_name',label:'Name/DBA'}] },
+  ],
+  'Green Infrastructure': [
+    { label:'Tree Site',             value:'tree',               icon:'🌳', color:'#27ae60',
+      fields:[{id:'tree_sub',label:'Type'},{id:'species',label:'Species'},{id:'health',label:'Health'},{id:'diameter',label:'DBH'}] },
+    { label:'Planting Site',         value:'planting_site',      icon:'🌱', color:'#52be80',
+      fields:[{id:'soil',label:'Soil'},{id:'priority',label:'Priority'}] },
+    { label:'Park',                  value:'parks',              icon:'⛳', color:'#1abc9c',
+      fields:[{id:'park_name',label:'Name'},{id:'park_status',label:'Condition'},{id:'amenities',label:'Amenities'}] },
+    { label:'Fruit Tree',            value:'fruit_tree',         icon:'🍊', color:'#f39c12',
+      fields:[{id:'fruit_type',label:'Fruit'},{id:'share',label:'Sharing'},{id:'fruit_health',label:'Health'}] },
+    { label:'Garden',                value:'garden',             icon:'🥕', color:'#7dcea0',
+      fields:[{id:'garden_type',label:'Type'},{id:'access',label:'Access'}] },
+  ],
+  'Community Improvements': [
+    { label:'Improvement / Project', value:'improvement',        icon:'🔨', color:'#5dade2',
+      fields:[{id:'proj_status',label:'Status'},{id:'lead',label:'Lead Org'},{id:'funding',label:'Funding'}] },
+    { label:'Encampment',            value:'encampment',         icon:'⛺', color:'#e74c3c',
+      fields:[{id:'est_count',label:'Est. People'},{id:'enc_status',label:'Status'},{id:'services',label:'Services'}] },
+    { label:'Trash / Recycling',     value:'trash',              icon:'🗑', color:'#7f8c8d',
+      fields:[{id:'trash_type',label:'Issue'},{id:'size',label:'Size'},{id:'reported',label:'Reported?'}] },
+    { label:'Hazard Site',           value:'hazard',             icon:'⚠️', color:'#f39c12',
+      fields:[{id:'haz_type',label:'Type'},{id:'severity',label:'Severity'},{id:'notified',label:'Agency Notified'}] },
+  ],
+  'Arts & Culture': [
+    { label:'Mural',                 value:'mural',              icon:'🎨', color:'#e91e63',
+      fields:[{id:'artist',label:'Artist'},{id:'year',label:'Year'},{id:'condition',label:'Condition'},{id:'owner',label:'Wall Owner'}] },
+    { label:'Cultural Site',         value:'cultural',           icon:'🏛', color:'#8e44ad',
+      fields:[{id:'site_type',label:'Type'},{id:'active',label:'Active?'}] },
+    { label:'Historic Landmark',     value:'historic',           icon:'🏺', color:'#d4ac0d',
+      fields:[{id:'hps_no',label:'HPS #'},{id:'era',label:'Era'},{id:'designated',label:'Designated?'}] },
+  ],
+};
+const CATEGORY_LOOKUP = {};
+Object.values(CATEGORY_MAP).forEach(arr => arr.forEach(c => { CATEGORY_LOOKUP[c.value] = c; }));
 
 const COLORS = {
   'Aggravated Assault':'#e8453c','Battery':'#e8453c','Robbery':'#e8453c',
@@ -694,40 +770,58 @@ async function loadCrimes() {
 }
 
 async function loadAnnotations() {
-  // get_annotations_geojson() returns geometry_geojson (for map) + wkt + lat/lng (for export)
-  // This is the single source of truth — always use it
   let annData = [];
-
   try {
     const {data, error} = await sb.rpc('get_annotations_geojson');
     if (error) throw error;
     annData = data || [];
-    console.log('Annotations loaded:', annData.length, 'records');
-    if (annData.length > 0) {
-      console.log('Sample geometry_geojson:', annData[0].geometry_geojson);
-    }
   } catch(e) {
     console.error('get_annotations_geojson failed:', e.message);
-    console.error('Make sure you ran the SQL function in Supabase:');
-    console.error('CREATE OR REPLACE FUNCTION get_annotations_geojson()...');
-    // Fallback: load without geometry (table only, no map rendering)
     try {
       const {data:d} = await sb.from('map_annotations')
         .select('id,label,annotation_type,notes,is_public,created_by,created_at')
         .order('created_at',{ascending:false});
       annData = (d||[]).map(a=>({...a,geometry_geojson:null,wkt:'',lat:null,lng:null}));
-      console.warn('Using fallback — annotations will appear in table but NOT on map');
     } catch(e2) { console.error('Fallback also failed:', e2); }
   }
 
+  // Merge category, category_data, status — added after RPC was written
+  try {
+    const {data:catRows} = await sb.from('map_annotations')
+      .select('id,category,category_data,status,is_sensitive,is_public,created_by');
+    const catById = {};
+    (catRows||[]).forEach(r => { catById[r.id] = r; });
+    annData = annData.map(a => ({ ...a, ...(catById[a.id]||{}) }));
+  } catch(e) { console.warn('Category merge failed:', e.message); }
+
   allAnnotations = annData;
   document.getElementById('cnt-ann').textContent = allAnnotations.length;
-  if (allAnnotations.length === 0) {
-    console.warn('No annotations returned. Check RLS: map_annotations needs SELECT policy for authenticated users.');
-  }
+
+  // Populate category filter dropdown from actual data
+  buildAnnCategoryFilter();
   renderAnnotationsTable();
   renderAnnotationMarkers();
   renderBoundaries();
+}
+
+function buildAnnCategoryFilter() {
+  const sel = document.getElementById('ann-filter-cat');
+  if (!sel) return;
+  const used = new Set(allAnnotations.map(a => a.category).filter(Boolean));
+  sel.innerHTML = '<option value="">All categories</option>';
+  Object.entries(CATEGORY_MAP).forEach(([group, cats]) => {
+    const relevant = cats.filter(c => used.has(c.value));
+    if (!relevant.length) return;
+    const og = document.createElement('optgroup');
+    og.label = group;
+    relevant.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.value;
+      opt.textContent = `${c.icon} ${c.label}`;
+      og.appendChild(opt);
+    });
+    sel.appendChild(og);
+  });
 }
 
 async function loadPhotos() {
@@ -1042,17 +1136,23 @@ async function deleteAnn(id) {
 // ANNOTATIONS TABLE
 // ══════════════════════════════════════════════════════
 function filterAnnotations() {
-  const q     = (document.getElementById('ann-search')?.value || '').toLowerCase().trim();
-  const typeF = document.getElementById('ann-filter-type')?.value || '';
-  const visF  = document.getElementById('ann-filter-vis')?.value  || '';
+  const q      = (document.getElementById('ann-search')?.value || '').toLowerCase().trim();
+  const typeF  = document.getElementById('ann-filter-type')?.value  || '';
+  const catF   = document.getElementById('ann-filter-cat')?.value   || '';
+  const statusF= document.getElementById('ann-filter-status')?.value|| '';
+  const visF   = document.getElementById('ann-filter-vis')?.value   || '';
 
   const filtered = allAnnotations.filter(a => {
-    if (typeF && a.annotation_type !== typeF) return false;
-    if (visF === 'public'  && !a.is_public) return false;
-    if (visF === 'private' &&  a.is_public) return false;
+    if (typeF   && a.annotation_type !== typeF)  return false;
+    if (catF    && (a.category||'') !== catF)    return false;
+    if (statusF && (a.status||'draft') !== statusF) return false;
+    if (visF === 'public'  && !a.is_public)      return false;
+    if (visF === 'private' &&  a.is_public)      return false;
     if (q) {
+      const cat    = CATEGORY_LOOKUP[a.category];
       const author = a.created_by ? (profileMap[a.created_by] || a.created_by) : '';
-      const haystack = [a.label, a.notes, a.annotation_type, author]
+      const catDataStr = a.category_data ? Object.values(a.category_data).join(' ') : '';
+      const haystack = [a.label, a.notes, a.annotation_type, author, cat?.label, catDataStr]
         .filter(Boolean).join(' ').toLowerCase();
       if (!haystack.includes(q)) return false;
     }
@@ -1068,31 +1168,90 @@ function renderAnnotationsTable(annotations) {
     count < total ? `${count} of ${total} annotations` : `${total} annotations`;
   const tbody = document.getElementById('ann-tbody');
   if (!annotations.length) {
-    tbody.innerHTML=`<tr><td colspan="10" class="empty-state">${total ? 'No annotations match your search' : 'No annotations yet — use Draw tools in the field map'}</td></tr>`;
+    tbody.innerHTML=`<tr><td colspan="10" class="empty-state">${total ? 'No annotations match your filter' : 'No annotations yet — use Add Record or Draw tools in the field map'}</td></tr>`;
     return;
   }
-  tbody.innerHTML=annotations.map(a=>`
-    <tr id="annrow-${a.id}" onclick="flyToAnn('${a.id}')" style="cursor:pointer" title="Click to zoom to annotation on map">
-      <td style="font-weight:500;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
-        title="${a.label||''}">${a.label||'—'}</td>
+
+  tbody.innerHTML = annotations.map(a => {
+    const cat      = CATEGORY_LOOKUP[a.category] || null;
+    const catLabel = cat ? `${cat.icon} ${cat.label}` : (a.category || '—');
+    const catColor = cat?.color || 'var(--muted)';
+    const status   = a.status || 'draft';
+    const statusCfg = {
+      draft:     { label:'Draft',     bg:'rgba(240,165,0,.15)',   color:'#f0a500' },
+      approved:  { label:'Approved',  bg:'rgba(0,194,168,.15)',   color:'var(--accent)' },
+      published: { label:'Published', bg:'rgba(46,204,113,.15)',  color:'#2ecc71' },
+      rejected:  { label:'Rejected',  bg:'rgba(231,76,60,.15)',   color:'#e74c3c' },
+    }[status] || { label:status, bg:'rgba(255,255,255,.07)', color:'var(--muted)' };
+
+    // Build category-specific detail chips from category_data
+    const catData  = a.category_data || {};
+    const catFields= cat?.fields || [];
+    const detailChips = catFields
+      .map(f => catData[f.id] ? `<span style="display:inline-block;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:9px;margin:1px;white-space:nowrap"><span style="color:var(--muted)">${f.label}:</span> ${catData[f.id]}</span>` : '')
+      .filter(Boolean).join('');
+
+    const author = a.created_by ? (profileMap[a.created_by] || ('…'+a.created_by.slice(-6))) : '—';
+
+    return `<tr id="annrow-${a.id}" onclick="flyToAnn('${a.id}')" style="cursor:pointer" title="Click to zoom on map">
+      <td style="font-weight:500;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${a.label||''}">${a.label||'—'}</td>
+      <td style="white-space:nowrap">
+        <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:600;background:${catColor}18;color:${catColor};border:1px solid ${catColor}44">
+          ${catLabel}
+        </span>
+      </td>
       <td><span class="badge b-${a.annotation_type||'point'}">${a.annotation_type||'—'}</span></td>
+      <td style="max-width:200px">${detailChips || '<span style="color:var(--muted);font-size:10px">—</span>'}</td>
       <td class="tc-desc" title="${a.notes||''}">${a.notes||'—'}</td>
-      <td class="tc-mono">${a.created_at?new Date(a.created_at).toLocaleDateString():'—'}</td>
-      <td style="font-size:10px;color:var(--muted);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
-        title="${a.created_by||''}">${a.created_by?(profileMap[a.created_by]||('…'+a.created_by.slice(-6))):'—'}</td>
-      <td class="tc-mono">${a.lat?parseFloat(a.lat).toFixed(5):'—'}</td>
-      <td class="tc-mono">${a.lng?parseFloat(a.lng).toFixed(5):'—'}</td>
+      <td class="tc-mono">${a.created_at ? new Date(a.created_at).toLocaleDateString() : '—'}</td>
+      <td style="font-size:10px;color:var(--muted);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${author}">${author}</td>
+      <td style="white-space:nowrap">
+        <span style="display:inline-block;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:600;background:${statusCfg.bg};color:${statusCfg.color}">
+          ${statusCfg.label}
+        </span>
+      </td>
       <td>
-        <div class="sw ${a.is_public?'on':''}" onclick="event.stopPropagation();togglePublic('${a.id}',${a.is_public})"></div>
+        <div class="sw ${a.is_public?'on':''}" onclick="event.stopPropagation();togglePublic('${a.id}',${a.is_public})" title="${a.is_public?'Public — click to make private':'Private — click to make public'}"></div>
       </td>
       <td>
         <div class="tc-actions">
+          ${status === 'draft' ? `
+            <button class="btn btn-sm" style="background:rgba(0,194,168,.15);color:var(--accent);border-color:var(--accent)"
+              onclick="event.stopPropagation();approveAnn('${a.id}')" title="Approve — move to approved status">✓ Approve</button>
+            <button class="btn btn-sm" style="background:rgba(231,76,60,.1);color:#e74c3c;border-color:#e74c3c44"
+              onclick="event.stopPropagation();rejectAnn('${a.id}')" title="Reject">✕</button>
+          ` : status === 'approved' ? `
+            <button class="btn btn-sm" style="background:rgba(46,204,113,.15);color:#2ecc71;border-color:#2ecc7144"
+              onclick="event.stopPropagation();publishAnn('${a.id}')" title="Publish — make public on field map">🌐 Publish</button>
+          ` : ''}
           <button class="btn btn-sm" onclick="event.stopPropagation();openEditAnn('${a.id}')">Edit</button>
-          <button class="btn btn-sm" onclick="event.stopPropagation();flyToAnn('${a.id}')">⭐</button>
           <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteAnn('${a.id}')">Del</button>
         </div>
       </td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
+}
+
+async function approveAnn(id) {
+  const {error} = await sb.from('map_annotations').update({status:'approved'}).eq('id',id);
+  if (error) { showToast('Error: '+error.message,'err'); return; }
+  showToast('✅ Approved — ready to publish','ok');
+  await loadAnnotations(); filterAnnotations();
+}
+
+async function rejectAnn(id) {
+  const reason = prompt('Optional rejection note (shown in future notification):') || null;
+  const {error} = await sb.from('map_annotations').update({status:'rejected', notes: reason ? `[Rejected: ${reason}]` : undefined}).eq('id',id);
+  if (error) { showToast('Error: '+error.message,'err'); return; }
+  showToast('❌ Rejected','ok');
+  await loadAnnotations(); filterAnnotations();
+}
+
+async function publishAnn(id) {
+  const {error} = await sb.from('map_annotations').update({status:'published', is_public:true}).eq('id',id);
+  if (error) { showToast('Error: '+error.message,'err'); return; }
+  showToast('🌐 Published — now visible on field map','ok');
+  await loadAnnotations(); filterAnnotations();
 }
 
 function flyToAnn(id) {
@@ -1120,23 +1279,53 @@ async function togglePublic(id, current) {
 function openEditAnn(id) {
   const a = allAnnotations.find(x=>x.id===id);
   if (!a) return;
-  document.getElementById('edit-ann-id').value = a.id;
+  document.getElementById('edit-ann-id').value    = a.id;
   document.getElementById('edit-ann-label').value = a.label || '';
   document.getElementById('edit-ann-notes').value = a.notes || '';
+
+  // Populate category select
+  const catSel = document.getElementById('edit-ann-cat');
+  if (catSel) {
+    catSel.innerHTML = '<option value="">— Uncategorised —</option>';
+    Object.entries(CATEGORY_MAP).forEach(([group, cats]) => {
+      const og = document.createElement('optgroup');
+      og.label = group;
+      cats.filter(c => c.value !== '__crime__').forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.value;
+        opt.textContent = `${c.icon} ${c.label}`;
+        if (c.value === a.category) opt.selected = true;
+        og.appendChild(opt);
+      });
+      catSel.appendChild(og);
+    });
+  }
+
+  // Status select
+  const stSel = document.getElementById('edit-ann-status');
+  if (stSel) stSel.value = a.status || 'draft';
+
   document.getElementById('edit-ann-modal').classList.add('open');
 }
 
 async function saveEditAnn() {
-  const id    = document.getElementById('edit-ann-id').value;
-  const label = document.getElementById('edit-ann-label').value.trim();
-  const notes = document.getElementById('edit-ann-notes').value.trim();
-  const { error } = await sb.from('map_annotations')
-    .update({ label: label||null, notes: notes||null })
-    .eq('id', id);
+  const id     = document.getElementById('edit-ann-id').value;
+  const label  = document.getElementById('edit-ann-label').value.trim();
+  const notes  = document.getElementById('edit-ann-notes').value.trim();
+  const cat    = document.getElementById('edit-ann-cat')?.value    || null;
+  const status = document.getElementById('edit-ann-status')?.value || 'draft';
+
+  const patch = { label: label||null, notes: notes||null, status };
+  if (cat) patch.category = cat;
+  // Auto-set is_public when publishing
+  if (status === 'published') patch.is_public = true;
+  if (status === 'draft' || status === 'rejected') patch.is_public = false;
+
+  const { error } = await sb.from('map_annotations').update(patch).eq('id', id);
   if (error) { showToast('Error: '+error.message,'err'); return; }
   showToast('Annotation updated','ok');
   document.getElementById('edit-ann-modal').classList.remove('open');
-  await loadAnnotations();
+  await loadAnnotations(); filterAnnotations();
 }
 
 function notifyAuthor(annId) {

@@ -1437,43 +1437,49 @@ function showToast(msg,type='ok'){
 // ══════════════════════════════════════════════════════
 const RLS_SQL = `-- Run once in Supabase SQL Editor to give admins full access
 
--- 1. Allow admins to DELETE crimes
-CREATE POLICY IF NOT EXISTS "Admin delete crimes"
+-- 1. Admin DELETE crimes
+DROP POLICY IF EXISTS "Admin delete crimes" ON crimes;
+CREATE POLICY "Admin delete crimes"
   ON crimes FOR DELETE TO authenticated
   USING (EXISTS (
     SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
   ));
 
--- 2. Allow admins to UPDATE crimes
-CREATE POLICY IF NOT EXISTS "Admin update crimes"
+-- 2. Admin UPDATE crimes
+DROP POLICY IF EXISTS "Admin update crimes" ON crimes;
+CREATE POLICY "Admin update crimes"
   ON crimes FOR UPDATE TO authenticated
   USING (EXISTS (
     SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
   )) WITH CHECK (true);
 
--- 3. Allow admins to DELETE annotations
-CREATE POLICY IF NOT EXISTS "Admin delete annotations"
+-- 3. Admin DELETE annotations
+DROP POLICY IF EXISTS "Admin delete annotations" ON map_annotations;
+CREATE POLICY "Admin delete annotations"
   ON map_annotations FOR DELETE TO authenticated
   USING (EXISTS (
     SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
   ));
 
--- 4. Allow admins to UPDATE annotations (is_public toggle)
-CREATE POLICY IF NOT EXISTS "Admin update annotations"
+-- 4. Admin UPDATE annotations (is_public toggle)
+DROP POLICY IF EXISTS "Admin update annotations" ON map_annotations;
+CREATE POLICY "Admin update annotations"
   ON map_annotations FOR UPDATE TO authenticated
   USING (EXISTS (
     SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
   )) WITH CHECK (true);
 
--- 5. Allow admins to UPDATE photos (public toggle)
-CREATE POLICY IF NOT EXISTS "Admin update photos"
+-- 5. Admin UPDATE photos
+DROP POLICY IF EXISTS "Admin update photos" ON photos;
+CREATE POLICY "Admin update photos"
   ON photos FOR UPDATE TO authenticated
   USING (EXISTS (
     SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
   )) WITH CHECK (true);
 
--- 6. Allow admins to DELETE photos
-CREATE POLICY IF NOT EXISTS "Admin delete photos"
+-- 6. Admin DELETE photos
+DROP POLICY IF EXISTS "Admin delete photos" ON photos;
+CREATE POLICY "Admin delete photos"
   ON photos FOR DELETE TO authenticated
   USING (EXISTS (
     SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'

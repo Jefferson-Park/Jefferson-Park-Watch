@@ -1083,7 +1083,7 @@ async function doLogout() { await sb.auth.signOut(); location.reload(); }
 // ══════════════════════════════════════════════════════════════════
 // LAUNCH
 // ══════════════════════════════════════════════════════════════════
-function launch() {
+async function launch() {
   document.getElementById('login-overlay').style.display = 'none';
   document.getElementById('app').style.display = 'block';
 

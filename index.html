@@ -2391,13 +2391,24 @@ function onSearch() {
   if (q.length < 3) { document.getElementById('search-results').style.display='none'; return; }
   searchTimer = setTimeout(async () => {
     try {
-      const res  = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q+', Los Angeles, CA')}&format=json&limit=5`, { headers:{'Accept-Language':'en'} });
+      const query = /los angeles|LA,|,\s*CA/i.test(q) ? q : q + ', Los Angeles, CA';
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}`
+                + `&format=json&limit=5&addressdetails=1`
+                + `&viewbox=${JP_VIEWBOX}&bounded=0`;
+      const res  = await fetch(url, { headers:{'Accept-Language':'en'} });
       const data = await res.json();
       const box  = document.getElementById('search-results');
       if (!data.length) { box.style.display='none'; return; }
-      box.innerHTML = data.map(r =>
-        `<div class="s-result" onclick="flyTo(${r.lon},${r.lat},'${r.display_name.replace(/'/g,"\\'")}')">${r.display_name.split(',').slice(0,3).join(',')}</div>`
-      ).join('');
+      box.innerHTML = data.map(r => {
+        const a = r.address || {};
+        let label = '';
+        if (a.house_number && a.road) label = `${a.house_number} ${a.road}`;
+        else if (a.road) label = a.road;
+        else label = r.display_name.split(',')[0].trim();
+        if (a.neighbourhood || a.suburb) label += ` — ${a.neighbourhood || a.suburb}`;
+        else if (a.city || a.town) label += `, ${a.city || a.town}`;
+        return `<div class="s-result" onclick="flyTo(${r.lon},${r.lat},'${r.display_name.replace(/'/g,"\\'")}'">${label}</div>`;
+      }).join('');
       box.style.display = 'block';
     } catch(e) {}
   }, 400);
@@ -2870,25 +2881,47 @@ function openAddRecordFromDraw() {
 
 
 
+// Jefferson Park bounding box for Nominatim viewbox bias (W,N,E,S)
+// bounded=0 → soft preference; addresses outside still resolve.
+const JP_VIEWBOX = '-118.365,34.050,-118.305,34.010';
+
 function geocodeAddr() {
   clearTimeout(geocodeTimer);
   const addr = document.getElementById('add-addr').value.trim();
   if (addr.length < 5) return;
   document.getElementById('geocode-status').textContent = 'Geocoding…';
   geocodeTimer = setTimeout(async () => {
-    const clean = addr.replace(/\*\*/g,'50') + ', Los Angeles, CA';
+    const clean = addr.replace(/\*+/g, '50');
+    const query = /los angeles|LA,|,\s*CA/i.test(clean) ? clean : clean + ', Los Angeles, CA';
     try {
-      const res  = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(clean)}&format=json&limit=1`, { headers:{'Accept-Language':'en'} });
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}`
+                + `&format=json&limit=3&addressdetails=1`
+                + `&viewbox=${JP_VIEWBOX}&bounded=0`;
+      const res  = await fetch(url, { headers:{'Accept-Language':'en'} });
       const data = await res.json();
       if (data.length) {
-        geocodeLng = parseFloat(data[0].lon);
-        geocodeLat = parseFloat(data[0].lat);
-        document.getElementById('geocode-status').textContent = '✓ ' + data[0].display_name.split(',').slice(0,3).join(',');
+        const best = data[0];
+        geocodeLng = parseFloat(best.lon);
+        geocodeLat = parseFloat(best.lat);
+        const a = best.address || {};
+        let addrLabel = '';
+        if (a.house_number && a.road) {
+          addrLabel = `${a.house_number} ${a.road}`;
+        } else if (a.road) {
+          addrLabel = a.road;
+        } else {
+          addrLabel = best.display_name.split(',').slice(0,2).join(',').trim();
+        }
+        if (a.city || a.town || a.suburb) {
+          addrLabel += `, ${a.city || a.town || a.suburb}`;
+        }
+        document.getElementById('geocode-status').textContent = '✓ ' + addrLabel;
         document.getElementById('add-coords').textContent = geocodeLat.toFixed(6) + ', ' + geocodeLng.toFixed(6);
       } else {
-        document.getElementById('geocode-status').textContent = '⚠ Address not found';
+        geocodeLng = geocodeLat = null;
+        document.getElementById('geocode-status').textContent = '⚠ Address not found — try a cross-street or use the pin drop';
       }
-    } catch(e) { document.getElementById('geocode-status').textContent = 'Geocoding failed'; }
+    } catch(e) { document.getElementById('geocode-status').textContent = '⚠ Geocoding failed'; }
   }, 700);
 }
 
@@ -3171,8 +3204,8 @@ async function processPDFFile(file) {
       for (const r of pdfRecords) {
         if (r._dup) continue;
         try {
-          const clean = r.address.replace(/\*\*/g,'50') + ', Los Angeles, CA';
-          const gr = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(clean)}&format=json&limit=1`, { headers:{'Accept-Language':'en'} });
+          const clean = r.address.replace(/\*+/g,'50') + ', Los Angeles, CA';
+          const gr = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(clean)}&format=json&limit=1&addressdetails=1&viewbox=${JP_VIEWBOX}&bounded=0`, { headers:{'Accept-Language':'en'} });
           const gd = await gr.json();
           if (gd.length) { r._lng=parseFloat(gd[0].lon); r._lat=parseFloat(gd[0].lat); }
           await new Promise(resolve => setTimeout(resolve, 300));

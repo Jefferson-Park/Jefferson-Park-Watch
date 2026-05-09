@@ -764,7 +764,7 @@ function flyTo(lat, lng, id, labelOverride) {
     label = c ? c.crime_type + (c.address?' · '+c.address.slice(0,30):'') : String(id).slice(0,20);
   }
   toggleStar(lat, lng, id, label);
-  adminMap.flyTo([lat,lng],17);
+  adminMap.flyTo([lat,lng],19);
 }
 
 // ══════════════════════════════════════════════════════
@@ -1016,11 +1016,12 @@ function filterCrimes() {
 let annSortCol = 'created_at', annSortDir = -1;
 function sortAnn(col) {
   if (annSortCol === col) annSortDir *= -1; else { annSortCol = col; annSortDir = 1; }
-  allAnnotations.sort((a,b) => {
-    const va = a[col]||'', vb = b[col]||'';
-    return va < vb ? -annSortDir : va > vb ? annSortDir : 0;
+  // Update header arrow indicators
+  document.querySelectorAll('#tab-annotations thead th').forEach(th => {
+    const thCol = th.getAttribute('onclick')?.match(/sortAnn\('(\w+)'\)/)?.[1];
+    if (thCol) th.textContent = th.textContent.replace(/ [↑↓↕]$/,'') + (thCol === annSortCol ? (annSortDir > 0 ? ' ↑' : ' ↓') : ' ↕');
   });
-  renderAnnotationsTable();
+  filterAnnotations(); // re-filter+sort together so edits always stay sorted
 }
 
 function sortTable(col) {
@@ -1168,6 +1169,13 @@ function filterAnnotations() {
     }
     return true;
   });
+  // Re-apply current sort so column-sorted order survives filter/edit/reload
+  if (annSortCol) {
+    filtered.sort((a, b) => {
+      const va = a[annSortCol] || '', vb = b[annSortCol] || '';
+      return va < vb ? -annSortDir : va > vb ? annSortDir : 0;
+    });
+  }
   renderAnnotationsTable(filtered);
 }
 
@@ -1270,7 +1278,7 @@ function flyToAnn(id) {
   const lat = parseFloat(a.lat), lng = parseFloat(a.lng);
   const label = (a.label||a.annotation_type||'Annotation');
   toggleStar(lat, lng, 'ann-'+id, label);
-  adminMap.flyTo([lat,lng],17);
+  adminMap.flyTo([lat,lng],19);
 }
 
 async function togglePublic(id, current) {

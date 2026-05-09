@@ -241,7 +241,7 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
 .leaflet-popup-tip-container { display:none !important; }
 .leaflet-popup-close-button { color:var(--muted) !important; font-size:18px !important; padding:8px 10px !important; }
 .leaflet-popup-close-button:hover { color:var(--danger) !important; }
-.leaflet-popup-content { margin:0 !important; min-width:260px; max-width:300px; }
+.leaflet-popup-content { margin:0 !important; min-width:260px; max-width:300px; max-height:70vh; overflow-y:auto; }
 .leaflet-container a.leaflet-popup-close-button { top:8px !important; right:8px !important; }
 
 /* Mobile responsive */
@@ -588,6 +588,12 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
             <span class="tog-count" id="ct-cat-public_property">0</span>
             <div class="tog-sw" id="sw-cat-public_property"></div>
           </div>
+          <div class="tog-row" onclick="toggleCatLayer('billboard')">
+            <div class="tog-icon" style="background:rgba(255,107,53,.15)"><span style="font-size:14px">📢</span></div>
+            <span class="tog-label">Billboards</span>
+            <span class="tog-count" id="ct-cat-billboard">0</span>
+            <div class="tog-sw" id="sw-cat-billboard"></div>
+          </div>
         </div>
       </div>
 
@@ -698,7 +704,7 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
         <div class="grp-body collapsed" id="gb-arts">
           <div class="tog-row" onclick="toggleCatLayer('mural')">
             <div class="tog-icon" style="background:rgba(233,30,99,.15)"><span style="font-size:14px">🎨</span></div>
-            <span class="tog-label">Murals</span>
+            <span class="tog-label">Art/Mural Sites (existing)</span>
             <span class="tog-count" id="ct-cat-mural">0</span>
             <div class="tog-sw" id="sw-cat-mural"></div>
           </div>
@@ -1121,6 +1127,17 @@ const CATEGORY_MAP = {
         { id: 'prop_status',  label: 'Status',             type: 'select', options: ['Active','Vacant','Surplus','Under Renovation','Unknown'] },
       ]
     },
+    {
+      label: 'Billboard', value: 'billboard', table: 'map_annotations',
+      icon: '📢', color: '#ff6b35',
+      fields: [
+        { id: 'bb_type',    label: 'Billboard Type',   type: 'select', options: ['Static','Digital/LED','Vinyl','Painted Wall','Other'] },
+        { id: 'bb_owner',   label: 'Owner / Company',  type: 'text', placeholder: 'e.g. Lamar, Clear Channel' },
+        { id: 'bb_status',  label: 'Status',           type: 'select', options: ['Active','Vacant','Unpermitted','Proposed','Removed'] },
+        { id: 'bb_permit',  label: 'Permit #',         type: 'text', placeholder: 'Optional' },
+        { id: 'bb_size',    label: 'Size (approx)',     type: 'text', placeholder: 'e.g. 14x48 ft' },
+      ]
+    },
   ],
   'Green Infrastructure': [
     {
@@ -1247,7 +1264,7 @@ const CATEGORY_MAP = {
   ],
   'Arts & Culture': [
     {
-      label: 'Mural (existing)', value: 'mural', table: 'map_annotations',
+      label: 'Art/Mural Sites (existing)', value: 'mural', table: 'map_annotations',
       icon: '🎨', color: '#e91e63',
       fields: [
         { id: 'artist',    label: 'Artist',      type: 'text', placeholder: 'Name if known' },
@@ -1330,7 +1347,13 @@ async function doLogin() {
   launch();
 }
 
-async function viewPublic() { currentUser = null; userRole = 'public'; launch(); }
+async function viewPublic() {
+  // Sign out any existing session so role doesn't bleed into public view
+  await sb.auth.signOut();
+  currentUser = null;
+  userRole = 'public';
+  launch();
+}
 
 async function loadRole() {
   if (!currentUser) { userRole = 'public'; return; }
@@ -1607,6 +1630,7 @@ const CAT_TO_GROUP = {
   vacant_lot:        'business',
   storefront:        'business',
   public_property:   'business',
+  billboard:         'business',
   tree:              'trees',
   stump:             'trees',
   vacant_well:       'trees',
@@ -2444,9 +2468,12 @@ function onSearchKey(e) { if (e.key==='Escape') document.getElementById('search-
 let locationMarker = null;
 function locateMe() {
   if (!navigator.geolocation) { showToast('Geolocation not supported','err'); return; }
+  showToast('Getting your location…','ok');
   navigator.geolocation.getCurrentPosition(pos => {
-    const { latitude:lat, longitude:lng } = pos.coords;
-    map.flyTo([lat,lng], 19);
+    const { latitude:lat, longitude:lng, accuracy } = pos.coords;
+    // Zoom level: building-level (~19) if accuracy ≤ 20m, block-level (18) if ≤ 50m, else 17
+    const zoom = accuracy <= 20 ? 19 : accuracy <= 50 ? 18 : 17;
+    map.flyTo([lat,lng], zoom);
     if (locationMarker) map.removeLayer(locationMarker);
     locationMarker = L.marker([lat,lng], {
       icon: L.divIcon({
@@ -2459,8 +2486,15 @@ function locateMe() {
         className:'', iconSize:[0,0], iconAnchor:[0,0]
       }),
       zIndexOffset: 3000
-    }).addTo(map).bindPopup('<b style="color:#9333ea">📍 Your Location</b>', {closeButton:true});
-  }, () => showToast('Could not get your location','err'));
+    }).addTo(map).bindPopup(`<b style="color:#9333ea">📍 Your Location</b><br><span style="font-size:10px;color:var(--muted)">Accuracy: ±${Math.round(accuracy)}m</span>`, {closeButton:true});
+    // Accuracy circle
+    if (window._locAccCircle) map.removeLayer(window._locAccCircle);
+    window._locAccCircle = L.circle([lat,lng], { radius: accuracy, color:'#9333ea', weight:1, fillColor:'#9333ea', fillOpacity:0.08 }).addTo(map);
+  }, () => showToast('Could not get your location','err'), {
+    enableHighAccuracy: true,
+    maximumAge: 0,
+    timeout: 15000
+  });
 }
 
 // ══════════════════════════════════════════════════════════════════

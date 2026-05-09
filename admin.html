@@ -190,7 +190,8 @@ tbody td{padding:7px 10px;vertical-align:middle}
 .leaflet-popup-content-wrapper{background:var(--panel)!important;color:var(--text)!important;border:1px solid var(--border)!important;border-radius:10px!important;box-shadow:0 6px 20px rgba(0,0,0,.5)!important;padding:0!important}
 .leaflet-popup-tip-container{display:none!important}
 .leaflet-popup-close-button{color:var(--muted)!important;top:7px!important;right:8px!important;font-size:16px!important}
-.leaflet-popup-content{margin:0!important;min-width:180px}
+.leaflet-popup-content{margin:0!important;min-width:180px;max-height:60vh;overflow-y:auto}
+.leaflet-popup{margin-bottom:30px!important}
 .leaflet-control-zoom a{background:var(--panel)!important;color:var(--text)!important;border-color:var(--border)!important}
 .leaflet-control-zoom a:hover{background:var(--panel2)!important}
 .leaflet-control-attribution{background:rgba(15,17,23,.8)!important;color:var(--muted)!important;font-size:9px!important}
@@ -262,11 +263,19 @@ tbody td{padding:7px 10px;vertical-align:middle}
       <button class="maptb-btn on" id="mb-street" onclick="setBasemap('street')">🗺 Street</button>
       <button class="maptb-btn" id="mb-sat" onclick="setBasemap('satellite')">🛰 Satellite</button>
       <button class="maptb-btn" id="mb-crimes" onclick="toggleMapLayer('crimes')">● Crimes</button>
-      <button class="maptb-btn" id="mb-ann" onclick="toggleMapLayer('ann')">◈ Annotations</button>
+      <button class="maptb-btn on" id="mb-ann" onclick="toggleMapLayer('ann')">◈ Annotations</button>
       <button class="maptb-btn" id="mb-slo" onclick="toggleMapLayer('slo')">▭ SLO</button>
       <button class="maptb-btn" id="mb-unnc" onclick="toggleMapLayer('unnc')">▭ UNNC</button>
       <button class="maptb-btn" onclick="fitAllData()">⊙ Fit All</button>
       <button class="maptb-btn" onclick="clearAllStars()" style="color:#fbbf24">★ Clear Stars</button>
+    </div>
+    <!-- Move Pin confirm bar (Bug 4) -->
+    <div id="admin-move-pin-bar" style="display:none;position:absolute;bottom:12px;left:50%;transform:translateX(-50%);z-index:1001;
+      background:var(--panel);border:1px solid var(--accent);border-radius:8px;padding:8px 14px;
+      font-size:12px;color:var(--accent);align-items:center;gap:10px;box-shadow:0 4px 16px rgba(0,0,0,.5)">
+      <span>🗺 Drag the pin to the correct location</span>
+      <button onclick="confirmAdminMovePin()" style="padding:5px 12px;background:var(--accent);color:#000;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font)">Confirm</button>
+      <button onclick="cancelAdminMovePin()" style="padding:5px 10px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer;font-family:var(--font)">Cancel</button>
     </div>
   </div>
 
@@ -533,7 +542,7 @@ let profileMap = {}; // uuid -> email for author display
 let adminMap = null;
 let crimeCluster = null, annLayerGrp = null, sloLayerGrp = null, unncLayerGrp = null;
 let tileStreet = null, tileSat = null;
-let layerOn = { crimes:true, ann:true, slo:false, unnc:false };
+let layerOn = { crimes:false, ann:true, slo:false, unnc:false };
 let sortCol = 'created_at', sortDir = -1;
 let page = 1; const PG = 50;
 
@@ -561,6 +570,8 @@ const CATEGORY_MAP = {
       fields:[{id:'sf_status',label:'Status'},{id:'sf_name',label:'Name/DBA'}] },
     { label:'Public Property',       value:'public_property',    icon:'🏛', color:'#0096c7',
       fields:[{id:'jurisdiction',label:'Jurisdiction'},{id:'prop_name',label:'Property Name'},{id:'prop_use',label:'Current Use'},{id:'prop_status',label:'Status'}] },
+    { label:'Billboard',             value:'billboard',           icon:'📢', color:'#ff6b35',
+      fields:[{id:'bb_type',label:'Type'},{id:'bb_owner',label:'Owner'},{id:'bb_status',label:'Status'},{id:'bb_permit',label:'Permit #'},{id:'bb_size',label:'Size'}] },
   ],
   'Green Infrastructure': [
     { label:'Tree Site',             value:'tree',               icon:'🌳', color:'#27ae60',
@@ -593,7 +604,7 @@ const CATEGORY_MAP = {
       fields:[{id:'haz_type',label:'Type'},{id:'severity',label:'Severity'},{id:'notified',label:'Agency Notified'}] },
   ],
   'Arts & Culture': [
-    { label:'Mural (existing)',       value:'mural',              icon:'🎨', color:'#e91e63',
+    { label:'Art/Mural Sites (existing)', value:'mural', icon:'🎨', color:'#e91e63',
       fields:[{id:'artist',label:'Artist'},{id:'year',label:'Year'},{id:'condition',label:'Condition'},{id:'owner',label:'Wall Owner'}] },
     { label:'Cultural Site',         value:'cultural',           icon:'🏛', color:'#8e44ad',
       fields:[{id:'site_type',label:'Type'},{id:'active',label:'Active?'}] },
@@ -666,8 +677,7 @@ function initMap() {
   adminMap = L.map('admin-map',{center:[34.028,-118.334],zoom:14,layers:[tileStreet]});
 
   // Admin map uses plain layer group — no clustering for full data visibility
-  crimeCluster = L.layerGroup().addTo(adminMap);
-
+  crimeCluster = L.layerGroup(); // NOT added to map by default — crimes off
   annLayerGrp  = L.layerGroup().addTo(adminMap);
   sloLayerGrp  = L.layerGroup();
   unncLayerGrp = L.layerGroup();
@@ -912,56 +922,79 @@ function renderAnnotationMarkers() {
       return;
     }
     try {
-      // Parse string → object (Supabase returns json columns as strings sometimes)
       const geom = (typeof ann.geometry_geojson === 'string')
         ? JSON.parse(ann.geometry_geojson)
         : ann.geometry_geojson;
 
-      // High contrast: teal = public, amber = private
-      const isLine = ann.annotation_type === 'line';
-      const strokeColor = isLine ? '#ffcc00' : (ann.is_public ? '#00ffcc' : '#ffcc00');
-      const fillColor   = ann.is_public ? '#00c2a8' : '#ffaa00';
+      const catCfg    = CATEGORY_LOOKUP[ann.category] || null;
+      const isLine    = ann.annotation_type === 'line';
+      const baseColor = catCfg?.color || '#00c2a8';
+      const strokeColor = ann.is_public ? baseColor : '#ffcc00';
+      const fillColor   = ann.is_public ? baseColor : '#ffaa00';
 
-      const popup = `<div style="padding:10px;font-family:var(--font)">
-        <b style="color:${strokeColor};font-size:12px">${ann.label||'Untitled'}</b><br>
-        <span class="badge b-${ann.annotation_type}">${ann.annotation_type}</span>
-        <span style="font-size:10px;color:var(--muted);margin-left:4px">${ann.is_public?'Public':'Private'}</span>
-        ${ann.notes?`<p style="margin-top:5px;font-size:11px">${ann.notes}</p>`:''}
-        <div style="display:flex;gap:5px;margin-top:8px">
-          <button class="btn btn-sm" style="flex:1;justify-content:center"
-            onclick="openEditAnn('${ann.id}')">✏️ Edit</button>
-          <button class="btn btn-sm" style="flex:1;justify-content:center;color:#fbbf24;border-color:#fbbf24"
-            onclick="notifyAuthor('${ann.id}')">✉️ Notify</button>
+      // Public-style popup with category fields (Bug 5)
+      const catData   = ann.category_data || {};
+      const catFields = catCfg?.fields || [];
+      const fieldsHtml = catFields.length ? `
+        <div style="margin-top:8px;border-top:1px solid rgba(255,255,255,.06);padding-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:4px 10px">
+          ${catFields.map(f => {
+            const val = catData[f.id];
+            return val ? `<div><div style="font-size:9px;color:var(--muted);text-transform:uppercase">${f.label}</div><div style="font-size:11px">${val}</div></div>` : '';
+          }).filter(Boolean).join('')}
+        </div>` : '';
+
+      const safeId = ann.id.replace(/-/g,'');
+      const popup = `<div style="padding:10px;font-family:var(--font);color:var(--text);max-width:260px">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+          <span style="font-size:16px">${catCfg?.icon || '📍'}</span>
+          <div>
+            <div style="font-weight:600;font-size:12px;color:${strokeColor}">${ann.label || catCfg?.label || 'Record'}</div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:2px">
+              <span style="font-family:var(--mono);font-size:9px;padding:1px 5px;border-radius:3px;background:${strokeColor}22;color:${strokeColor}">${catCfg?.label || ann.category || '—'}</span>
+              <span style="font-family:var(--mono);font-size:9px;padding:1px 5px;border-radius:3px;background:${ann.is_public?'rgba(34,197,94,.12)':'rgba(123,130,160,.12)'};color:${ann.is_public?'#22c55e':'var(--muted)'}">${ann.is_public?'🌐 Public':'🔒 Private'}</span>
+            </div>
+          </div>
+        </div>
+        ${fieldsHtml}
+        ${ann.notes ? `<div style="font-size:11px;margin-top:8px;line-height:1.5;color:var(--muted)">${ann.notes}</div>` : ''}
+        <div style="margin-top:10px;border-top:1px solid rgba(255,255,255,.08);padding-top:8px;display:flex;gap:5px;flex-wrap:wrap">
+          <button class="btn btn-sm" style="flex:1;justify-content:center" onclick="openEditAnn('${ann.id}')">✏️ Edit</button>
+          <button class="btn btn-sm" style="flex:1;justify-content:center;color:var(--amber);border-color:var(--amber)"
+            onclick="startAdminMovePin('${ann.id}',${ann.lat||0},${ann.lng||0})">📍 Move</button>
+          <button class="btn btn-sm" style="flex:1;justify-content:center" onclick="notifyAuthor('${ann.id}')">✉️ Notify</button>
         </div>
       </div>`;
 
-      // Use L.geoJSON for everything — handles coordinate order correctly
       const layer = L.geoJSON(geom, {
         style: () => ({
           color:       strokeColor,
           weight:      isLine ? 5 : 4,
           opacity:     1,
           fillColor:   fillColor,
-          fillOpacity: isLine ? 0 : 0.5,   // 50% fill as requested
+          fillOpacity: isLine ? 0 : 0.35,
           lineCap:     'round',
           lineJoin:    'round',
-          dashArray:   ann.is_public ? '' : '8 4',  // dashed = private
+          dashArray:   ann.is_public ? '' : '8 4',
         }),
-        pointToLayer: (feature, latlng) => L.circleMarker(latlng, {
-          radius:      12,
-          color:       '#fff',
-          weight:      3,
-          fillColor:   strokeColor,
-          fillOpacity: 1,
-        }),
+        pointToLayer: (feature, latlng) => {
+          // Bug 6: Use category emoji icons like index.html
+          if (catCfg?.icon) {
+            return L.marker(latlng, {
+              icon: L.divIcon({
+                html: `<div style="display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 1px 4px rgba(0,0,0,.6))">
+                  <div style="width:30px;height:30px;border-radius:50%;background:${strokeColor};border:2.5px solid white;display:flex;align-items:center;justify-content:center;font-size:14px;line-height:1;box-shadow:0 0 0 3px ${strokeColor}44">${catCfg.icon}</div>
+                </div>`,
+                className: '', iconSize: [30, 30], iconAnchor: [15, 15], popupAnchor: [0, -18],
+              }),
+            });
+          }
+          return L.circleMarker(latlng, { radius: 12, color: '#fff', weight: 3, fillColor: strokeColor, fillOpacity: 1 });
+        },
       });
 
-      layer.bindPopup(popup, { closeButton: true });
+      layer.bindPopup(popup, { closeButton: true, maxWidth: 280 });
       if (ann.label) {
-        layer.bindTooltip(ann.label, {
-          permanent: false, direction: 'top',
-          className: 'ann-tooltip', offset: [0, -8]
-        });
+        layer.bindTooltip(ann.label, { permanent: false, direction: 'top', className: 'ann-tooltip', offset: [0, -8] });
       }
       annLayerGrp.addLayer(layer);
       rendered++;
@@ -970,10 +1003,53 @@ function renderAnnotationMarkers() {
     }
   });
 
-  // Bring annotations above base tiles
-  // bringToFront on each child (layerGroup has no bringToFront)
   annLayerGrp.eachLayer(l => { if (l.bringToFront) l.bringToFront(); });
   console.log('Annotations rendered:', rendered, 'of', allAnnotations.length);
+}
+
+// ══════════════════════════════════════════════════════
+// ADMIN MOVE PIN — Bug 4: drag-to-move for annotation pins
+// ══════════════════════════════════════════════════════
+let adminMovePinMarker = null, adminMovePinId = null;
+
+function startAdminMovePin(annId, lat, lng) {
+  adminMovePinId = annId;
+  if (adminMovePinMarker) { adminMap.removeLayer(adminMovePinMarker); adminMovePinMarker = null; }
+  const startLat = lat || adminMap.getCenter().lat;
+  const startLng = lng || adminMap.getCenter().lng;
+  adminMovePinMarker = L.marker([startLat, startLng], {
+    draggable: true,
+    icon: L.divIcon({
+      html: `<div style="display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 2px 8px rgba(0,0,0,.7))">
+        <div style="width:22px;height:22px;background:var(--accent);border:3px solid white;border-radius:50%;box-shadow:0 0 0 5px rgba(0,194,168,0.3);cursor:grab"></div>
+        <div style="font-size:9px;color:white;background:var(--accent);padding:1px 6px;border-radius:3px;margin-top:2px;white-space:nowrap">Drag me</div>
+      </div>`,
+      className: '', iconSize: [80, 36], iconAnchor: [40, 18],
+    }),
+    zIndexOffset: 3000,
+  }).addTo(adminMap);
+  adminMap.flyTo([startLat, startLng], Math.max(adminMap.getZoom(), 19));
+  const bar = document.getElementById('admin-move-pin-bar');
+  if (bar) bar.style.display = 'flex';
+  showToast('Drag the pin then click Confirm', 'ok');
+}
+
+async function confirmAdminMovePin() {
+  if (!adminMovePinMarker || !adminMovePinId) { cancelAdminMovePin(); return; }
+  const { lat, lng } = adminMovePinMarker.getLatLng();
+  const { error } = await sb.rpc('update_annotation_location', {
+    p_annotation_id: adminMovePinId, p_lat: lat, p_lng: lng
+  });
+  if (error) showToast('Error moving pin: ' + error.message, 'err');
+  else { showToast('📍 Pin updated ✓', 'ok'); await loadAnnotations(); filterAnnotations(); }
+  cancelAdminMovePin();
+}
+
+function cancelAdminMovePin() {
+  if (adminMovePinMarker) { adminMap.removeLayer(adminMovePinMarker); adminMovePinMarker = null; }
+  adminMovePinId = null;
+  const bar = document.getElementById('admin-move-pin-bar');
+  if (bar) bar.style.display = 'none';
 }
 
 // ══════════════════════════════════════════════════════
@@ -1009,7 +1085,13 @@ function filterCrimes() {
   filteredCrimes = allCrimes.filter(c=>
     (!s||(c.address||'').toLowerCase().includes(s)||(c.description||'').toLowerCase().includes(s)||(c.notes||'').toLowerCase().includes(s))&&
     (!st||c.status===st)&&(!tp||c.crime_type===tp)&&(!sr||c.source===sr));
-  page=1;
+  // Re-apply current sort so edits/reloads preserve sort selection
+  if (sortCol) {
+    filteredCrimes.sort((a,b)=>{const va=a[sortCol]||'',vb=b[sortCol]||'';return va<vb?-sortDir:va>vb?sortDir:0;});
+  }
+  // Preserve page if still valid, else reset
+  const maxPage = Math.max(1, Math.ceil(filteredCrimes.length / PG));
+  if (page > maxPage) page = 1;
   renderCrimesTable();
 }
 

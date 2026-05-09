@@ -468,21 +468,85 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
           <span class="grp-chevron" id="chv-traffic" style="transform:rotate(-90deg)">▾</span>
         </div>
         <div class="grp-body collapsed" id="gb-traffic">
+          <div class="sec-label" style="margin-top:2px">Traffic Safety & Crime</div>
           <div class="tog-row" onclick="toggleCatLayer('traffic')">
-            <div class="tog-icon" style="background:rgba(240,165,0,.15)">
-              <span style="font-size:14px">🚗</span>
-            </div>
-            <span class="tog-label">Traffic Accidents</span>
+            <div class="tog-icon" style="background:rgba(240,165,0,.15)"><span style="font-size:14px">🚗</span></div>
+            <span class="tog-label">Traffic Accidents All</span>
             <span class="tog-count" id="ct-cat-traffic">0</span>
             <div class="tog-sw" id="sw-cat-traffic"></div>
           </div>
+          <div class="tog-row" onclick="toggleCatSubtype('traffic','Pedestrian Hit')">
+            <div class="tog-icon" style="background:rgba(240,165,0,.10)"><span style="font-size:13px">🚶</span></div>
+            <span class="tog-label" style="font-size:11px;color:var(--muted)">↳ Pedestrian Hit</span>
+            <span class="tog-count" id="ct-sub-traffic-pedestrian_hit">0</span>
+            <div class="tog-sw" id="sw-sub-traffic-pedestrian_hit"></div>
+          </div>
+          <div class="tog-row" onclick="toggleCatSubtype('traffic','Bicycle Collision')">
+            <div class="tog-icon" style="background:rgba(240,165,0,.10)"><span style="font-size:13px">🚲</span></div>
+            <span class="tog-label" style="font-size:11px;color:var(--muted)">↳ Bicycle Collision</span>
+            <span class="tog-count" id="ct-sub-traffic-bicycle_collision">0</span>
+            <div class="tog-sw" id="sw-sub-traffic-bicycle_collision"></div>
+          </div>
+          <div class="tog-row" onclick="toggleCatSubtype('traffic','Fatality')">
+            <div class="tog-icon" style="background:rgba(232,69,60,.10)"><span style="font-size:13px">⚫</span></div>
+            <span class="tog-label" style="font-size:11px;color:var(--muted)">↳ Fatalities</span>
+            <span class="tog-count" id="ct-sub-traffic-fatality">0</span>
+            <div class="tog-sw" id="sw-sub-traffic-fatality"></div>
+          </div>
+          <div class="sec-label">Street Infrastructure</div>
           <div class="tog-row" onclick="toggleCatLayer('lighting')">
-            <div class="tog-icon" style="background:rgba(45,139,255,.15)">
-              <span style="font-size:14px">💡</span>
-            </div>
-            <span class="tog-label">Street Infrastructure</span>
+            <div class="tog-icon" style="background:rgba(45,139,255,.15)"><span style="font-size:14px">💡</span></div>
+            <span class="tog-label">Street Infrastructure All</span>
             <span class="tog-count" id="ct-cat-lighting">0</span>
             <div class="tog-sw" id="sw-cat-lighting"></div>
+          </div>
+          <div class="tog-row" onclick="toggleCatSubtype('lighting','Street Light Out')">
+            <div class="tog-icon" style="background:rgba(45,139,255,.10)"><span style="font-size:13px">🔦</span></div>
+            <span class="tog-label" style="font-size:11px;color:var(--muted)">↳ Street Light Out</span>
+            <span class="tog-count" id="ct-sub-lighting-street_light_out">0</span>
+            <div class="tog-sw" id="sw-sub-lighting-street_light_out"></div>
+          </div>
+          <div class="tog-row" onclick="toggleCatSubtype('lighting','Pothole')">
+            <div class="tog-icon" style="background:rgba(45,139,255,.10)"><span style="font-size:13px">🕳</span></div>
+            <span class="tog-label" style="font-size:11px;color:var(--muted)">↳ Pot Holes</span>
+            <span class="tog-count" id="ct-sub-lighting-pothole">0</span>
+            <div class="tog-sw" id="sw-sub-lighting-pothole"></div>
+          </div>
+          <div class="tog-row" onclick="toggleCatSubtype('lighting','Sidewalk Damage')">
+            <div class="tog-icon" style="background:rgba(45,139,255,.10)"><span style="font-size:13px">🧱</span></div>
+            <span class="tog-label" style="font-size:11px;color:var(--muted)">↳ Sidewalk Damage</span>
+            <span class="tog-count" id="ct-sub-lighting-sidewalk_damage">0</span>
+            <div class="tog-sw" id="sw-sub-lighting-sidewalk_damage"></div>
+          </div>
+          <div class="tog-row" onclick="toggleCatSubtype('lighting','Sign Issue')">
+            <div class="tog-icon" style="background:rgba(45,139,255,.10)"><span style="font-size:13px">🚧</span></div>
+            <span class="tog-label" style="font-size:11px;color:var(--muted)">↳ Sign Issues</span>
+            <span class="tog-count" id="ct-sub-lighting-sign_issue">0</span>
+            <div class="tog-sw" id="sw-sub-lighting-sign_issue"></div>
+          </div>
+          <div class="tog-row" onclick="toggleCatSubtype('lighting','Speed Bump')">
+            <div class="tog-icon" style="background:rgba(45,139,255,.10)"><span style="font-size:13px">⛰</span></div>
+            <span class="tog-label" style="font-size:11px;color:var(--muted)">↳ Speed Bumps</span>
+            <span class="tog-count" id="ct-sub-lighting-speed_bump">0</span>
+            <div class="tog-sw" id="sw-sub-lighting-speed_bump"></div>
+          </div>
+          <div class="tog-row" onclick="toggleCatSubtype('lighting','Traffic Light')">
+            <div class="tog-icon" style="background:rgba(45,139,255,.10)"><span style="font-size:13px">🚦</span></div>
+            <span class="tog-label" style="font-size:11px;color:var(--muted)">↳ Traffic Lights</span>
+            <span class="tog-count" id="ct-sub-lighting-traffic_light">0</span>
+            <div class="tog-sw" id="sw-sub-lighting-traffic_light"></div>
+          </div>
+          <div class="tog-row" onclick="toggleCatSubtype('lighting','Walkway Marker')">
+            <div class="tog-icon" style="background:rgba(45,139,255,.10)"><span style="font-size:13px">🔲</span></div>
+            <span class="tog-label" style="font-size:11px;color:var(--muted)">↳ Walkway Markers</span>
+            <span class="tog-count" id="ct-sub-lighting-walkway_marker">0</span>
+            <div class="tog-sw" id="sw-sub-lighting-walkway_marker"></div>
+          </div>
+          <div class="tog-row" onclick="toggleCatSubtype('lighting','Other Structure')">
+            <div class="tog-icon" style="background:rgba(45,139,255,.10)"><span style="font-size:13px">🔩</span></div>
+            <span class="tog-label" style="font-size:11px;color:var(--muted)">↳ Other Structures</span>
+            <span class="tog-count" id="ct-sub-lighting-other_structure">0</span>
+            <div class="tog-sw" id="sw-sub-lighting-other_structure"></div>
           </div>
         </div>
       </div>
@@ -518,6 +582,12 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
             <span class="tog-count" id="ct-cat-storefront">0</span>
             <div class="tog-sw" id="sw-cat-storefront"></div>
           </div>
+          <div class="tog-row" onclick="toggleCatLayer('public_property')">
+            <div class="tog-icon" style="background:rgba(0,150,199,.15)"><span style="font-size:14px">🏛</span></div>
+            <span class="tog-label">Public Property</span>
+            <span class="tog-count" id="ct-cat-public_property">0</span>
+            <div class="tog-sw" id="sw-cat-public_property"></div>
+          </div>
         </div>
       </div>
 
@@ -530,9 +600,33 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
         <div class="grp-body collapsed" id="gb-trees">
           <div class="tog-row" onclick="toggleCatLayer('tree')">
             <div class="tog-icon" style="background:rgba(39,174,96,.15)"><span style="font-size:14px">🌳</span></div>
-            <span class="tog-label">Tree Sites</span>
+            <span class="tog-label">Trees</span>
             <span class="tog-count" id="ct-cat-tree">0</span>
             <div class="tog-sw" id="sw-cat-tree"></div>
+          </div>
+          <div class="tog-row" onclick="toggleCatLayer('stump')">
+            <div class="tog-icon" style="background:rgba(101,67,33,.15)"><span style="font-size:14px">🪵</span></div>
+            <span class="tog-label">Stumps</span>
+            <span class="tog-count" id="ct-cat-stump">0</span>
+            <div class="tog-sw" id="sw-cat-stump"></div>
+          </div>
+          <div class="tog-row" onclick="toggleCatLayer('vacant_well')">
+            <div class="tog-icon" style="background:rgba(139,195,74,.15)"><span style="font-size:14px">🕳</span></div>
+            <span class="tog-label">Vacant Wells</span>
+            <span class="tog-count" id="ct-cat-vacant_well">0</span>
+            <div class="tog-sw" id="sw-cat-vacant_well"></div>
+          </div>
+          <div class="tog-row" onclick="toggleCatLayer('fruit_tree')">
+            <div class="tog-icon" style="background:rgba(243,156,18,.15)"><span style="font-size:14px">🍊</span></div>
+            <span class="tog-label">Fruit Trees</span>
+            <span class="tog-count" id="ct-cat-fruit_tree">0</span>
+            <div class="tog-sw" id="sw-cat-fruit_tree"></div>
+          </div>
+          <div class="tog-row" onclick="toggleCatLayer('garden')">
+            <div class="tog-icon" style="background:rgba(125,206,160,.15)"><span style="font-size:14px">🥕</span></div>
+            <span class="tog-label">Gardens</span>
+            <span class="tog-count" id="ct-cat-garden">0</span>
+            <div class="tog-sw" id="sw-cat-garden"></div>
           </div>
           <div class="tog-row" onclick="toggleCatLayer('planting_site')">
             <div class="tog-icon" style="background:rgba(82,190,128,.15)"><span style="font-size:14px">🌱</span></div>
@@ -546,17 +640,11 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
             <span class="tog-count" id="ct-cat-parks">0</span>
             <div class="tog-sw" id="sw-cat-parks"></div>
           </div>
-          <div class="tog-row" onclick="toggleCatLayer('fruit_tree')">
-            <div class="tog-icon" style="background:rgba(243,156,18,.15)"><span style="font-size:14px">🍊</span></div>
-            <span class="tog-label">Fruit Trees</span>
-            <span class="tog-count" id="ct-cat-fruit_tree">0</span>
-            <div class="tog-sw" id="sw-cat-fruit_tree"></div>
-          </div>
-          <div class="tog-row" onclick="toggleCatLayer('garden')">
-            <div class="tog-icon" style="background:rgba(125,206,160,.15)"><span style="font-size:14px">🥕</span></div>
-            <span class="tog-label">Gardens</span>
-            <span class="tog-count" id="ct-cat-garden">0</span>
-            <div class="tog-sw" id="sw-cat-garden"></div>
+          <div class="tog-row" onclick="toggleCatLayer('trail')">
+            <div class="tog-icon" style="background:rgba(0,150,136,.15)"><span style="font-size:14px">🚶</span></div>
+            <span class="tog-label">Trails & Walkways</span>
+            <span class="tog-count" id="ct-cat-trail">0</span>
+            <div class="tog-sw" id="sw-cat-trail"></div>
           </div>
         </div>
       </div>
@@ -573,6 +661,12 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
             <span class="tog-label">Improvements / Projects</span>
             <span class="tog-count" id="ct-cat-improvement">0</span>
             <div class="tog-sw" id="sw-cat-improvement"></div>
+          </div>
+          <div class="tog-row" onclick="toggleCatLayer('art_mural')">
+            <div class="tog-icon" style="background:rgba(233,30,99,.15)"><span style="font-size:14px">🎨</span></div>
+            <span class="tog-label">Art / Mural Sites</span>
+            <span class="tog-count" id="ct-cat-art_mural">0</span>
+            <div class="tog-sw" id="sw-cat-art_mural"></div>
           </div>
           <div class="tog-row" onclick="toggleCatLayer('encampment')">
             <div class="tog-icon" style="background:rgba(231,76,60,.15)"><span style="font-size:14px">⛺</span></div>
@@ -673,6 +767,15 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
 
   <!-- Map -->
   <div id="map"></div>
+
+  <!-- Move-pin mode overlay banner -->
+  <div id="move-pin-banner" style="display:none;position:absolute;top:calc(var(--tb) + 10px);left:50%;transform:translateX(-50%);z-index:2000;
+    background:var(--panel);border:1px solid var(--accent);border-radius:8px;padding:9px 16px;
+    font-size:12px;color:var(--accent);display:none;align-items:center;gap:10px;box-shadow:0 4px 16px rgba(0,0,0,.5)">
+    <span>🗺 Drag the pin to the correct location, then click <b>Confirm</b></span>
+    <button onclick="confirmMovedPin()" style="padding:5px 12px;background:var(--accent);color:#000;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font)">Confirm</button>
+    <button onclick="cancelMovePinMode()" style="padding:5px 10px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer;font-family:var(--font)">Cancel</button>
+  </div>
 
   <!-- Bottom Panel -->
   <div id="bottom-panel">
@@ -801,6 +904,12 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
         <div style="font-weight:600;font-size:15px;margin-bottom:4px" id="add-success-label">Record saved</div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Would you like to attach a photo or file?</div>
         <div id="add-record-id-display" style="font-family:var(--mono);font-size:10px;color:var(--muted);background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;display:inline-block"></div>
+      </div>
+      <!-- Move pin hint -->
+      <div style="background:rgba(0,194,168,.07);border:1px solid var(--accent);border-radius:7px;padding:8px 11px;font-size:11px;color:var(--accent);margin-bottom:12px;display:flex;align-items:center;gap:8px">
+        <span style="font-size:16px">📍</span>
+        <span>Geocoding off? <b>Move the pin</b> to the correct spot after saving.</span>
+        <button type="button" onclick="startMovePinMode()" style="flex-shrink:0;margin-left:auto;padding:4px 10px;background:var(--accent);color:#000;border:none;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font)">Move Pin</button>
       </div>
       <div style="display:flex;gap:8px">
         <button class="btn-cancel" style="flex:1" onclick="closeModal('add-modal');resetAddForm()">Done — No Attachment</button>
@@ -955,6 +1064,7 @@ const CATEGORY_MAP = {
       label: 'Traffic Accident', value: 'traffic', table: 'map_annotations',
       icon: '🚗', color: '#f0a500',
       fields: [
+        { id: 'accident_type', label: 'Accident Type', type: 'select', options: ['Vehicle Collision','Pedestrian Hit','Bicycle Collision','Fatality','Other'] },
         { id: 'parties',     label: 'Parties Involved', type: 'text',   placeholder: 'e.g. 2 vehicles, 1 pedestrian' },
         { id: 'injuries',    label: 'Injuries',          type: 'select', options: ['None','Minor','Serious','Fatal'] },
         { id: 'intersection',label: 'Intersection / Block', type: 'text', placeholder: 'e.g. Adams & Crenshaw' },
@@ -964,7 +1074,7 @@ const CATEGORY_MAP = {
       label: 'Street Infrastructure', value: 'lighting', table: 'map_annotations',
       icon: '💡', color: '#2d8bff',
       fields: [
-        { id: 'infra_type', label: 'Infrastructure Type', type: 'select', options: ['Street Light Out','Pothole','Sidewalk Damage','Sign Issue','Other'] },
+        { id: 'infra_type', label: 'Infrastructure Type', type: 'select', options: ['Street Light Out','Pothole','Sidewalk Damage','Sign Issue','Speed Bump','Traffic Light','Walkway Marker','Other Structure','Other'] },
         { id: 'severity',   label: 'Severity', type: 'select', options: ['Low','Medium','High'] },
         { id: 'report_no',  label: 'Report / 311 #', type: 'text', placeholder: 'Optional 311 number' },
       ]
@@ -1007,6 +1117,16 @@ const CATEGORY_MAP = {
         { id: 'sf_name',      label: 'Name / DBA', type: 'text', placeholder: 'Optional' },
       ]
     },
+    {
+      label: 'Public Property', value: 'public_property', table: 'map_annotations',
+      icon: '🏛', color: '#0096c7',
+      fields: [
+        { id: 'jurisdiction', label: 'Jurisdiction', type: 'select', options: ['City','County','State','Metro','Utilities','Other'] },
+        { id: 'prop_name',    label: 'Property Name / ID', type: 'text', placeholder: 'e.g. Parcel APN, Building name' },
+        { id: 'prop_use',     label: 'Current Use',        type: 'text', placeholder: 'e.g. Transit hub, DWP yard' },
+        { id: 'prop_status',  label: 'Status',             type: 'select', options: ['Active','Vacant','Surplus','Under Renovation','Unknown'] },
+      ]
+    },
   ],
   'Green Infrastructure': [
     {
@@ -1017,6 +1137,24 @@ const CATEGORY_MAP = {
         { id: 'species',   label: 'Species', type: 'text',   placeholder: 'e.g. Jacaranda (optional)' },
         { id: 'health',    label: 'Health',  type: 'select', options: ['Good','Fair','Poor','Dead','Unknown'] },
         { id: 'diameter',  label: 'DBH (inches)', type: 'text', placeholder: 'Optional' },
+      ]
+    },
+    {
+      label: 'Stump', value: 'stump', table: 'map_annotations',
+      icon: '🪵', color: '#6d4c2a',
+      fields: [
+        { id: 'stump_dia',    label: 'Diameter (in)', type: 'text', placeholder: 'Optional' },
+        { id: 'stump_status', label: 'Status', type: 'select', options: ['Needs Grinding','Ground','Unknown'] },
+        { id: 'species',      label: 'Former Species', type: 'text', placeholder: 'Optional' },
+      ]
+    },
+    {
+      label: 'Vacant Well', value: 'vacant_well', table: 'map_annotations',
+      icon: '🕳', color: '#8bc34a',
+      fields: [
+        { id: 'well_size',   label: 'Well Size', type: 'select', options: ['Small (< 8in)','Medium (8-18in)','Large (> 18in)','Unknown'] },
+        { id: 'well_status', label: 'Status',    type: 'select', options: ['Ready to Plant','Damaged','Needs Prep','Unknown'] },
+        { id: 'priority',    label: 'Priority',  type: 'select', options: ['High','Medium','Low'] },
       ]
     },
     {
@@ -1053,6 +1191,16 @@ const CATEGORY_MAP = {
         { id: 'access',      label: 'Public Access', type: 'select', options: ['Yes','No','Limited'] },
       ]
     },
+    {
+      label: 'Trail / Walkway', value: 'trail', table: 'map_annotations',
+      icon: '🚶', color: '#009688',
+      fields: [
+        { id: 'trail_type',   label: 'Type',      type: 'select', options: ['Walking Path','Bike Path','Multi-Use Trail','Alley Walkway','Other'] },
+        { id: 'trail_status', label: 'Condition', type: 'select', options: ['Good','Fair','Needs Repair','Hazardous','Proposed'] },
+        { id: 'surface',      label: 'Surface',   type: 'select', options: ['Paved','Gravel','Dirt','Mixed','Unknown'] },
+        { id: 'length_ft',    label: 'Length (ft)', type: 'text', placeholder: 'Optional' },
+      ]
+    },
   ],
   'Community Improvements': [
     {
@@ -1062,6 +1210,17 @@ const CATEGORY_MAP = {
         { id: 'proj_status', label: 'Project Status', type: 'select', options: ['Wishlist','In Progress','Complete'] },
         { id: 'lead',        label: 'Lead Org / Contact', type: 'text', placeholder: 'Optional' },
         { id: 'funding',     label: 'Funding Source',    type: 'text', placeholder: 'Optional' },
+      ]
+    },
+    {
+      label: 'Art / Mural Site', value: 'art_mural', table: 'map_annotations',
+      icon: '🎨', color: '#e91e63',
+      fields: [
+        { id: 'mural_status', label: 'Status',       type: 'select', options: ['Proposed Site','Approved','In Progress','Existing Mural'] },
+        { id: 'artist',       label: 'Artist',       type: 'text', placeholder: 'Name if known' },
+        { id: 'theme',        label: 'Theme / Style',type: 'text', placeholder: 'Optional description' },
+        { id: 'wall_owner',   label: 'Wall Owner',   type: 'text', placeholder: 'Optional' },
+        { id: 'funding',      label: 'Funding / Grant', type: 'text', placeholder: 'Optional' },
       ]
     },
     {
@@ -1453,12 +1612,17 @@ const CAT_TO_GROUP = {
   mix_use_residential:'business',
   vacant_lot:        'business',
   storefront:        'business',
+  public_property:   'business',
   tree:              'trees',
+  stump:             'trees',
+  vacant_well:       'trees',
   planting_site:     'trees',
   parks:             'trees',
   fruit_tree:        'trees',
   garden:            'trees',
+  trail:             'trees',
   improvement:       'community',
+  art_mural:         'community',
   encampment:        'community',
   trash:             'community',
   hazard:            'community',
@@ -1473,6 +1637,52 @@ function initCatLayers() {
   Object.keys(CAT_TO_GROUP).forEach(cat => {
     CAT_LAYER_GROUPS[cat] = L.layerGroup();
   });
+}
+
+// Sub-type filter state: { 'traffic|Pedestrian Hit': true, ... }
+const activeSubtypes = {};
+
+function toggleCatSubtype(cat, subtypeValue) {
+  const key = cat + '|' + subtypeValue;
+  const swId = 'sw-sub-' + cat + '-' + subtypeValue.toLowerCase().replace(/[\s\/]+/g, '_').replace(/[^a-z0-9_]/g,'');
+  activeSubtypes[key] = !activeSubtypes[key];
+  const sw = document.getElementById(swId);
+  if (sw) sw.classList.toggle('on', activeSubtypes[key]);
+  // Re-render with subtype filter applied
+  renderCategoryAnnotationsFiltered();
+}
+
+function renderCategoryAnnotationsFiltered() {
+  // Check if any subtypes are active for a given category
+  const hasActiveSub = (cat) => Object.keys(activeSubtypes).some(k => k.startsWith(cat + '|') && activeSubtypes[k]);
+  const subtypeMatches = (ann) => {
+    const cat = ann.category;
+    if (!hasActiveSub(cat)) return true; // no sub-filter — show all
+    const cd = ann.category_data || {};
+    // Check infra_type for lighting, accident_type for traffic
+    const typeField = cat === 'traffic' ? cd.accident_type : cat === 'lighting' ? cd.infra_type : null;
+    if (!typeField) return false;
+    return Object.entries(activeSubtypes)
+      .filter(([k, v]) => v && k.startsWith(cat + '|'))
+      .some(([k]) => {
+        const sub = k.split('|')[1];
+        return typeField.toLowerCase().includes(sub.toLowerCase()) || sub.toLowerCase().includes(typeField.toLowerCase());
+      });
+  };
+
+  // Clear and re-render with filter
+  Object.values(CAT_LAYER_GROUPS).forEach(grp => grp.clearLayers());
+  const subtypeCounts = {};
+  annotationsData.forEach(ann => {
+    const cat = ann.category || 'observation';
+    const grp = CAT_LAYER_GROUPS[cat];
+    if (!grp || !ann.geometry_geojson) return;
+    if (!subtypeMatches(ann)) return;
+    subtypeCounts[cat] = (subtypeCounts[cat] || 0) + 1;
+    // Delegate full rendering to main function — just re-run it
+  });
+  // Full re-render (will respect active subtype filter next call)
+  renderCategoryAnnotations();
 }
 
 function toggleCatLayer(cat) {
@@ -2192,10 +2402,27 @@ function onSearch() {
     } catch(e) {}
   }, 400);
 }
+let searchMarker = null;
 function flyTo(lng, lat, name) {
   map.flyTo([parseFloat(lat), parseFloat(lng)], 17);
   document.getElementById('search-input').value = name.split(',').slice(0,2).join(',');
   document.getElementById('search-results').style.display = 'none';
+  // Drop a temporary marker at the searched address
+  if (searchMarker) map.removeLayer(searchMarker);
+  searchMarker = L.marker([parseFloat(lat), parseFloat(lng)], {
+    icon: L.divIcon({
+      html: `<div style="display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 2px 6px rgba(0,0,0,.6))">
+        <div style="width:18px;height:18px;background:#9333ea;border:3px solid white;border-radius:50%;box-shadow:0 0 0 4px rgba(147,51,234,0.3)"></div>
+        <div style="font-size:9px;color:white;background:#9333ea;padding:1px 5px;border-radius:3px;margin-top:2px;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis">${name.split(',').slice(0,2).join(',').trim().slice(0,30)}</div>
+      </div>`,
+      className: '', iconSize: [120, 40], iconAnchor: [60, 18],
+    }),
+    zIndexOffset: 2500,
+  }).addTo(map);
+  searchMarker.bindPopup(`<div style="padding:8px;font-size:12px;font-family:var(--font);color:var(--text)"><b style="color:#9333ea">📍 Search Result</b><br>${name.split(',').slice(0,3).join(',')}</div>`, { closeButton: true });
+  searchMarker.openPopup();
+  // Auto-remove after 8 seconds
+  setTimeout(() => { if (searchMarker) { map.removeLayer(searchMarker); searchMarker = null; } }, 8000);
 }
 function onSearchKey(e) { if (e.key==='Escape') document.getElementById('search-results').style.display='none'; }
 
@@ -2791,8 +3018,87 @@ async function onPinDropped(e) {
 
 
 // ══════════════════════════════════════════════════════════════════
-// SHOW/HIDE CLOSED
+// MOVE PIN — post-save geocode correction
 // ══════════════════════════════════════════════════════════════════
+let movePinMarker   = null;
+let movePinRecordId   = null;
+let movePinRecordType = null;
+
+function startMovePinMode() {
+  // Grab the last saved record's id/type
+  movePinRecordId   = lastAddedRecordId;
+  movePinRecordType = lastAddedRecordType;
+  if (!movePinRecordId) { showToast('No record to move — save a record first', 'err'); return; }
+
+  // Close the modal so the map is fully visible
+  closeModal('add-modal');
+
+  // Place a draggable marker at the current geocode coords (or map center)
+  const lat = geocodeLat || map.getCenter().lat;
+  const lng = geocodeLng || map.getCenter().lng;
+
+  if (movePinMarker) { map.removeLayer(movePinMarker); movePinMarker = null; }
+  movePinMarker = L.marker([lat, lng], {
+    draggable: true,
+    icon: L.divIcon({
+      html: `<div style="display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 2px 8px rgba(0,0,0,.7))">
+        <div style="width:22px;height:22px;background:var(--accent);border:3px solid white;border-radius:50%;box-shadow:0 0 0 5px rgba(0,194,168,0.3);cursor:grab"></div>
+        <div style="font-size:9px;color:white;background:var(--accent);padding:1px 6px;border-radius:3px;margin-top:2px;white-space:nowrap">Drag me</div>
+      </div>`,
+      className: '', iconSize: [80, 36], iconAnchor: [40, 18],
+    }),
+    zIndexOffset: 3000,
+  }).addTo(map);
+
+  // Show overlay banner
+  const banner = document.getElementById('move-pin-banner');
+  if (banner) banner.style.display = 'flex';
+
+  map.flyTo([lat, lng], Math.max(map.getZoom(), 17));
+  showToast('Drag the pin to the correct location, then click Confirm', 'ok');
+}
+
+async function confirmMovedPin() {
+  if (!movePinMarker || !movePinRecordId) { cancelMovePinMode(); return; }
+  const { lat, lng } = movePinMarker.getLatLng();
+
+  let error;
+  if (movePinRecordType === 'crime') {
+    ({ error } = await sb.rpc('update_crime_location', {
+      p_crime_id: movePinRecordId, p_lat: lat, p_lng: lng
+    }));
+  } else {
+    ({ error } = await sb.rpc('update_annotation_location', {
+      p_annotation_id: movePinRecordId, p_lat: lat, p_lng: lng
+    }));
+  }
+
+  if (error) {
+    showToast('Error moving pin: ' + error.message, 'err');
+  } else {
+    showToast('📍 Pin location updated ✓', 'ok');
+    if (movePinRecordType === 'crime') await loadCrimes();
+    else await loadPublicAnnotations();
+  }
+  cancelMovePinMode();
+}
+
+  if (error) {
+    showToast('Error moving pin: ' + error.message, 'err');
+  } else {
+    showToast('📍 Pin location updated ✓', 'ok');
+    if (movePinRecordType === 'crime') await loadCrimes();
+    else await loadPublicAnnotations();
+  }
+  cancelMovePinMode();
+}
+
+function cancelMovePinMode() {
+  if (movePinMarker) { map.removeLayer(movePinMarker); movePinMarker = null; }
+  movePinRecordId = movePinRecordType = null;
+  const banner = document.getElementById('move-pin-banner');
+  if (banner) banner.style.display = 'none';
+}
 function toggleClosed() {
   showClosed = !showClosed;
   document.getElementById('closed-lbl').textContent = showClosed ? 'Hide Closed' : 'Show Closed';

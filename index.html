@@ -3083,16 +3083,6 @@ async function confirmMovedPin() {
   cancelMovePinMode();
 }
 
-  if (error) {
-    showToast('Error moving pin: ' + error.message, 'err');
-  } else {
-    showToast('📍 Pin location updated ✓', 'ok');
-    if (movePinRecordType === 'crime') await loadCrimes();
-    else await loadPublicAnnotations();
-  }
-  cancelMovePinMode();
-}
-
 function cancelMovePinMode() {
   if (movePinMarker) { map.removeLayer(movePinMarker); movePinMarker = null; }
   movePinRecordId = movePinRecordType = null;

@@ -1112,12 +1112,15 @@ const SUPABASE_URL = 'https://sqiioihssmnqatjrednq.supabase.co';
 const SUPABASE_ANON = 'sb_publishable_3s5kREPGF10ahyWGMT9tBA_v9FUqbit';
 const CLAUDE_API_KEY = '';  // optional — only needed for PDF import
 
-// ── CITY / GEOCODING CONFIG ─────────────────────────────────────────────────
-// Change these two lines when deploying for a different city.
-// GEOCODE_CITY is appended to bare street addresses before geocoding.
-// PARCEL_TILE_URL: set to null to hide the Parcel basemap option.
+// ── CITY / PORTABILITY CONFIG ─────────────────────────────────────────────
+// Change these two lines when deploying for a different US city.
+// GEOCODE_CITY : city + state appended to bare street addresses for geocoding.
+// PARCEL_TILE_URL : county assessor tile service, or null to hide the option.
+//   LA County public cache (no auth required):
+//   https://cache.gis.lacounty.gov/cache/rest/services/LACounty_Cache/LACounty_Parcels/MapServer/tile/{z}/{y}/{x}
+//   Alternative (if above is slow): use WMS from https://map.assessor.lacounty.gov
 const GEOCODE_CITY    = 'Los Angeles, CA';
-const PARCEL_TILE_URL = 'https://tiles.arcgis.com/tiles/Q6ZFRRvMTlsTTFuP/arcgis/rest/services/LA_County_Parcels/MapServer/tile/{z}/{y}/{x}';
+const PARCEL_TILE_URL = 'https://cache.gis.lacounty.gov/cache/rest/services/LACounty_Cache/LACounty_Parcels/MapServer/tile/{z}/{y}/{x}';
 // ──────────────────────────────────────────────────────
 
 // ══════════════════════════════════════════════════════════════════
@@ -1567,13 +1570,15 @@ function initMap() {
     { attribution: 'Esri, Maxar, Earthstar Geographics', maxZoom: 19 }
   );
 
-  // Parcel basemap — LA County Assessor parcels; only created if PARCEL_TILE_URL is configured
+  // LA County Assessor parcel layer — only initialised when PARCEL_TILE_URL is configured
   if (PARCEL_TILE_URL) {
     TILE_PARCEL = L.tileLayer(PARCEL_TILE_URL, {
-      attribution: 'LA County Assessor · Esri', maxZoom: 21, maxNativeZoom: 19,
-      opacity: 1,
+      attribution: '© LA County Assessor',
+      maxZoom: 21,
+      maxNativeZoom: 19,
+      opacity: 0.85,
+      // Parcel tiles are transparent PNG — they sit above the street basemap
     });
-    // Show the Parcel button in the sidebar
     const parcelBtn = document.getElementById('bm-parcel');
     if (parcelBtn) parcelBtn.style.display = 'block';
   }
@@ -1671,22 +1676,25 @@ function initMap() {
 // BASEMAP SWITCH
 // ══════════════════════════════════════════════════════════════════
 function setBasemap(type) {
-  // Remove all base layers first
-  [TILE_STREET, TILE_SAT, TILE_PARCEL].forEach(t => { if (t && map.hasLayer(t)) map.removeLayer(t); });
+  // Always remove parcel overlay first — it re-adds when parcel mode is selected
+  if (TILE_PARCEL && map.hasLayer(TILE_PARCEL)) map.removeLayer(TILE_PARCEL);
 
-  if (type === 'street') {
-    map.addLayer(TILE_STREET);
+  if (type === 'street' || type === 'parcel') {
+    if (map.hasLayer(TILE_SAT)) map.removeLayer(TILE_SAT);
+    if (!map.hasLayer(TILE_STREET)) map.addLayer(TILE_STREET);
     TILE_STREET.bringToBack();
   } else if (type === 'satellite') {
-    map.addLayer(TILE_SAT);
+    if (map.hasLayer(TILE_STREET)) map.removeLayer(TILE_STREET);
+    if (!map.hasLayer(TILE_SAT)) map.addLayer(TILE_SAT);
     TILE_SAT.bringToBack();
-  } else if (type === 'parcel' && TILE_PARCEL) {
-    // Parcel layer is opaque — use street as a base underneath for context
-    map.addLayer(TILE_STREET);
-    TILE_STREET.bringToBack();
+  }
+
+  // Parcel tiles are transparent PNGs — layer them above the street basemap
+  if (type === 'parcel' && TILE_PARCEL) {
     map.addLayer(TILE_PARCEL);
-    TILE_PARCEL.bringToBack();
-    TILE_STREET.bringToBack(); // street stays furthest back
+    // bringToFront relative to basemap but below markers
+    TILE_PARCEL.setZIndex(250);
+    TILE_STREET.setZIndex(100);
   }
 
   // Keep crime markers on top
@@ -2566,30 +2574,10 @@ async function submitPublicReport() {
     });
 
     if (error) {
-      // Fallback: use insert_annotation RPC (avoids direct geometry_geojson column reference)
-      console.warn('public_comments insert failed, falling back to insert_annotation RPC:', error.message);
-      const geojson = JSON.stringify({ type:'Point', coordinates:[pubReportLng, pubReportLat] });
-      const fullNotes = desc
-        + (name  ? '\n\nSubmitted by: ' + name  : '')
-        + (email ? '\nContact: ' + email : '');
-      const { error: e2 } = await sb.rpc('insert_annotation', {
-        p_created_by: null,
-        p_label:      'Public Report: ' + cat,
-        p_type:       'point',
-        p_geojson:    geojson,
-        p_notes:      fullNotes,
-      });
-      if (e2) throw new Error(e2.message);
-      try {
-        const { data: newRow } = await sb.from('map_annotations')
-          .select('id').eq('label', 'Public Report: ' + cat)
-          .order('created_at', { ascending: false }).limit(1).single();
-        if (newRow?.id) {
-          await sb.from('map_annotations').update({
-            category: cat, status: 'draft', is_public: false, is_sensitive: false,
-          }).eq('id', newRow.id);
-        }
-      } catch(_) { /* non-fatal */ }
+      // public_comments insert failed — surface the real error; don't attempt annotation insert
+      // (insert_annotation RPC requires an authenticated created_by — anonymous users can't use it)
+      console.error('public_comments insert failed:', error.message);
+      throw new Error(error.message);
     }
 
     // Success — drop persistent red pin on map
@@ -2700,30 +2688,47 @@ let searchTimer;
 async function runAddressSearch(q, autoFly) {
   const box = document.getElementById('search-results');
   try {
-    // Append city context only if query doesn't already include city/state
-    const hasLocation = /,|\b[A-Z]{2}\b/i.test(q);
-    const query = hasLocation ? q : q + ', ' + GEOCODE_CITY;
-    // US Census Bureau geocoder — TIGER/Line accuracy, no API key, free
-    const url = 'https://geocoding.geo.census.gov/geocoder/locations/onelineaddress'
-              + '?address=' + encodeURIComponent(query)
-              + '&benchmark=2020&format=json';
-    const res  = await fetch(url);
+    // Parse query into structured Nominatim fields for parcel-level accuracy
+    const hasCity = /,/.test(q.trim());
+    let street = q.trim(), city = '', state = '', country = 'US';
+    if (hasCity) {
+      const parts = q.trim().split(',').map(s => s.trim());
+      street = parts[0];
+      const rest = parts.slice(1).join(' ');
+      const stateMatch = rest.match(/\b([A-Z]{2})\b/);
+      state = stateMatch ? stateMatch[1] : GEOCODE_CITY.split(',')[1]?.trim() || '';
+      city  = rest.replace(/\b[A-Z]{2}\b/, '').replace(/\d{5}/, '').trim().replace(/,$/, '').trim();
+    } else {
+      const cityState = GEOCODE_CITY.split(',');
+      city  = cityState[0]?.trim() || '';
+      state = cityState[1]?.trim() || '';
+    }
+    const params = new URLSearchParams({
+      street, city, state, country,
+      format: 'json', limit: '5', addressdetails: '1', zoom: '19',
+    });
+    const url = 'https://nominatim.openstreetmap.org/search?' + params.toString();
+    const res  = await fetch(url, { headers: { 'Accept-Language': 'en' } });
     const data = await res.json();
-    const matches = data?.result?.addressMatches || [];
-    if (!matches.length) {
+    if (!data.length) {
       box.style.display = 'none';
       if (autoFly) showToast('Address not found — try a cross-street or landmark', 'err');
       return;
     }
     if (autoFly) {
       box.style.display = 'none';
-      const m = matches[0];
-      flyTo(m.coordinates.x, m.coordinates.y, m.matchedAddress);
+      flyTo(data[0].lon, data[0].lat, data[0].display_name);
       return;
     }
-    box.innerHTML = matches.map(m => {
-      const label = m.matchedAddress || query;
-      return `<div class="s-result" onclick="flyTo(${m.coordinates.x},${m.coordinates.y},'${label.replace(/'/g,"\'")}')">` + label + `</div>`;
+    box.innerHTML = data.map(r => {
+      const a = r.address || {};
+      let label = '';
+      if (a.house_number && a.road) label = `${a.house_number} ${a.road}`;
+      else if (a.road)              label = a.road;
+      else                          label = r.display_name.split(',')[0].trim();
+      if (a.neighbourhood || a.suburb) label += ` — ${a.neighbourhood || a.suburb}`;
+      else if (a.city || a.town)       label += `, ${a.city || a.town}`;
+      return `<div class="s-result" onclick="flyTo(${r.lon},${r.lat},'${r.display_name.replace(/'/g,"\'")}')">` + label + `</div>`;
     }).join('');
     box.style.display = 'block';
   } catch(err) {
@@ -3239,22 +3244,46 @@ function geocodeAddr() {
   if (addr.length < 5) return;
   document.getElementById('geocode-status').textContent = 'Geocoding…';
   geocodeTimer = setTimeout(async () => {
-    const clean = addr.replace(/\*+/g, '50');
-    const hasLoc = /,|\b[A-Z]{2}\b/i.test(clean);
-    const query  = hasLoc ? clean : clean + ', ' + GEOCODE_CITY;
+    // Parse the typed address into structured parts for Nominatim structured search.
+    // Structured mode (street= / city= / state= / country=) skips Nominatim's text
+    // parser and matches fields directly — significantly more accurate for house numbers.
+    const clean = addr.replace(/\*+/g, '50').trim();
+    // Split off any trailing city/state the user may have typed, defaulting to GEOCODE_CITY
+    const hasCity = /,/.test(clean);
+    let street = clean, city = '', state = '', country = 'US';
+    if (hasCity) {
+      const parts = clean.split(',').map(s => s.trim());
+      street = parts[0];
+      // Remaining parts treated as city [state] [zip] — pull state from last 2-char token
+      const rest = parts.slice(1).join(' ');
+      const stateMatch = rest.match(/\b([A-Z]{2})\b/);
+      state = stateMatch ? stateMatch[1] : GEOCODE_CITY.split(',')[1]?.trim() || '';
+      city = rest.replace(/\b[A-Z]{2}\b/, '').replace(/\d{5}/, '').trim().replace(/,$/, '').trim();
+    } else {
+      const cityState = GEOCODE_CITY.split(',');
+      city  = cityState[0]?.trim() || '';
+      state = cityState[1]?.trim() || '';
+    }
     try {
-      // US Census Bureau geocoder — parcel-level accuracy, no API key, free forever
-      const url = 'https://geocoding.geo.census.gov/geocoder/locations/onelineaddress'
-                + '?address=' + encodeURIComponent(query)
-                + '&benchmark=2020&format=json';
-      const res  = await fetch(url);
+      // Structured Nominatim search — each field matched independently, no text-parser ambiguity
+      const params = new URLSearchParams({
+        street, city, state, country,
+        format: 'json', limit: '3', addressdetails: '1', zoom: '19',
+      });
+      const url = 'https://nominatim.openstreetmap.org/search?' + params.toString();
+      const res  = await fetch(url, { headers: { 'Accept-Language': 'en' } });
       const data = await res.json();
-      const matches = data?.result?.addressMatches || [];
-      if (matches.length) {
-        const best = matches[0];
-        geocodeLng = best.coordinates.x;
-        geocodeLat = best.coordinates.y;
-        const addrLabel = best.matchedAddress || query;
+      // Prefer result with matching house_number; fall back to first result
+      const best = data.find(r => r.address?.house_number) || data[0];
+      if (best) {
+        geocodeLng = parseFloat(best.lon);
+        geocodeLat = parseFloat(best.lat);
+        const a = best.address || {};
+        let addrLabel = '';
+        if (a.house_number && a.road) addrLabel = `${a.house_number} ${a.road}`;
+        else if (a.road)              addrLabel = a.road;
+        else                          addrLabel = best.display_name.split(',').slice(0,2).join(',').trim();
+        if (a.city || a.town || a.suburb) addrLabel += `, ${a.city || a.town || a.suburb}`;
         document.getElementById('geocode-status').textContent = '✓ ' + addrLabel;
         document.getElementById('add-coords').textContent = geocodeLat.toFixed(6) + ', ' + geocodeLng.toFixed(6);
       } else {
@@ -3553,14 +3582,21 @@ async function processPDFFile(file) {
       for (const r of pdfRecords) {
         if (r._dup) continue;
         try {
-          const clean = r.address.replace(/\*+/g,'50') + ', ' + GEOCODE_CITY;
+          // Structured Nominatim — street + city/state parsed from GEOCODE_CITY
+          const rawAddr = r.address.replace(/\*+/g,'50').trim();
+          const cityState = GEOCODE_CITY.split(',');
+          const pdfCity  = cityState[0]?.trim() || '';
+          const pdfState = cityState[1]?.trim() || '';
+          const pdfParams = new URLSearchParams({
+            street: rawAddr, city: pdfCity, state: pdfState, country: 'US',
+            format: 'json', limit: '1', addressdetails: '1', zoom: '19',
+          });
           const gr = await fetch(
-            'https://geocoding.geo.census.gov/geocoder/locations/onelineaddress'
-            + '?address=' + encodeURIComponent(clean) + '&benchmark=2020&format=json'
+            'https://nominatim.openstreetmap.org/search?' + pdfParams.toString(),
+            { headers: { 'Accept-Language': 'en' } }
           );
           const gd = await gr.json();
-          const gm = gd?.result?.addressMatches || [];
-          if (gm.length) { r._lng = gm[0].coordinates.x; r._lat = gm[0].coordinates.y; }
+          if (gd.length) { r._lng = parseFloat(gd[0].lon); r._lat = parseFloat(gd[0].lat); }
           await new Promise(resolve => setTimeout(resolve, 300));
         } catch(e) {}
       }

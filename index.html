@@ -758,7 +758,7 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
   <div id="topbar">
     <div id="search-wrap">
       <svg class="s-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-      <input type="text" id="search-input" placeholder="Search address… (Enter to go)" oninput="onSearch()" onkeydown="onSearchKey(event)">
+      <input type="text" id="search-input" placeholder="Search address…" oninput="onSearch()" onkeydown="onSearchKey(event)">
       <div id="search-results"></div>
     </div>
     <div class="tb-btn" onclick="locateMe()" title="Locate me">
@@ -971,88 +971,7 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
 </div>
 
 <!-- ═══════ SLO MANAGER MODAL ═══════ -->
-<!-- ═══════ PUBLIC REPORT OBSERVATION MODAL ═══════ -->
-<div class="modal-overlay" id="pub-report-modal">
-  <div class="modal-box" style="width:460px">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-      <div style="width:36px;height:36px;background:#e8453c;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="16.5" r=".5" fill="#fff"/></svg>
-      </div>
-      <div>
-        <div class="modal-title" style="margin:0;font-size:15px">Report an Observation</div>
-        <div style="font-size:11px;color:var(--muted)">No account needed · Anonymous submission</div>
-      </div>
-    </div>
-
-    <!-- Category -->
-    <div class="mf">
-      <label>What are you reporting? <span style="color:var(--danger)">*</span></label>
-      <select id="pub-cat" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);font-size:13px;font-family:var(--font);outline:none">
-        <option value="">— Select a category —</option>
-        <option value="safety">🚨 Safety Concern / Crime</option>
-        <option value="traffic">🚗 Traffic Hazard</option>
-        <option value="hazard">⚠️ Hazard / Dangerous Condition</option>
-        <option value="trash">🗑 Illegal Dumping / Litter</option>
-        <option value="lighting">💡 Streetlight / Infrastructure</option>
-        <option value="encampment">⛺ Encampment</option>
-        <option value="improvement">🏗 Improvement Opportunity</option>
-        <option value="mural">🎨 Mural / Art</option>
-        <option value="other">📌 Other</option>
-      </select>
-    </div>
-
-    <!-- Description -->
-    <div class="mf">
-      <label>Description <span style="color:var(--danger)">*</span></label>
-      <textarea id="pub-desc" class="mf" placeholder="Describe what you see — include any useful details like time of day, severity, or recurring pattern…" style="width:100%;min-height:90px;resize:vertical;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);font-size:13px;font-family:var(--font);outline:none"></textarea>
-    </div>
-
-    <!-- Location -->
-    <div class="mf">
-      <label>Location <span style="color:var(--danger)">*</span></label>
-      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-        <div id="pub-loc-status" style="flex:1;font-size:12px;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;min-height:36px;display:flex;align-items:center">
-          📍 No location set — use buttons →
-        </div>
-        <button class="btn btn-sm" onclick="pubReportUseCurrentLocation()" title="Use your GPS location" style="flex-shrink:0">
-          🎯 My Location
-        </button>
-        <button class="btn btn-sm" onclick="pubReportDropPin()" id="pub-pin-btn" title="Click the map to drop a pin" style="flex-shrink:0">
-          🗺 Drop Pin
-        </button>
-      </div>
-      <div style="font-size:10px;color:var(--muted);margin-top:4px">Tap the map after clicking "Drop Pin", or use "My Location" if on mobile.</div>
-    </div>
-
-    <!-- Optional contact info -->
-    <details style="margin-bottom:14px">
-      <summary style="cursor:pointer;font-size:11px;color:var(--muted);user-select:none;padding:4px 0">
-        + Optional: leave contact info for follow-up
-      </summary>
-      <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">
-        <div class="mf" style="margin:0">
-          <label style="font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Name (optional)</label>
-          <input type="text" id="pub-name" placeholder="Your name" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:12px;font-family:var(--font);outline:none;margin-top:4px">
-        </div>
-        <div class="mf" style="margin:0">
-          <label style="font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Email (private — only visible to admin)</label>
-          <input type="email" id="pub-email" placeholder="you@example.com" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:12px;font-family:var(--font);outline:none;margin-top:4px">
-        </div>
-      </div>
-    </details>
-
-    <div id="pub-report-msg" style="font-size:11px;color:var(--accent);min-height:16px;margin-bottom:6px"></div>
-
-    <div class="modal-footer" style="margin-top:0">
-      <button class="btn-cancel" style="flex:1" onclick="closePubReport()">Cancel</button>
-      <button class="btn-submit" style="flex:2;background:#e8453c;border:none" onclick="submitPublicReport()">
-        📍 Submit Observation
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══════ END PUBLIC REPORT MODAL ═══════ -->
+<div class="modal-overlay" id="slo-modal">
   <div class="modal-box" style="width:540px">
     <div class="modal-title">SLO Officer Management</div>
     <div id="slo-list" style="max-height:400px;overflow-y:auto"></div>
@@ -2404,174 +2323,9 @@ function toggleGroup(name) {
   if (chv) chv.style.transform = collapsed ? 'rotate(-90deg)' : '';
 }
 
-// ══════════════════════════════════════════════════════════════════
-// PUBLIC REPORT OBSERVATION — Phase 5 implementation
-// ══════════════════════════════════════════════════════════════════
-let pubReportLat = null, pubReportLng = null;
-let pubReportMarker = null;  // red preview pin while choosing
-let pubReportDropMode = false;
-const pubObservationMarkers = []; // persisted red drop pins
-
 function openPublicReport() {
-  // Reset form
-  document.getElementById('pub-cat').value = '';
-  document.getElementById('pub-desc').value = '';
-  if (document.getElementById('pub-name')) document.getElementById('pub-name').value = '';
-  if (document.getElementById('pub-email')) document.getElementById('pub-email').value = '';
-  document.getElementById('pub-report-msg').textContent = '';
-  pubReportLat = pubReportLng = null;
-  updatePubLocStatus();
-  openModal('pub-report-modal');
-}
-
-function closePubReport() {
-  closeModal('pub-report-modal');
-  // Remove temp preview pin if still showing
-  if (pubReportMarker) { map.removeLayer(pubReportMarker); pubReportMarker = null; }
-  pubReportDropMode = false;
-  document.getElementById('pub-pin-btn').classList.remove('btn-accent');
-}
-
-function updatePubLocStatus() {
-  const el = document.getElementById('pub-loc-status');
-  if (pubReportLat && pubReportLng) {
-    el.innerHTML = `<span style="color:var(--accent)">✓ ${pubReportLat.toFixed(5)}, ${pubReportLng.toFixed(5)}</span>`;
-  } else {
-    el.innerHTML = `<span style="color:var(--muted)">📍 No location set — use buttons →</span>`;
-  }
-}
-
-function pubReportUseCurrentLocation() {
-  if (!navigator.geolocation) { showToast('Geolocation not available on this device','err'); return; }
-  document.getElementById('pub-loc-status').innerHTML = '<span style="color:var(--muted)">🎯 Getting your location…</span>';
-  navigator.geolocation.getCurrentPosition(
-    pos => {
-      pubReportLat = pos.coords.latitude;
-      pubReportLng = pos.coords.longitude;
-      updatePubLocStatus();
-      // Show preview pin
-      if (pubReportMarker) map.removeLayer(pubReportMarker);
-      pubReportMarker = L.marker([pubReportLat, pubReportLng], { icon: makePubReportIcon('preview') }).addTo(map);
-      map.flyTo([pubReportLat, pubReportLng], 18);
-    },
-    err => {
-      showToast('Location error: ' + err.message, 'err');
-      document.getElementById('pub-loc-status').innerHTML = '<span style="color:var(--danger)">⚠ Could not get location</span>';
-    },
-    { timeout: 10000, maximumAge: 60000 }
-  );
-}
-
-function pubReportDropPin() {
-  // Toggle drop mode — next click on map sets the location
-  pubReportDropMode = !pubReportDropMode;
-  const btn = document.getElementById('pub-pin-btn');
-  if (pubReportDropMode) {
-    btn.style.borderColor = 'var(--accent)';
-    btn.style.color = 'var(--accent)';
-    showToast('Click anywhere on the map to drop a pin', 'ok');
-    closeModal('pub-report-modal');
-    // Show a brief map hint
-    map.getContainer().style.cursor = 'crosshair';
-    map.once('click', e => {
-      pubReportLat = e.latlng.lat;
-      pubReportLng = e.latlng.lng;
-      pubReportDropMode = false;
-      map.getContainer().style.cursor = '';
-      // Preview pin
-      if (pubReportMarker) map.removeLayer(pubReportMarker);
-      pubReportMarker = L.marker([pubReportLat, pubReportLng], { icon: makePubReportIcon('preview') }).addTo(map);
-      openModal('pub-report-modal');
-      updatePubLocStatus();
-      btn.style.borderColor = '';
-      btn.style.color = '';
-    });
-  } else {
-    btn.style.borderColor = '';
-    btn.style.color = '';
-    map.getContainer().style.cursor = '';
-    map.off('click');
-  }
-}
-
-function makePubReportIcon(state) {
-  const isPreview = state === 'preview';
-  return L.divIcon({
-    html: `<div style="display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 2px 8px rgba(0,0,0,.7))">
-      <div style="width:${isPreview?22:18}px;height:${isPreview?22:18}px;background:#e8453c;border:3px solid white;border-radius:50%;box-shadow:0 0 0 4px rgba(232,69,60,0.35)"></div>
-      <div style="width:2px;height:${isPreview?12:8}px;background:#e8453c;margin-top:1px"></div>
-      ${!isPreview ? `<div style="font-size:9px;background:#e8453c;color:white;padding:1px 5px;border-radius:3px;white-space:nowrap;font-family:var(--mono);font-weight:600">Public Report</div>` : ''}
-    </div>`,
-    className: '',
-    iconSize: [26, isPreview ? 40 : 50],
-    iconAnchor: [13, isPreview ? 34 : 42],
-    popupAnchor: [0, -42],
-  });
-}
-
-async function submitPublicReport() {
-  const cat  = document.getElementById('pub-cat').value;
-  const desc = document.getElementById('pub-desc').value.trim();
-  const name = document.getElementById('pub-name')?.value.trim() || null;
-  const email= document.getElementById('pub-email')?.value.trim() || null;
-  const msg  = document.getElementById('pub-report-msg');
-
-  if (!cat)        { msg.style.color='var(--danger)'; msg.textContent='Please select a category.'; return; }
-  if (!desc)       { msg.style.color='var(--danger)'; msg.textContent='Please add a description.'; return; }
-  if (!pubReportLat || !pubReportLng) { msg.style.color='var(--danger)'; msg.textContent='Please set a location using the buttons above.'; return; }
-
-  msg.style.color = 'var(--accent)';
-  msg.textContent = 'Submitting…';
-
-  try {
-    const { error } = await sb.from('public_comments').insert({
-      lat: pubReportLat,
-      lng: pubReportLng,
-      category: cat,
-      description: desc,
-      submitter_name: name,
-      submitter_email: email,
-      status: 'new',
-    });
-
-    if (error) {
-      // Fallback: store as map_annotation if public_comments table isn't created yet
-      console.warn('public_comments insert failed, falling back to map_annotations:', error.message);
-      const geojson = JSON.stringify({ type:'Point', coordinates:[pubReportLng, pubReportLat] });
-      const { error: e2 } = await sb.from('map_annotations').insert({
-        label: `Public Report: ${cat}`,
-        annotation_type: 'point',
-        geometry_geojson: geojson,
-        lat: pubReportLat,
-        lng: pubReportLng,
-        notes: desc + (name ? `\n\nSubmitted by: ${name}` : '') + (email ? `\nContact: ${email}` : ''),
-        category: 'observation',
-        status: 'draft',
-        is_public: false,
-        is_sensitive: false,
-      });
-      if (e2) throw new Error(e2.message);
-    }
-
-    // Success — drop persistent red pin on map
-    if (pubReportMarker) { map.removeLayer(pubReportMarker); pubReportMarker = null; }
-    const pin = L.marker([pubReportLat, pubReportLng], { icon: makePubReportIcon('submitted'), zIndexOffset: 1500 }).addTo(map);
-    pin.bindPopup(`<div style="padding:10px;font-family:var(--font);color:var(--text);max-width:220px">
-      <div style="font-weight:600;color:#e8453c;margin-bottom:4px">📍 Observation Recorded</div>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:6px">${cat.replace(/_/g,' ')} · submitted just now</div>
-      <div style="font-size:12px;line-height:1.5">${desc.slice(0,120)}${desc.length>120?'…':''}</div>
-      <div style="font-size:10px;color:var(--muted);margin-top:6px">Thank you — your report has been sent to the Jefferson Park team.</div>
-    </div>`, { closeButton: true });
-    pin.openPopup();
-    pubObservationMarkers.push(pin);
-
-    closePubReport();
-    showToast('✓ Observation submitted — thank you!', 'ok');
-  } catch(e) {
-    msg.style.color = 'var(--danger)';
-    msg.textContent = 'Submit failed: ' + e.message;
-    console.error('Public report error:', e);
-  }
+  // Phase 5 — stub for now
+  showToast('Public observation reporting coming soon.', 'ok');
 }
 
 function toggleLayer(type) {
@@ -2706,40 +2460,7 @@ function flyTo(lng, lat, name) {
   // Auto-remove after 8 seconds
   setTimeout(() => { if (searchMarker) { map.removeLayer(searchMarker); searchMarker = null; } }, 8000);
 }
-function onSearchKey(e) {
-  if (e.key === 'Escape') {
-    document.getElementById('search-results').style.display = 'none';
-    return;
-  }
-  if (e.key === 'Enter') {
-    // If dropdown is open, click the first result
-    const box = document.getElementById('search-results');
-    if (box.style.display !== 'none') {
-      const first = box.querySelector('.s-result');
-      if (first) { first.click(); return; }
-    }
-    // No dropdown yet — trigger search immediately and auto-select first result
-    clearTimeout(searchTimer);
-    const q = document.getElementById('search-input').value.trim();
-    if (q.length < 2) return;
-    (async () => {
-      try {
-        const query = /los angeles|LA,|,\s*CA/i.test(q) ? q : q + ', Los Angeles, CA';
-        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}`
-                  + `&format=json&limit=5&addressdetails=1&zoom=18`
-                  + `&viewbox=${JP_VIEWBOX}&bounded=0`;
-        const res  = await fetch(url, { headers:{'Accept-Language':'en'} });
-        const data = await res.json();
-        if (data.length) {
-          const r = data[0];
-          flyTo(r.lon, r.lat, r.display_name);
-        } else {
-          showToast('Address not found — try a cross-street or landmark', 'err');
-        }
-      } catch(e) { showToast('Search failed — check your connection', 'err'); }
-    })();
-  }
-}
+function onSearchKey(e) { if (e.key==='Escape') document.getElementById('search-results').style.display='none'; }
 
 // ══════════════════════════════════════════════════════════════════
 // LOCATE ME

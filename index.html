@@ -1576,13 +1576,9 @@ function initMap() {
   // Runs from the user's browser so actual connectivity is tested, not assumed
   (async function initParcelLayer() {
     const PARCEL_CANDIDATES = [
-      // Esri-hosted ArcGIS Online (LA County org Q6ZFRRvMTlsTTFuP)
-      'https://services3.arcgis.com/Q6ZFRRvMTlsTTFuP/arcgis/rest/services/LA_County_Parcels/FeatureServer/0',
-      // LA County Enterprise GIS
-      'https://egis3.lacounty.gov/arcgis/rest/services/LACounty_Dynamic/LMS_Data_Public/MapServer/43',
-      // LA County public GIS mirror
+      // ✅ Confirmed working — LA County public GIS mirror
       'https://public.gis.lacounty.gov/public/rest/services/LACounty_Dynamic/LMS_Data_Public/MapServer/43',
-      // LA County Assessor
+      // Fallback: LA County Assessor
       'https://map.assessor.lacounty.gov/arcgis/rest/services/MAPPING/Assessor/MapServer/0',
     ];
 

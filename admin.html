@@ -446,7 +446,7 @@ tbody td{padding:7px 10px;vertical-align:middle}
 
 <!-- Edit Annotation Modal -->
 <div id="edit-ann-modal" style="position:fixed;inset:0;z-index:5000;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center">
-  <div class="em">
+  <div class="em" style="width:560px">
     <div class="em-title">Edit Annotation</div>
     <input type="hidden" id="edit-ann-id">
     <div class="em-grid">
@@ -463,6 +463,17 @@ tbody td{padding:7px 10px;vertical-align:middle}
         </select>
       </div>
       <div class="em-f full"><label>Notes</label><textarea id="edit-ann-notes" style="min-height:80px"></textarea></div>
+    </div>
+    <!-- Bug 2: Attachments QC section -->
+    <div id="edit-ann-attachments" style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px;display:none">
+      <div style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">
+        📎 Attachments &amp; Links
+        <span id="edit-ann-att-count" style="font-family:var(--mono);background:var(--panel2);padding:1px 5px;border-radius:8px;margin-left:4px;font-size:9px;color:var(--accent)"></span>
+      </div>
+      <div id="edit-ann-att-list" style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto"></div>
+    </div>
+    <div id="edit-ann-att-empty" style="margin-top:10px;font-size:11px;color:var(--muted);border-top:1px solid var(--border);padding-top:10px;display:none">
+      📎 No attachments or links on this record.
     </div>
     <div class="em-footer">
       <button class="btn" onclick="document.getElementById('edit-ann-modal').classList.remove('open')">Cancel</button>
@@ -1221,8 +1232,16 @@ async function deleteAnn(id) {
       return; }
   }
   showToast('Deleted','ok');
+  await reloadAnnStable();
+}
+
+// Bug 1 fix: reload annotations while preserving current filter/sort/scroll position
+async function reloadAnnStable() {
+  const tblWrap = document.querySelector('#tab-annotations .tbl-wrap');
+  const scrollTop = tblWrap ? tblWrap.scrollTop : 0;
   await loadAnnotations();
   filterAnnotations();
+  if (tblWrap) requestAnimationFrame(() => { tblWrap.scrollTop = scrollTop; });
 }
 
 // ══════════════════════════════════════════════════════
@@ -1336,7 +1355,7 @@ async function approveAnn(id) {
   const {error} = await sb.from('map_annotations').update({status:'approved'}).eq('id',id);
   if (error) { showToast('Error: '+error.message,'err'); return; }
   showToast('✅ Approved — ready to publish','ok');
-  await loadAnnotations(); filterAnnotations();
+  await reloadAnnStable();
 }
 
 async function rejectAnn(id) {
@@ -1344,14 +1363,14 @@ async function rejectAnn(id) {
   const {error} = await sb.from('map_annotations').update({status:'rejected', notes: reason ? `[Rejected: ${reason}]` : undefined}).eq('id',id);
   if (error) { showToast('Error: '+error.message,'err'); return; }
   showToast('❌ Rejected','ok');
-  await loadAnnotations(); filterAnnotations();
+  await reloadAnnStable();
 }
 
 async function publishAnn(id) {
   const {error} = await sb.from('map_annotations').update({status:'published', is_public:true}).eq('id',id);
   if (error) { showToast('Error: '+error.message,'err'); return; }
   showToast('🌐 Published — now visible on field map','ok');
-  await loadAnnotations(); filterAnnotations();
+  await reloadAnnStable();
 }
 
 function flyToAnn(id) {
@@ -1373,7 +1392,7 @@ async function togglePublic(id, current) {
     return;
   }
   showToast(nv ? '🌐 Public — will appear on field map' : '🔒 Made private','ok');
-  await loadAnnotations();
+  await reloadAnnStable();
 }
 
 function openEditAnn(id) {
@@ -1405,7 +1424,98 @@ function openEditAnn(id) {
   const stSel = document.getElementById('edit-ann-status');
   if (stSel) stSel.value = a.status || 'draft';
 
+  // Bug 2: Load attachments for QC
+  document.getElementById('edit-ann-attachments').style.display = 'none';
+  document.getElementById('edit-ann-att-empty').style.display = 'none';
+  document.getElementById('edit-ann-att-list').innerHTML =
+    `<div style="font-size:11px;color:var(--muted);padding:4px">Loading attachments…</div>`;
+  loadEditAnnAttachments(id);
+
   document.getElementById('edit-ann-modal').classList.add('open');
+}
+
+async function loadEditAnnAttachments(annId) {
+  const {data, error} = await sb.from('photos')
+    .select('id,storage_path,caption,is_public,created_at,uploaded_by')
+    .eq('annotation_id', annId)
+    .order('created_at', {ascending:true});
+
+  const list    = document.getElementById('edit-ann-att-list');
+  const section = document.getElementById('edit-ann-attachments');
+  const empty   = document.getElementById('edit-ann-att-empty');
+  const cntBadge= document.getElementById('edit-ann-att-count');
+
+  if (error) {
+    list.innerHTML = `<div style="font-size:11px;color:var(--danger)">Error loading: ${error.message}</div>`;
+    section.style.display = 'block';
+    return;
+  }
+
+  const photos = data || [];
+  if (!photos.length) {
+    section.style.display = 'none';
+    empty.style.display = 'block';
+    return;
+  }
+
+  cntBadge.textContent = photos.length;
+  section.style.display = 'block';
+  empty.style.display = 'none';
+
+  // Render attachment rows (no images yet — load URLs async below)
+  list.innerHTML = photos.map(p => {
+    const path    = p.storage_path || '';
+    const isLink  = path.startsWith('link://');
+    const isPDF   = !isLink && path.toLowerCase().endsWith('.pdf');
+    const typeIcon= isLink ? '🔗' : isPDF ? '📄' : '📷';
+    const caption = p.caption || '';
+    const pubLabel= p.is_public ? '<span style="color:var(--accent);font-size:9px">🌐 Public</span>' : '<span style="color:var(--muted);font-size:9px">🔒 Private</span>';
+    const dateStr = p.created_at ? new Date(p.created_at).toLocaleDateString() : '—';
+    const author  = p.uploaded_by ? (profileMap[p.uploaded_by] || '…'+p.uploaded_by.slice(-6)) : '—';
+
+    if (isLink) {
+      const url = path.replace('link://','');
+      return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;display:flex;align-items:center;gap:8px">
+        <span style="font-size:18px;flex-shrink:0">${typeIcon}</span>
+        <div style="flex:1;min-width:0">
+          <a href="${url}" target="_blank" style="color:var(--accent);font-size:11px;font-weight:500;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block" title="${url}">${url.replace(/^https?:\/\//,'').slice(0,50)}</a>
+          ${caption ? `<div style="font-size:10px;color:var(--muted)">${caption}</div>` : ''}
+          <div style="font-size:9px;color:var(--muted);margin-top:2px">${dateStr} · ${author} · ${pubLabel}</div>
+        </div>
+      </div>`;
+    }
+    if (isPDF) {
+      return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;display:flex;align-items:center;gap:8px">
+        <span style="font-size:18px;flex-shrink:0">${typeIcon}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${path.split('/').pop()}</div>
+          ${caption ? `<div style="font-size:10px;color:var(--muted)">${caption}</div>` : ''}
+          <div style="font-size:9px;color:var(--muted);margin-top:2px">${dateStr} · ${author} · ${pubLabel}</div>
+        </div>
+        <button class="btn btn-sm" style="flex-shrink:0" onclick="openPDFCard('${path}')">View</button>
+      </div>`;
+    }
+    // Image — placeholder, URL loaded async
+    return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px;display:flex;align-items:center;gap:8px" id="att-row-${p.id}">
+      <img data-att-path="${path}" src="" alt=""
+        style="width:64px;height:48px;object-fit:cover;border-radius:4px;flex-shrink:0;background:var(--panel2);cursor:pointer;opacity:0;transition:opacity .3s"
+        onload="this.style.opacity=1" onclick="openLB(this)">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:11px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${caption || path.split('/').pop().slice(0,30)}</div>
+        <div style="font-size:9px;color:var(--muted);margin-top:2px">${dateStr} · ${author} · ${pubLabel}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Load signed URLs for images
+  for (const p of photos) {
+    const path = p.storage_path || '';
+    if (path.startsWith('link://') || path.toLowerCase().endsWith('.pdf')) continue;
+    const imgEl = list.querySelector(`img[data-att-path="${path}"]`);
+    if (!imgEl) continue;
+    const {data: urlData} = await sb.storage.from('crime-photos').createSignedUrl(path, 3600);
+    if (urlData?.signedUrl) imgEl.src = urlData.signedUrl;
+  }
 }
 
 async function saveEditAnn() {
@@ -1425,7 +1535,14 @@ async function saveEditAnn() {
   if (error) { showToast('Error: '+error.message,'err'); return; }
   showToast('Annotation updated','ok');
   document.getElementById('edit-ann-modal').classList.remove('open');
-  await loadAnnotations(); filterAnnotations();
+
+  // Bug 1 fix: preserve scroll position and filter state across reload
+  const tblWrap = document.querySelector('#tab-annotations .tbl-wrap');
+  const scrollTop = tblWrap ? tblWrap.scrollTop : 0;
+  await loadAnnotations();
+  filterAnnotations();
+  // Restore scroll after render
+  if (tblWrap) requestAnimationFrame(() => { tblWrap.scrollTop = scrollTop; });
 }
 
 function notifyAuthor(annId) {

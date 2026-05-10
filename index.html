@@ -2661,7 +2661,9 @@ let searchTimer;
 async function runAddressSearch(q, autoFly) {
   const box = document.getElementById('search-results');
   try {
-    const query = /los angeles|LA,|,\s*CA/i.test(q) ? q : q + ', Los Angeles, CA';
+    // Only append LA context if the input looks like a bare street address (no city/state already given)
+    const hasLocation = /,|\b[A-Z]{2}\b|los angeles|hollywood|inglewood|culver city/i.test(q);
+    const query = hasLocation ? q : q + ', Los Angeles, CA';
     const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}`
               + `&format=json&limit=5&addressdetails=1&zoom=18`
               + `&viewbox=${JP_VIEWBOX}&bounded=0`;
@@ -3193,7 +3195,7 @@ function openAddRecordFromDraw() {
 
 // Jefferson Park bounding box for Nominatim viewbox bias (W,N,E,S)
 // bounded=0 → soft preference; addresses outside still resolve.
-const JP_VIEWBOX = '-118.365,34.050,-118.305,34.010';
+const JP_VIEWBOX = '-118.355,34.038,-118.295,33.988'; // centered on Jefferson Park ~34.013
 
 function geocodeAddr() {
   clearTimeout(geocodeTimer);
@@ -3202,7 +3204,8 @@ function geocodeAddr() {
   document.getElementById('geocode-status').textContent = 'Geocoding…';
   geocodeTimer = setTimeout(async () => {
     const clean = addr.replace(/\*+/g, '50');
-    const query = /los angeles|LA,|,\s*CA/i.test(clean) ? clean : clean + ', Los Angeles, CA';
+    const hasLoc = /,|\b[A-Z]{2}\b|los angeles|hollywood|inglewood|culver city/i.test(clean);
+    const query = hasLoc ? clean : clean + ', Los Angeles, CA';
     try {
       // zoom=18 → parcel-level result; limit=3 lets us pick the most specific hit
       const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}`

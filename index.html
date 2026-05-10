@@ -2656,33 +2656,49 @@ function clearDate() {
 // SEARCH
 // ══════════════════════════════════════════════════════════════════
 let searchTimer;
+
+// Shared search — called by dropdown (autoFly=false) and Enter key (autoFly=true)
+async function runAddressSearch(q, autoFly) {
+  const box = document.getElementById('search-results');
+  try {
+    const query = /los angeles|LA,|,\s*CA/i.test(q) ? q : q + ', Los Angeles, CA';
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}`
+              + `&format=json&limit=5&addressdetails=1&zoom=18`
+              + `&viewbox=${JP_VIEWBOX}&bounded=0`;
+    const res  = await fetch(url, { headers:{'Accept-Language':'en'} });
+    const data = await res.json();
+    if (!data.length) {
+      box.style.display = 'none';
+      if (autoFly) showToast('Address not found — try a cross-street or landmark', 'err');
+      return;
+    }
+    if (autoFly) {
+      box.style.display = 'none';
+      flyTo(data[0].lon, data[0].lat, data[0].display_name);
+      return;
+    }
+    box.innerHTML = data.map(r => {
+      const a = r.address || {};
+      let label = '';
+      if (a.house_number && a.road) label = `${a.house_number} ${a.road}`;
+      else if (a.road) label = a.road;
+      else label = r.display_name.split(',')[0].trim();
+      if (a.neighbourhood || a.suburb) label += ` — ${a.neighbourhood || a.suburb}`;
+      else if (a.city || a.town) label += `, ${a.city || a.town}`;
+      return `<div class="s-result" onclick="flyTo(${r.lon},${r.lat},'${r.display_name.replace(/'/g,"\'")}')">${label}</div>`;
+    }).join('');
+    box.style.display = 'block';
+  } catch(err) {
+    box.style.display = 'none';
+    if (autoFly) showToast('Search failed — check connection', 'err');
+  }
+}
+
 function onSearch() {
   clearTimeout(searchTimer);
   const q = document.getElementById('search-input').value.trim();
-  if (q.length < 3) { document.getElementById('search-results').style.display='none'; return; }
-  searchTimer = setTimeout(async () => {
-    try {
-      const query = /los angeles|LA,|,\s*CA/i.test(q) ? q : q + ', Los Angeles, CA';
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}`
-                + `&format=json&limit=5&addressdetails=1&zoom=18`
-                + `&viewbox=${JP_VIEWBOX}&bounded=0`;
-      const res  = await fetch(url, { headers:{'Accept-Language':'en'} });
-      const data = await res.json();
-      const box  = document.getElementById('search-results');
-      if (!data.length) { box.style.display='none'; return; }
-      box.innerHTML = data.map(r => {
-        const a = r.address || {};
-        let label = '';
-        if (a.house_number && a.road) label = `${a.house_number} ${a.road}`;
-        else if (a.road) label = a.road;
-        else label = r.display_name.split(',')[0].trim();
-        if (a.neighbourhood || a.suburb) label += ` — ${a.neighbourhood || a.suburb}`;
-        else if (a.city || a.town) label += `, ${a.city || a.town}`;
-        return `<div class="s-result" onclick="flyTo(${r.lon},${r.lat},'${r.display_name.replace(/'/g,"\\'")}'">${label}</div>`;
-      }).join('');
-      box.style.display = 'block';
-    } catch(e) {}
-  }, 400);
+  if (q.length < 3) { document.getElementById('search-results').style.display = 'none'; return; }
+  searchTimer = setTimeout(() => runAddressSearch(q, false), 400);
 }
 let searchMarker = null;
 function flyTo(lng, lat, name) {
@@ -2712,32 +2728,12 @@ function onSearchKey(e) {
     return;
   }
   if (e.key === 'Enter') {
-    // If dropdown is open, click the first result
-    const box = document.getElementById('search-results');
-    if (box.style.display !== 'none') {
-      const first = box.querySelector('.s-result');
-      if (first) { first.click(); return; }
-    }
-    // No dropdown yet — trigger search immediately and auto-select first result
-    clearTimeout(searchTimer);
+    e.preventDefault();
+    clearTimeout(searchTimer); // cancel any pending debounced search
     const q = document.getElementById('search-input').value.trim();
     if (q.length < 2) return;
-    (async () => {
-      try {
-        const query = /los angeles|LA,|,\s*CA/i.test(q) ? q : q + ', Los Angeles, CA';
-        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}`
-                  + `&format=json&limit=5&addressdetails=1&zoom=18`
-                  + `&viewbox=${JP_VIEWBOX}&bounded=0`;
-        const res  = await fetch(url, { headers:{'Accept-Language':'en'} });
-        const data = await res.json();
-        if (data.length) {
-          const r = data[0];
-          flyTo(r.lon, r.lat, r.display_name);
-        } else {
-          showToast('Address not found — try a cross-street or landmark', 'err');
-        }
-      } catch(e) { showToast('Search failed — check your connection', 'err'); }
-    })();
+    // Always run immediately with autoFly=true — bypasses the 400ms debounce
+    runAddressSearch(q, true);
   }
 }
 

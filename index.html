@@ -370,7 +370,7 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
       </div>
     </div>
     <div class="login-heading">Sign in</div>
-    <div class="login-desc">Access the community crime map</div>
+    <div class="login-desc">Access the neighborhood improvement map</div>
     <div class="fg"><label>Email</label><input type="email" id="li-email" placeholder="you@example.com" autocomplete="email"></div>
     <div class="fg"><label>Password</label><input type="password" id="li-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
     <button class="btn-primary" id="li-btn" onclick="doLogin()">Sign in</button>
@@ -975,7 +975,7 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
 <div class="modal-overlay" id="pub-report-modal">
   <div class="modal-box" style="width:460px">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-      <div style="width:36px;height:36px;background:#e8453c;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+      <div style="width:36px;height:36px;background:#2e7d32;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="16.5" r=".5" fill="#fff"/></svg>
       </div>
       <div>
@@ -1045,7 +1045,7 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
 
     <div class="modal-footer" style="margin-top:0">
       <button class="btn-cancel" style="flex:1" onclick="closePubReport()">Cancel</button>
-      <button class="btn-submit" style="flex:2;background:#e8453c;border:none" onclick="submitPublicReport()">
+      <button class="btn-submit" style="flex:2;background:#2e7d32;border:none" onclick="submitPublicReport()">
         📍 Submit Observation
       </button>
     </div>
@@ -2498,9 +2498,9 @@ function makePubReportIcon(state) {
   const isPreview = state === 'preview';
   return L.divIcon({
     html: `<div style="display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 2px 8px rgba(0,0,0,.7))">
-      <div style="width:${isPreview?22:18}px;height:${isPreview?22:18}px;background:#e8453c;border:3px solid white;border-radius:50%;box-shadow:0 0 0 4px rgba(232,69,60,0.35)"></div>
-      <div style="width:2px;height:${isPreview?12:8}px;background:#e8453c;margin-top:1px"></div>
-      ${!isPreview ? `<div style="font-size:9px;background:#e8453c;color:white;padding:1px 5px;border-radius:3px;white-space:nowrap;font-family:var(--mono);font-weight:600">Public Report</div>` : ''}
+      <div style="width:${isPreview?22:18}px;height:${isPreview?22:18}px;background:#2e7d32;border:3px solid white;border-radius:50%;box-shadow:0 0 0 4px rgba(46,125,50,0.4)"></div>
+      <div style="width:2px;height:${isPreview?12:8}px;background:#2e7d32;margin-top:1px"></div>
+      ${!isPreview ? `<div style="font-size:9px;background:#2e7d32;color:white;padding:1px 5px;border-radius:3px;white-space:nowrap;font-family:var(--mono);font-weight:600">Public Report</div>` : ''}
     </div>`,
     className: '',
     iconSize: [26, isPreview ? 40 : 50],
@@ -2535,29 +2535,38 @@ async function submitPublicReport() {
     });
 
     if (error) {
-      // Fallback: store as map_annotation if public_comments table isn't created yet
-      console.warn('public_comments insert failed, falling back to map_annotations:', error.message);
+      // Fallback: store via insert_annotation RPC (avoids direct geometry_geojson column reference)
+      console.warn('public_comments insert failed, falling back to insert_annotation RPC:', error.message);
       const geojson = JSON.stringify({ type:'Point', coordinates:[pubReportLng, pubReportLat] });
-      const { error: e2 } = await sb.from('map_annotations').insert({
-        label: `Public Report: ${cat}`,
-        annotation_type: 'point',
-        geometry_geojson: geojson,
-        lat: pubReportLat,
-        lng: pubReportLng,
-        notes: desc + (name ? `\n\nSubmitted by: ${name}` : '') + (email ? `\nContact: ${email}` : ''),
-        category: 'observation',
-        status: 'draft',
-        is_public: false,
-        is_sensitive: false,
+      const fullNotes = desc
+        + (name  ? '\n\nSubmitted by: ' + name  : '')
+        + (email ? '\nContact: ' + email : '');
+      const { error: e2 } = await sb.rpc('insert_annotation', {
+        p_created_by: null,
+        p_label:      'Public Report: ' + cat,
+        p_type:       'point',
+        p_geojson:    geojson,
+        p_notes:      fullNotes,
       });
       if (e2) throw new Error(e2.message);
+      // Best-effort: patch category on the new row
+      try {
+        const { data: newRow } = await sb.from('map_annotations')
+          .select('id').eq('label', 'Public Report: ' + cat)
+          .order('created_at', { ascending: false }).limit(1).single();
+        if (newRow?.id) {
+          await sb.from('map_annotations').update({
+            category: cat, status: 'draft', is_public: false, is_sensitive: false,
+          }).eq('id', newRow.id);
+        }
+      } catch(_) { /* non-fatal */ }
     }
 
     // Success — drop persistent red pin on map
     if (pubReportMarker) { map.removeLayer(pubReportMarker); pubReportMarker = null; }
     const pin = L.marker([pubReportLat, pubReportLng], { icon: makePubReportIcon('submitted'), zIndexOffset: 1500 }).addTo(map);
     pin.bindPopup(`<div style="padding:10px;font-family:var(--font);color:var(--text);max-width:220px">
-      <div style="font-weight:600;color:#e8453c;margin-bottom:4px">📍 Observation Recorded</div>
+      <div style="font-weight:600;color:#2e7d32;margin-bottom:4px">📍 Observation Recorded</div>
       <div style="font-size:11px;color:var(--muted);margin-bottom:6px">${cat.replace(/_/g,' ')} · submitted just now</div>
       <div style="font-size:12px;line-height:1.5">${desc.slice(0,120)}${desc.length>120?'…':''}</div>
       <div style="font-size:10px;color:var(--muted);margin-top:6px">Thank you — your report has been sent to the Jefferson Park team.</div>
@@ -2665,7 +2674,7 @@ async function runAddressSearch(q, autoFly) {
     const hasLocation = /,|\b[A-Z]{2}\b|los angeles|hollywood|inglewood|culver city/i.test(q);
     const query = hasLocation ? q : q + ', Los Angeles, CA';
     const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}`
-              + `&format=json&limit=5&addressdetails=1&zoom=18`;
+              + `&format=json&limit=5&addressdetails=1&zoom=19&countrycodes=us`;
     const res  = await fetch(url, { headers:{'Accept-Language':'en'} });
     const data = await res.json();
     if (!data.length) {
@@ -3206,10 +3215,11 @@ function geocodeAddr() {
     const hasLoc = /,|\b[A-Z]{2}\b|los angeles|hollywood|inglewood|culver city/i.test(clean);
     const query = hasLoc ? clean : clean + ', Los Angeles, CA';
     try {
-      // zoom=18 → parcel-level result; limit=3 lets us pick the most specific hit
+      // zoom=19 → maximum parcel-level precision; limit=3 lets us pick the most specific hit
       // No viewbox: city+state in query is sufficient; viewbox biases interpolation northward
       const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}`
-                + `&format=json&limit=3&addressdetails=1&zoom=18`;
+                + `&format=json&limit=3&addressdetails=1&zoom=19`
+                + `&countrycodes=us`;
       const res  = await fetch(url, { headers:{'Accept-Language':'en'} });
       const data = await res.json();
       if (data.length) {
@@ -3528,7 +3538,7 @@ async function processPDFFile(file) {
         if (r._dup) continue;
         try {
           const clean = r.address.replace(/\*+/g,'50') + ', Los Angeles, CA';
-          const gr = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(clean)}&format=json&limit=1&addressdetails=1`, { headers:{'Accept-Language':'en'} });
+          const gr = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(clean)}&format=json&limit=1&addressdetails=1&zoom=19&countrycodes=us`, { headers:{'Accept-Language':'en'} });
           const gd = await gr.json();
           if (gd.length) { r._lng=parseFloat(gd[0].lon); r._lat=parseFloat(gd[0].lat); }
           await new Promise(resolve => setTimeout(resolve, 300));

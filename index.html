@@ -1572,23 +1572,56 @@ function initMap() {
     { attribution: 'Esri, Maxar, Earthstar Geographics', maxZoom: 19 }
   );
 
-  // LA County Assessor parcel layer — esri-leaflet FeatureLayer (vector, no tile-CORS issues)
-  // Public endpoint: LA County LMS_Data_Public MapServer, layer 43 = Parcels
-  if (typeof L.esri !== 'undefined') {
-    TILE_PARCEL = L.esri.featureLayer({
-      url: 'https://egis3.lacounty.gov/arcgis/rest/services/LACounty_Dynamic/LMS_Data_Public/MapServer/43',
-      style: () => ({
-        color: '#e67e22', weight: 1, opacity: 0.9, fill: true, fillColor: '#e67e22', fillOpacity: 0.08,
-      }),
-      minZoom: 15,   // only load parcels when zoomed in enough to be useful
-      simplifyFactor: 0.35,
-      precision: 5,
+  // LA County Assessor parcel layer — probes multiple endpoints and uses first that responds
+  // Runs from the user's browser so actual connectivity is tested, not assumed
+  (async function initParcelLayer() {
+    const PARCEL_CANDIDATES = [
+      // Esri-hosted ArcGIS Online (LA County org Q6ZFRRvMTlsTTFuP)
+      'https://services3.arcgis.com/Q6ZFRRvMTlsTTFuP/arcgis/rest/services/LA_County_Parcels/FeatureServer/0',
+      // LA County Enterprise GIS
+      'https://egis3.lacounty.gov/arcgis/rest/services/LACounty_Dynamic/LMS_Data_Public/MapServer/43',
+      // LA County public GIS mirror
+      'https://public.gis.lacounty.gov/public/rest/services/LACounty_Dynamic/LMS_Data_Public/MapServer/43',
+      // LA County Assessor
+      'https://map.assessor.lacounty.gov/arcgis/rest/services/MAPPING/Assessor/MapServer/0',
+    ];
+
+    const parcelStyle = () => ({
+      color: '#e67e22', weight: 1.5, opacity: 1,
+      fill: true, fillColor: '#e67e22', fillOpacity: 0.08,
     });
-    const parcelBtn = document.getElementById('bm-parcel');
-    if (parcelBtn) parcelBtn.style.display = 'block';
-  } else {
-    console.warn('esri-leaflet not loaded — parcel layer unavailable');
-  }
+
+    for (const url of PARCEL_CANDIDATES) {
+      try {
+        const probe = await fetch(url + '?f=json', { signal: AbortSignal.timeout(6000) });
+        if (!probe.ok) continue;
+        const json = await probe.json();
+        // Confirm it's a real ArcGIS layer
+        if (!json.type && !json.geometryType && !json.layers) continue;
+
+        console.log('Parcel endpoint OK:', url);
+        if (typeof L.esri !== 'undefined') {
+          TILE_PARCEL = L.esri.featureLayer({
+            url, style: parcelStyle, minZoom: 15, simplifyFactor: 0.35, precision: 5,
+          });
+        } else {
+          // esri-leaflet failed to load — fall back to dynamic map image via WMS-like tile
+          TILE_PARCEL = L.tileLayer(
+            url.replace(/\/MapServer.*/, '/MapServer') +
+            '/export?bbox={bbox-epsg-3857}&bboxSR=102100&imageSR=102100&size=256,256&format=png32&transparent=true&f=image',
+            { tileSize: 256, attribution: '© LA County Assessor', minZoom: 15, maxZoom: 21 }
+          );
+        }
+        const parcelBtn = document.getElementById('bm-parcel');
+        if (parcelBtn) parcelBtn.style.display = 'block';
+        return; // stop after first working endpoint
+      } catch(e) {
+        console.log('Parcel endpoint failed:', url, e.message);
+      }
+    }
+    console.warn('All parcel endpoints failed — parcel layer unavailable');
+    // Keep button hidden (default) — no parcel layer
+  })();
 
   map = L.map('map', {
     center: [34.028, -118.334],

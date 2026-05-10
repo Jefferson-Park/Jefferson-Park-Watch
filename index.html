@@ -8,6 +8,7 @@
 <!-- Leaflet core -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="https://unpkg.com/esri-leaflet@3.0.12/dist/esri-leaflet.js"></script>
 
 <!-- Marker clustering — gives us numbered cluster bubbles -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css">
@@ -1137,6 +1138,7 @@ let layerVisible = { slo: false, unnc: false, annotations: false, photos: false 
 let clusterGroup = null;
 let sloLayerGroup = null, unncLayerGroup = null, annotationLayerGroup = null, photoLayerGroup = null;
 let geocodeLng = null, geocodeLat = null;
+let addPreviewMarker = null;
 let geocodeTimer = null;
 let currentPhotoCtx = null;
 let pdfRecords = [];
@@ -1570,17 +1572,22 @@ function initMap() {
     { attribution: 'Esri, Maxar, Earthstar Geographics', maxZoom: 19 }
   );
 
-  // LA County Assessor parcel layer — only initialised when PARCEL_TILE_URL is configured
-  if (PARCEL_TILE_URL) {
-    TILE_PARCEL = L.tileLayer(PARCEL_TILE_URL, {
-      attribution: '© LA County Assessor',
-      maxZoom: 21,
-      maxNativeZoom: 19,
-      opacity: 0.85,
-      // Parcel tiles are transparent PNG — they sit above the street basemap
+  // LA County Assessor parcel layer — esri-leaflet FeatureLayer (vector, no tile-CORS issues)
+  // Public endpoint: LA County LMS_Data_Public MapServer, layer 43 = Parcels
+  if (typeof L.esri !== 'undefined') {
+    TILE_PARCEL = L.esri.featureLayer({
+      url: 'https://egis3.lacounty.gov/arcgis/rest/services/LACounty_Dynamic/LMS_Data_Public/MapServer/43',
+      style: () => ({
+        color: '#e67e22', weight: 1, opacity: 0.9, fill: true, fillColor: '#e67e22', fillOpacity: 0.08,
+      }),
+      minZoom: 15,   // only load parcels when zoomed in enough to be useful
+      simplifyFactor: 0.35,
+      precision: 5,
     });
     const parcelBtn = document.getElementById('bm-parcel');
     if (parcelBtn) parcelBtn.style.display = 'block';
+  } else {
+    console.warn('esri-leaflet not loaded — parcel layer unavailable');
   }
 
   map = L.map('map', {
@@ -1676,28 +1683,28 @@ function initMap() {
 // BASEMAP SWITCH
 // ══════════════════════════════════════════════════════════════════
 function setBasemap(type) {
-  // Always remove parcel overlay first — it re-adds when parcel mode is selected
+  // Remove parcel overlay first — re-added below if parcel mode selected
   if (TILE_PARCEL && map.hasLayer(TILE_PARCEL)) map.removeLayer(TILE_PARCEL);
 
   if (type === 'street' || type === 'parcel') {
-    if (map.hasLayer(TILE_SAT)) map.removeLayer(TILE_SAT);
+    if (map.hasLayer(TILE_SAT))    map.removeLayer(TILE_SAT);
     if (!map.hasLayer(TILE_STREET)) map.addLayer(TILE_STREET);
     TILE_STREET.bringToBack();
   } else if (type === 'satellite') {
     if (map.hasLayer(TILE_STREET)) map.removeLayer(TILE_STREET);
-    if (!map.hasLayer(TILE_SAT)) map.addLayer(TILE_SAT);
+    if (!map.hasLayer(TILE_SAT))   map.addLayer(TILE_SAT);
     TILE_SAT.bringToBack();
   }
 
-  // Parcel tiles are transparent PNGs — layer them above the street basemap
   if (type === 'parcel' && TILE_PARCEL) {
-    map.addLayer(TILE_PARCEL);
-    // bringToFront relative to basemap but below markers
-    TILE_PARCEL.setZIndex(250);
-    TILE_STREET.setZIndex(100);
+    TILE_PARCEL.addTo(map);   // esri featureLayer uses addTo, not map.addLayer
+    if (map.getZoom() < 15) {
+      map.setZoom(15);  // zoom in so parcels actually load
+      showToast('Zoomed in — parcel boundaries load at zoom 15+', 'ok');
+    }
   }
 
-  // Keep crime markers on top
+  // Keep markers on top
   if (clusterGroup) clusterGroup.eachLayer(l => { if (l.bringToFront) l.bringToFront(); });
 
   document.getElementById('bm-street').classList.toggle('active', type === 'street');
@@ -2577,9 +2584,11 @@ async function submitPublicReport() {
     });
 
     if (error) {
-      // public_comments insert failed — surface the real error; don't attempt annotation insert
-      // (insert_annotation RPC requires an authenticated created_by — anonymous users can't use it)
       console.error('public_comments insert failed:', error.message);
+      // RLS policy error — surface actionable message to the user
+      if (error.message?.toLowerCase().includes('row-level security') || error.message?.includes('policy')) {
+        throw new Error('Submission blocked by database policy. An admin needs to run this in Supabase SQL editor:\n\nCREATE POLICY \"anon_insert\" ON public_comments FOR INSERT TO anon WITH CHECK (true);\n\nALTER TABLE public_comments ENABLE ROW LEVEL SECURITY;');
+      }
       throw new Error(error.message);
     }
 
@@ -2944,6 +2953,7 @@ function openAddCrime() { openAddRecord(); } // backward-compat alias
 function openAddRecord(preselectedCategory) {
   document.getElementById('add-date').value = new Date().toISOString().split('T')[0];
   geocodeLng = geocodeLat = null;
+    if (addPreviewMarker) { map.removeLayer(addPreviewMarker); addPreviewMarker = null; }
   document.getElementById('geocode-status').textContent = '';
   document.getElementById('add-coords').textContent = '';
   cancelPinDrop();
@@ -3287,8 +3297,21 @@ function geocodeAddr() {
         else if (a.road)              addrLabel = a.road;
         else                          addrLabel = best.display_name.split(',').slice(0,2).join(',').trim();
         if (a.city || a.town || a.suburb) addrLabel += `, ${a.city || a.town || a.suburb}`;
-        document.getElementById('geocode-status').textContent = '✓ ' + addrLabel;
+        document.getElementById('geocode-status').textContent = '✓ ' + addrLabel + ' — drag pin to adjust if needed';
         document.getElementById('add-coords').textContent = geocodeLat.toFixed(6) + ', ' + geocodeLng.toFixed(6);
+        // Make the preview pin draggable so officers can correct Nominatim's estimate
+        if (addPreviewMarker) {
+          addPreviewMarker.setLatLng([geocodeLat, geocodeLng]);
+          if (!addPreviewMarker.dragging._enabled) addPreviewMarker.dragging.enable();
+        } else {
+          addPreviewMarker = L.marker([geocodeLat, geocodeLng], { draggable: true }).addTo(map);
+          addPreviewMarker.on('dragend', e => {
+            const p = e.target.getLatLng();
+            geocodeLat = p.lat; geocodeLng = p.lng;
+            document.getElementById('add-coords').textContent = geocodeLat.toFixed(6) + ', ' + geocodeLng.toFixed(6);
+            document.getElementById('geocode-status').textContent = '📍 Pin manually adjusted';
+          });
+        }
       } else {
         geocodeLng = geocodeLat = null;
         document.getElementById('geocode-status').textContent = '⚠ Address not found — try a cross-street or use the pin drop';

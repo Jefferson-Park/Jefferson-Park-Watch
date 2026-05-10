@@ -2563,14 +2563,17 @@ async function submitPublicReport() {
   msg.textContent = 'Submitting…';
 
   try {
+    // Schema: id, created_at, lat, lng, category, description, submitter_email, status, reviewed_by, notes
+    // submitter_name has no dedicated column — fold into notes field
+    const commentNotes = name ? `Submitted by: ${name}` : null;
     const { error } = await sb.from('public_comments').insert({
       lat: pubReportLat,
       lng: pubReportLng,
       category: cat,
       description: desc,
-      submitter_name: name,
-      submitter_email: email,
+      submitter_email: email || null,
       status: 'new',
+      notes: commentNotes,
     });
 
     if (error) {

@@ -2011,102 +2011,29 @@ function renderParcelBody(ain, attrs) {
   const body = document.getElementById('parcel-popup-body');
   if (!body) return;
 
-  const fmt = (v) => v || '—';
-  const fmtMoney = (v) => v ? '$' + Number(v).toLocaleString() : '—';
+  const fmt = (v) => (v && String(v).trim()) ? String(v).trim() : null;
 
-  const owner     = fmt(attrs.OwnerName);
-  const apn       = fmt(attrs.APN || attrs.AIN || ain);
+  const apn      = fmt(attrs.APN || attrs.AIN || ain) || ain || '—';
+  const owner    = fmt(attrs.OwnerName);
+  const useDesc  = fmt(attrs.UseDescription) || fmt(attrs.UseCode);
+  const taxArea  = fmt(attrs.TaxRateArea);
 
-  body.innerHTML = `
-    <div class="parcel-row">
-      <span class="parcel-label">APN</span>
-      <span class="parcel-value highlight">${apn}</span>
-    </div>
-    <div class="parcel-row">
-      <span class="parcel-label">Owner</span>
-      <span class="parcel-value">${owner}</span>
-    </div>
-    <div class="parcel-row" id="pr-use">
-      <span class="parcel-label">Use</span>
-      <span class="parcel-value">—</span>
-    </div>
-    <div class="parcel-row" id="pr-assessed">
-      <span class="parcel-label">Assessed Value</span>
-      <span class="parcel-value">—</span>
-    </div>
-    <div class="parcel-row" id="pr-land">
-      <span class="parcel-label">Land / Improvement</span>
-      <span class="parcel-value">—</span>
-    </div>
-    <div class="parcel-row" id="pr-lot">
-      <span class="parcel-label">Lot Size</span>
-      <span class="parcel-value">—</span>
-    </div>
-    <div class="parcel-row" id="pr-year">
-      <span class="parcel-label">Year Built</span>
-      <span class="parcel-value">—</span>
-    </div>
-    <div class="parcel-row" id="pr-taxarea">
-      <span class="parcel-label">Tax Rate Area</span>
-      <span class="parcel-value">—</span>
-    </div>
-    <div class="parcel-row" id="pr-sale">
-      <span class="parcel-label">Last Sale</span>
-      <span class="parcel-value">—</span>
-    </div>
-  `;
+  // Only render rows that have data — no permanent dashes for unavailable fields
+  const row = (label, val, cls='') => val
+    ? `<div class="parcel-row"><span class="parcel-label">${label}</span><span class="parcel-value${cls ? ' ' + cls : ''}">${val}</span></div>`
+    : '';
 
-  // Fire second lookup for richer fields if we have AIN
-  if (ain) fetchParcelDetail(ain);
+  body.innerHTML =
+    row('APN',          apn,     'highlight') +
+    (owner   ? row('Owner',    owner)   : '') +
+    (useDesc ? row('Use',      useDesc) : '') +
+    (taxArea ? row('Tax Rate Area', taxArea) : '') +
+    `<div style="font-size:10px;color:var(--muted);padding:6px 0 2px;text-align:center">
+      Full financial details via Assessor Record ↗
+    </div>`;
 }
 
-async function fetchParcelDetail(ain) {
-  // Query by AIN using the confirmed-working LACounty_Parcel MapServer /find endpoint.
-  // This is the same service used by queryAssessorParcel — no CORS issues.
-  try {
-    const params = new URLSearchParams({
-      searchText:     ain,
-      searchFields:   'AIN',
-      layers:         '0',
-      returnGeometry: 'false',
-      f:              'json',
-    });
-    const res = await fetch(
-      'https://public.gis.lacounty.gov/public/rest/services/LACounty_Cache/LACounty_Parcel/MapServer/find?' + params,
-      { signal: AbortSignal.timeout(8000) }
-    );
-    if (!res.ok) return;
-    const data = await res.json();
-    const feat = data.results && data.results[0];
-    if (!feat) return;
 
-    const a = feat.attributes || {};
-    const setRow = (id, val) => {
-      const el = document.getElementById(id);
-      if (el) el.querySelector('.parcel-value').textContent = val || '—';
-    };
-
-    // Format values — assessor returns raw numbers
-    const totalVal = a.TotalValue       ? '$' + Number(a.TotalValue).toLocaleString()       : null;
-    const landVal  = a.LandValue        ? '$' + Number(a.LandValue).toLocaleString()        : null;
-    const impVal   = a.ImprovementValue ? '$' + Number(a.ImprovementValue).toLocaleString() : null;
-    const lotSqft  = a.LotSizeSqFt     ? Number(a.LotSizeSqFt).toLocaleString() + ' sq ft' : null;
-    const saleDate = a.RecordingDate    ? new Date(a.RecordingDate).toLocaleDateString('en-US', {year:'numeric',month:'short'}) : null;
-    const saleAmt  = a.SaleAmount       ? '$' + Number(a.SaleAmount).toLocaleString()       : null;
-    const saleLine = [saleDate, saleAmt].filter(Boolean).join(' · ');
-
-    setRow('pr-use',      a.UseDescription || a.UseCode);
-    setRow('pr-assessed', totalVal);
-    setRow('pr-land',     (landVal && impVal) ? landVal + ' / ' + impVal : (landVal || impVal));
-    setRow('pr-lot',      lotSqft);
-    setRow('pr-year',     a.YearBuilt);
-    setRow('pr-taxarea',  a.TaxRateArea);
-    setRow('pr-sale',     saleLine || null);
-
-  } catch(e) {
-    console.warn('[parcel detail] fetch failed:', e.message);
-  }
-}
 
 // Close parcel popup when clicking elsewhere on map
 document.addEventListener('click', (e) => {
@@ -3154,72 +3081,7 @@ async function runAddressSearch(q, autoFly) {
       return;
     }
 
-    // ── Stage 2: Census TIGER ──────────────────────────────────────
-    try {
-      const streetOnly = q.replace(/,.*$/, '').trim();
-      const cityState  = GEOCODE_CITY.split(',');
-      const censusParams = new URLSearchParams({
-        street:    streetOnly,
-        city:      cityState[0]?.trim() || 'Los Angeles',
-        state:     (cityState[1]?.trim() || 'CA').replace(/\s+/g,''),
-        benchmark: 'Public_AR_Current',
-        vintage:   'Current_Current',
-        format:    'json',
-      });
-      const censusRes  = await fetch(
-        'https://geocoding.geo.census.gov/geocoder/locations/address?' + censusParams,
-        { signal: AbortSignal.timeout(8000) }
-      );
-      const censusData = await censusRes.json();
-      const matches = censusData?.result?.addressMatches;
-      if (matches && matches.length) {
-        const m = matches[0];
-        const label = m.matchedAddress || streetOnly;
-        if (autoFly) {
-          box.style.display = 'none';
-          flyTo(m.coordinates.x, m.coordinates.y, label);
-          return;
-        }
-        const censusRow = `<div class="s-result" style="border-bottom:1px solid var(--border);background:rgba(0,194,168,0.07)"
-          onclick="flyTo(${m.coordinates.x},${m.coordinates.y},'${label.replace(/'/g,"\\'")}')">
-          <span style="color:var(--accent);font-family:var(--mono);font-size:10px">📍 CENSUS</span>
-          &nbsp;${label}
-        </div>`;
-        // Still fetch Nominatim for additional nearby results
-        const hasCity2 = /,/.test(q.trim());
-        let street2 = q.trim(), city2 = '', state2 = '', country2 = 'US';
-        if (hasCity2) {
-          const parts = q.trim().split(',').map(s => s.trim());
-          street2 = parts[0];
-          const rest = parts.slice(1).join(' ');
-          const sm = rest.match(/\b([A-Z]{2})\b/);
-          state2 = sm ? sm[1] : GEOCODE_CITY.split(',')[1]?.trim() || '';
-          city2  = rest.replace(/\b[A-Z]{2}\b/, '').replace(/\d{5}/, '').trim().replace(/,$/, '').trim();
-        } else {
-          const cs = GEOCODE_CITY.split(',');
-          city2 = cs[0]?.trim() || ''; state2 = cs[1]?.trim() || '';
-        }
-        let nomRows = '';
-        try {
-          const np = new URLSearchParams({ street: street2, city: city2, state: state2, country: country2, format:'json', limit:'4', addressdetails:'1', zoom:'19' });
-          const nr = await fetch('https://nominatim.openstreetmap.org/search?' + np, { headers:{ 'Accept-Language':'en' } });
-          const nd = await nr.json();
-          nomRows = nd.map(r => {
-            const a = r.address || {};
-            let lbl = a.house_number && a.road ? `${a.house_number} ${a.road}` : a.road || r.display_name.split(',')[0].trim();
-            if (a.neighbourhood || a.suburb) lbl += ` — ${a.neighbourhood || a.suburb}`;
-            return `<div class="s-result" onclick="flyTo(${r.lon},${r.lat},'${r.display_name.replace(/'/g,"\\'")}')">` + lbl + `</div>`;
-          }).join('');
-        } catch(_) {}
-        box.innerHTML = censusRow + nomRows;
-        box.style.display = 'block';
-        return;
-      }
-    } catch(e) {
-      console.warn('[search] Census TIGER failed:', e.message);
-    }
-
-    // ── Stage 3: Nominatim only (assessor + Census both missed) ───
+    // ── Stage 2: Nominatim (assessor missed — cross streets, landmarks, blocks) ───
     const hasCity = /,/.test(q.trim());
     let street = q.trim(), city = '', state = '', country = 'US';
     if (hasCity) {
@@ -3935,53 +3797,8 @@ function geocodeAddr() {
       return;
     }
 
-    // ── Stage 2: US Census Bureau TIGER geocoder ───────────────────
-    // Free, no API key, rooftop-level accuracy for US addresses.
-    // Uses the Census Bureau's MAF/TIGER address database — the same source
-    // the government uses for official address records.
-    // Returns benchmark coordinates tied to address points, not street centerlines.
-    console.log('[geocode] assessor miss — trying Census TIGER');
-    try {
-      const streetOnly = addr.replace(/,.*$/, '').trim();
-      const cityState  = GEOCODE_CITY.split(',');
-      const censusCity  = cityState[0]?.trim() || 'Los Angeles';
-      const censusState = (cityState[1]?.trim() || 'CA').replace(/\s+/g,'');
-      const censusParams = new URLSearchParams({
-        street:     streetOnly,
-        city:       censusCity,
-        state:      censusState,
-        benchmark:  'Public_AR_Current',
-        vintage:    'Current_Current',
-        format:     'json',
-        layers:     '10',   // Census Blocks — ensures we get coordinates not just a match
-      });
-      const censusRes  = await fetch(
-        'https://geocoding.geo.census.gov/geocoder/locations/address?' + censusParams,
-        { signal: AbortSignal.timeout(8000) }
-      );
-      const censusData = await censusRes.json();
-      const matches = censusData?.result?.addressMatches;
-      if (matches && matches.length) {
-        const m = matches[0];
-        // Census returns { x: lng, y: lat } in coordinates
-        geocodeLng = m.coordinates.x;
-        geocodeLat = m.coordinates.y;
-        const label = m.matchedAddress || streetOnly;
-        console.log('[geocode] Census TIGER hit:', label, geocodeLat, geocodeLng);
-        document.getElementById('geocode-status').textContent =
-          '✓ ' + label + ' (Census) — drag pin to adjust if needed';
-        document.getElementById('add-coords').textContent =
-          geocodeLat.toFixed(6) + ', ' + geocodeLng.toFixed(6);
-        _placeGeocodePin(geocodeLat, geocodeLng);
-        return;
-      }
-      console.log('[geocode] Census TIGER no match — falling back to Nominatim');
-    } catch(e) {
-      console.warn('[geocode] Census TIGER failed:', e.message);
-    }
-
-    // ── Stage 3: Nominatim fallback (structured) ──────────────────
-    console.log('[geocode] assessor miss — falling back to Nominatim (stage 3)');
+    // ── Stage 2: Nominatim fallback (cross streets, landmarks, blocks) ──
+    console.log('[geocode] assessor miss — falling back to Nominatim');
     const clean = addr.replace(/\*+/g, '50').trim();
     const hasCity = /,/.test(clean);
     let street = clean, city = '', state = '', country = 'US';

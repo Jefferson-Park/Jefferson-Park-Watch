@@ -354,6 +354,95 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
 #toast { position:fixed; bottom:70px; right:16px; z-index:4000; background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:11px 16px; font-size:13px; display:none; box-shadow:0 4px 16px rgba(0,0,0,.4); max-width:280px; }
 #toast.ok { border-color:var(--accent); color:var(--accent); }
 #toast.err { border-color:var(--danger); color:var(--danger); }
+
+/* ── Parcel hover label ─────────────────────────────────────────── */
+.parcel-hover-label {
+  background: rgba(10,13,22,0.88);
+  border: 1px solid var(--accent);
+  border-radius: 5px;
+  padding: 3px 8px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--accent);
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+
+/* ── Parcel detail popup ────────────────────────────────────────── */
+.parcel-popup {
+  position: fixed;
+  z-index: 3000;
+  width: 280px;
+  background: var(--panel);
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+  overflow: hidden;
+  font-family: var(--font);
+}
+.parcel-popup-header {
+  background: linear-gradient(135deg, rgba(0,194,168,0.15), rgba(45,139,255,0.1));
+  border-bottom: 1px solid var(--border);
+  padding: 12px 14px 10px;
+  position: relative;
+}
+.parcel-popup-addr {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.3;
+}
+.parcel-popup-city {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.parcel-popup-close {
+  position: absolute;
+  top: 8px; right: 10px;
+  background: none; border: none;
+  color: var(--muted); font-size: 16px;
+  cursor: pointer; line-height: 1;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.parcel-popup-close:hover { color: var(--text); background: var(--panel2); }
+.parcel-popup-body { padding: 10px 14px 12px; }
+.parcel-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(46,51,80,0.5);
+  font-size: 12px;
+}
+.parcel-row:last-child { border-bottom: none; }
+.parcel-label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+.parcel-value { color: var(--text); font-family: var(--mono); font-size: 11px; text-align: right; max-width: 160px; word-break: break-word; }
+.parcel-value.highlight { color: var(--accent); }
+.parcel-popup-footer {
+  padding: 8px 14px;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 6px;
+}
+.parcel-popup-footer a {
+  flex: 1; text-align: center;
+  font-size: 11px; padding: 6px 4px;
+  border-radius: 6px;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  text-decoration: none;
+  transition: border-color .15s, color .15s;
+}
+.parcel-popup-footer a:hover { border-color: var(--accent); color: var(--accent); }
+.parcel-loading {
+  padding: 18px 14px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+}
 </style>
 </head>
 <body>
@@ -1562,6 +1651,9 @@ async function launch() {
 // MAP INIT — Leaflet
 // ══════════════════════════════════════════════════════════════════
 let TILE_STREET, TILE_SAT, TILE_PARCEL = null;
+let parcelVectorLayer = null;   // GeoJSON hover/click layer — only loaded when parcel mode ON
+let parcelPopup = null;         // current open parcel popup
+let parcelHoverLabel = null;    // lightweight house-number hover tooltip
 
 function initMap() {
   TILE_STREET = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -1715,8 +1807,16 @@ function setBasemap(type) {
       map.setZoom(16);
       showToast('Zoomed in — parcel lines load at zoom 15+', 'ok');
     } else {
-      showToast('Parcel layer on — property boundaries visible', 'ok');
+      showToast('Parcel layer on — hover parcels for address · click for full details', 'ok');
     }
+    // Attach identify-based hover and click listeners
+    loadParcelVectorLayer();
+    map.on('mousemove', onParcelMouseMove);
+    map.on('click',     onParcelClick);
+  } else {
+    // Parcel mode turned off — remove listeners, clear labels and popup
+    destroyParcelVectorLayer();
+    map.off('moveend zoomend', onParcelMapMove);
   }
 
   // Keep markers on top
@@ -1727,6 +1827,291 @@ function setBasemap(type) {
   const parcelBtn = document.getElementById('bm-parcel');
   if (parcelBtn) parcelBtn.classList.toggle('active', type === 'parcel');
 }
+
+// ══════════════════════════════════════════════════════════════════
+// PARCEL HOVER & CLICK — identify-based (no bulk vector fetch)
+// ══════════════════════════════════════════════════════════════════
+// Uses MapServer /identify at the cursor position — one lightweight
+// request per hover/click, no bulk polygon download, no CORS issues.
+// The tile layer draws the parcel boundaries; this layer handles events.
+
+const PARCEL_IDENTIFY_URL =
+  'https://public.gis.lacounty.gov/public/rest/services/LACounty_Cache/LACounty_Parcel/MapServer/identify';
+
+let parcelMoveTimer    = null;
+let parcelHoverTimer   = null;   // debounce hover identify calls
+let parcelLastHoverAIN = null;   // avoid re-querying same parcel on slow moves
+
+function onParcelMapMove() {
+  // Nothing needed — identify fires on mouse events, not map moves
+}
+
+// Called by setBasemap('parcel') — attach map-level mouse listeners
+function loadParcelVectorLayer() {
+  // No bulk fetch — listeners are attached directly to the map
+  console.log('[parcel] identify mode active — hover/click enabled');
+}
+
+// Shared identify call: returns parcel attrs at a lat/lng point
+async function identifyParcelAt(latlng) {
+  const mapSize  = map.getSize();
+  const mapBounds = map.getBounds();
+  const point    = map.latLngToContainerPoint(latlng);
+  const bbox = [
+    mapBounds.getWest(), mapBounds.getSouth(),
+    mapBounds.getEast(), mapBounds.getNorth(),
+  ].join(',');
+
+  const params = new URLSearchParams({
+    geometry:       `${latlng.lng},${latlng.lat}`,
+    geometryType:   'esriGeometryPoint',
+    sr:             '4326',
+    layers:         'all:0',
+    tolerance:      '2',
+    mapExtent:      bbox,
+    imageDisplay:   `${mapSize.x},${mapSize.y},96`,
+    returnGeometry: 'false',
+    outFields:      'AIN,APN,SitusHouseNo,SitusDirection,SitusStreet,SitusCity,SitusZip,SitusFullAddress,OwnerName',
+    f:              'json',
+  });
+
+  const res = await fetch(PARCEL_IDENTIFY_URL + '?' + params, {
+    signal: AbortSignal.timeout(6000),
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  if (data.error) { console.warn('[parcel identify] error:', data.error.message); return null; }
+  const result = data.results && data.results[0];
+  if (!result) return null;
+
+  const attrs = result.attributes || {};
+  // Build address parts
+  const houseNum  = attrs.SitusHouseNo  || '';
+  const dir       = attrs.SitusDirection ? attrs.SitusDirection + ' ' : '';
+  const street    = attrs.SitusStreet   || '';
+  const shortAddr = [houseNum, dir + street].filter(Boolean).join(' ').trim();
+  const ain       = attrs.AIN || attrs.APN || '';
+
+  return { shortAddr, ain, attrs,
+    city: attrs.SitusCity || 'Los Angeles',
+    zip:  attrs.SitusZip  || '' };
+}
+
+// Map-level mousemove: debounced hover label
+function onParcelMouseMove(e) {
+  clearTimeout(parcelHoverTimer);
+  parcelHoverTimer = setTimeout(async () => {
+    try {
+      const info = await identifyParcelAt(e.latlng);
+      if (!info || !info.shortAddr) {
+        if (parcelHoverLabel) { parcelHoverLabel.remove(); parcelHoverLabel = null; }
+        return;
+      }
+      // Don't re-render if same parcel
+      if (info.ain && info.ain === parcelLastHoverAIN && parcelHoverLabel) {
+        parcelHoverLabel.setLatLng(e.latlng);
+        return;
+      }
+      parcelLastHoverAIN = info.ain;
+      if (parcelHoverLabel) { parcelHoverLabel.remove(); parcelHoverLabel = null; }
+      parcelHoverLabel = L.tooltip({
+        permanent:  false,
+        direction:  'top',
+        className:  'parcel-hover-label',
+        offset:     [0, -6],
+        opacity:    1,
+      })
+        .setContent(info.shortAddr)
+        .setLatLng(e.latlng)
+        .addTo(map);
+    } catch(err) { /* silent — hover is best-effort */ }
+  }, 180);
+}
+
+// Map-level click: full detail popup
+async function onParcelClick(e) {
+  if (parcelHoverLabel) { parcelHoverLabel.remove(); parcelHoverLabel = null; }
+  clearTimeout(parcelHoverTimer);
+  try {
+    // Show loading popup immediately so user knows click registered
+    openParcelPopup(e.originalEvent, '…', '', '', '', {});
+    const info = await identifyParcelAt(e.latlng);
+    if (!info) {
+      closeParcelPopup();
+      return;
+    }
+    // Replace with real data
+    openParcelPopup(e.originalEvent, info.shortAddr, info.city, info.zip, info.ain, info.attrs);
+  } catch(err) {
+    console.warn('[parcel click] identify failed:', err.message);
+    closeParcelPopup();
+  }
+}
+
+function destroyParcelVectorLayer() {
+  clearTimeout(parcelMoveTimer);
+  clearTimeout(parcelHoverTimer);
+  parcelLastHoverAIN = null;
+  if (map) {
+    map.off('mousemove', onParcelMouseMove);
+    map.off('click',     onParcelClick);
+  }
+  if (parcelVectorLayer) { map.removeLayer(parcelVectorLayer); parcelVectorLayer = null; }
+  if (parcelHoverLabel)  { parcelHoverLabel.remove();  parcelHoverLabel = null; }
+  closeParcelPopup();
+}
+
+// ── Parcel popup ─────────────────────────────────────────────────
+
+function closeParcelPopup() {
+  if (parcelPopup) { parcelPopup.remove(); parcelPopup = null; }
+}
+
+function openParcelPopup(mouseEvent, shortAddr, city, zip, ain, attrs) {
+  closeParcelPopup();
+
+  // Position popup near click, keep it on screen
+  const x = Math.min(mouseEvent.clientX + 12, window.innerWidth  - 296);
+  const y = Math.min(mouseEvent.clientY - 20,  window.innerHeight - 320);
+
+  const el = document.createElement('div');
+  el.className = 'parcel-popup';
+  el.style.left = x + 'px';
+  el.style.top  = y + 'px';
+
+  const cityLine = [city, zip].filter(Boolean).join(' ');
+
+  el.innerHTML = `
+    <div class="parcel-popup-header">
+      <div class="parcel-popup-addr">📋 ${shortAddr || 'Unknown Address'}</div>
+      ${cityLine ? `<div class="parcel-popup-city">${cityLine}</div>` : ''}
+      <button class="parcel-popup-close" onclick="closeParcelPopup()">✕</button>
+    </div>
+    <div class="parcel-popup-body" id="parcel-popup-body">
+      <div class="parcel-loading">Loading assessor data…</div>
+    </div>
+    ${ain ? `<div class="parcel-popup-footer">
+      <a href="https://portal.assessor.lacounty.gov/parceldetail/${ain}" target="_blank" rel="noopener">
+        Full Assessor Record ↗
+      </a>
+      <a href="https://assessor.lacounty.gov/map/?ain=${ain}" target="_blank" rel="noopener">
+        Assessor Map ↗
+      </a>
+    </div>` : ''}
+  `;
+
+  document.body.appendChild(el);
+  parcelPopup = el;
+
+  // Populate basic fields immediately from what we already have
+  renderParcelBody(ain, attrs);
+}
+
+function renderParcelBody(ain, attrs) {
+  const body = document.getElementById('parcel-popup-body');
+  if (!body) return;
+
+  const fmt = (v) => v || '—';
+  const fmtMoney = (v) => v ? '$' + Number(v).toLocaleString() : '—';
+
+  const owner     = fmt(attrs.OwnerName);
+  const apn       = fmt(attrs.APN || attrs.AIN || ain);
+
+  body.innerHTML = `
+    <div class="parcel-row">
+      <span class="parcel-label">APN</span>
+      <span class="parcel-value highlight">${apn}</span>
+    </div>
+    <div class="parcel-row">
+      <span class="parcel-label">Owner</span>
+      <span class="parcel-value">${owner}</span>
+    </div>
+    <div class="parcel-row" id="pr-use">
+      <span class="parcel-label">Use</span>
+      <span class="parcel-value">—</span>
+    </div>
+    <div class="parcel-row" id="pr-assessed">
+      <span class="parcel-label">Assessed Value</span>
+      <span class="parcel-value">—</span>
+    </div>
+    <div class="parcel-row" id="pr-land">
+      <span class="parcel-label">Land / Improvement</span>
+      <span class="parcel-value">—</span>
+    </div>
+    <div class="parcel-row" id="pr-lot">
+      <span class="parcel-label">Lot Size</span>
+      <span class="parcel-value">—</span>
+    </div>
+    <div class="parcel-row" id="pr-year">
+      <span class="parcel-label">Year Built</span>
+      <span class="parcel-value">—</span>
+    </div>
+    <div class="parcel-row" id="pr-taxarea">
+      <span class="parcel-label">Tax Rate Area</span>
+      <span class="parcel-value">—</span>
+    </div>
+    <div class="parcel-row" id="pr-sale">
+      <span class="parcel-label">Last Sale</span>
+      <span class="parcel-value">—</span>
+    </div>
+  `;
+
+  // Fire second lookup for richer fields if we have AIN
+  if (ain) fetchParcelDetail(ain);
+}
+
+async function fetchParcelDetail(ain) {
+  // Query by AIN using the confirmed-working LACounty_Parcel MapServer /find endpoint.
+  // This is the same service used by queryAssessorParcel — no CORS issues.
+  try {
+    const params = new URLSearchParams({
+      searchText:     ain,
+      searchFields:   'AIN',
+      layers:         '0',
+      returnGeometry: 'false',
+      f:              'json',
+    });
+    const res = await fetch(
+      'https://public.gis.lacounty.gov/public/rest/services/LACounty_Cache/LACounty_Parcel/MapServer/find?' + params,
+      { signal: AbortSignal.timeout(8000) }
+    );
+    if (!res.ok) return;
+    const data = await res.json();
+    const feat = data.results && data.results[0];
+    if (!feat) return;
+
+    const a = feat.attributes || {};
+    const setRow = (id, val) => {
+      const el = document.getElementById(id);
+      if (el) el.querySelector('.parcel-value').textContent = val || '—';
+    };
+
+    // Format values — assessor returns raw numbers
+    const totalVal = a.TotalValue       ? '$' + Number(a.TotalValue).toLocaleString()       : null;
+    const landVal  = a.LandValue        ? '$' + Number(a.LandValue).toLocaleString()        : null;
+    const impVal   = a.ImprovementValue ? '$' + Number(a.ImprovementValue).toLocaleString() : null;
+    const lotSqft  = a.LotSizeSqFt     ? Number(a.LotSizeSqFt).toLocaleString() + ' sq ft' : null;
+    const saleDate = a.RecordingDate    ? new Date(a.RecordingDate).toLocaleDateString('en-US', {year:'numeric',month:'short'}) : null;
+    const saleAmt  = a.SaleAmount       ? '$' + Number(a.SaleAmount).toLocaleString()       : null;
+    const saleLine = [saleDate, saleAmt].filter(Boolean).join(' · ');
+
+    setRow('pr-use',      a.UseDescription || a.UseCode);
+    setRow('pr-assessed', totalVal);
+    setRow('pr-land',     (landVal && impVal) ? landVal + ' / ' + impVal : (landVal || impVal));
+    setRow('pr-lot',      lotSqft);
+    setRow('pr-year',     a.YearBuilt);
+    setRow('pr-taxarea',  a.TaxRateArea);
+    setRow('pr-sale',     saleLine || null);
+
+  } catch(e) {
+    console.warn('[parcel detail] fetch failed:', e.message);
+  }
+}
+
+// Close parcel popup when clicking elsewhere on map
+document.addEventListener('click', (e) => {
+  if (parcelPopup && !parcelPopup.contains(e.target)) closeParcelPopup();
+});
 
 // ══════════════════════════════════════════════════════════════════
 // LOAD DATA

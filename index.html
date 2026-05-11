@@ -3321,94 +3321,98 @@ const JP_VIEWBOX = '-118.355,34.038,-118.295,33.988';
 //   https://public.gis.lacounty.gov/public/rest/services/LACounty_Cache/LACounty_Parcel/MapServer/0
 // Fields: AIN, APN, SitusHouseNo, SitusStreet, SitusFullAddress, OwnerName, SitusCity
 // Query by SitusHouseNo + SitusStreet (separate fields) for exact parcel match.
-const ASSESSOR_QUERY_URL =
-  'https://public.gis.lacounty.gov/public/rest/services/LACounty_Cache/LACounty_Parcel/MapServer/0/query';
+// LA County Assessor parcel lookup via MapServer /find operation.
+//
+// Why /find and NOT /query:
+//   The LACounty_Parcel MapServer is a fused tile cache.
+//   Its supported operations are: Export Map, Identify, Find, Return Updates.
+//   There is NO /query endpoint on this service — SQL WHERE clauses are not supported.
+//   /find is the correct text-search operation for MapServer services.
+//
+// /find response shape (different from /query):
+//   { results: [{ layerId, layerName, value, attributes, geometryType, geometry }] }
+//   geometry rings come back in the service's native SR (102100 web mercator)
+//   unless outSR=4326 is requested.
+//
+const ASSESSOR_FIND_URL =
+  'https://public.gis.lacounty.gov/public/rest/services/LACounty_Cache/LACounty_Parcel/MapServer/find';
 
 async function queryAssessorParcel(streetAddr) {
-  // The assessor stores addresses split across separate fields:
-  //   SitusHouseNo  = "3100"
-  //   SitusDirection = "W"   (optional directional prefix — separate field, not part of SitusStreet)
-  //   SitusStreet   = "CRENSHAW BLVD"  (name + suffix, NO leading directional)
-  //
-  // So "3100 W Crenshaw Blvd" must be parsed as houseNo=3100, street="CRENSHAW BLVD" (drop "W").
-  // If we leave the directional in the street query → SitusStreet LIKE 'W CRENSHAW%' → no match.
-
   const clean = streetAddr.replace(/\*+/g, '').replace(/\s+/g, ' ').trim().toUpperCase();
 
-  // Extract house number (including fractions like "3100½")
+  // Extract house number
   const numMatch = clean.match(/^(\d+\s*[½¼¾]?)/);
   if (!numMatch) return null;
   const houseNo = numMatch[1].trim();
 
-  // Everything after the house number
+  // Street name: strip leading directional (stored in separate SitusDirection field)
+  // and trailing suffix so "EDGEHILL DR" and "EDGEHILL" both find "EDGEHILL DR"
   let streetPart = clean.slice(numMatch[0].length).trim();
-
-  // Strip leading directional (N/S/E/W/NE/NW/SE/SW) — it goes in SitusDirection, not SitusStreet
-  streetPart = streetPart.replace(/^(N|S|E|W|NE|NW|SE|SW)\s+/i, '').trim();
-
-  // Strip trailing suffix so "CRENSHAW BLVD" and "CRENSHAW" both match stored "CRENSHAW BLVD"
-  // We do a LIKE 'CRENSHAW%' so the stored suffix is included in the match
+  streetPart = streetPart.replace(/^(NE|NW|SE|SW|N|S|E|W)\s+/i, '').trim();
   const streetBase = streetPart
-    .replace(/\s+(BLVD|BOULEVARD|AVE|AVENUE|ST|STREET|DR|DRIVE|RD|ROAD|LN|LANE|CT|COURT|PL|PLACE|WAY|PKWY|PARKWAY|TERR|TER|TERRACE|CIR|CIRCLE|EXPY|EXPRESSWAY)\.?$/i, '')
+    .replace(/\s+(BLVD|BOULEVARD|AVE|AVENUE|ST|STREET|DR|DRIVE|RD|ROAD|LN|LANE|CT|COURT|PL|PLACE|WAY|PKWY|PARKWAY|TERR|TER|TERRACE|CIR|CIRCLE|EXPY|EXPRESSWAY)\.?\s*$/i, '')
     .trim();
 
   if (!streetBase) return null;
 
-  // Strategy: try structured query first (most precise), fall back to full-address LIKE
-  const tryQuery = async (where) => {
+  // /find searchText: "3045 EDGEHILL" — MapServer does partial match on SitusAddress
+  // The SitusAddress field stores formatted addresses like "3045 EDGEHILL DR"
+  const searchText = `${houseNo} ${streetBase}`;
+
+  const doFind = async (searchFields) => {
     const params = new URLSearchParams({
-      where,
-      outFields: 'AIN,APN,SitusHouseNo,SitusDirection,SitusStreet,SitusAddress,SitusFullAddress,OwnerName,SitusCity',
+      searchText,
+      searchFields,
+      layers:         '0',
       returnGeometry: 'true',
-      outSR: '4326',
-      f: 'json',
-      resultRecordCount: '3',
+      outSR:          '4326',
+      f:              'json',
     });
-    const res = await fetch(ASSESSOR_QUERY_URL + '?' + params, {
+    const res = await fetch(ASSESSOR_FIND_URL + '?' + params, {
       signal: AbortSignal.timeout(8000),
     });
-    if (!res.ok) { console.warn('Assessor HTTP', res.status); return null; }
+    if (!res.ok) { console.warn('Assessor /find HTTP', res.status); return null; }
     const data = await res.json();
-    if (data.error) { console.warn('Assessor error:', data.error.message); return null; }
-    return (data.features && data.features.length) ? data.features[0] : null;
+    if (data.error) { console.warn('Assessor /find error:', data.error.message); return null; }
+    return (data.results && data.results.length) ? data.results[0] : null;
   };
 
   try {
-    // Pass 1: exact house number + street name LIKE (no directional)
-    let feat = await tryQuery(`SitusHouseNo='${houseNo}' AND SitusStreet LIKE '${streetBase}%'`);
+    // Pass 1: search SitusAddress (the combined "3045 EDGEHILL DR" field)
+    let result = await doFind('SitusAddress');
 
-    // Pass 2: full-address LIKE fallback (catches unusual formatting)
-    if (!feat) {
-      console.log('Assessor pass 1 no match — trying SitusAddress LIKE fallback');
-      feat = await tryQuery(`SitusAddress LIKE '${houseNo} %${streetBase}%'`);
+    // Pass 2: search SitusFullAddress (longer combined field including city)
+    if (!result) {
+      console.log('[assessor] SitusAddress miss — trying SitusFullAddress');
+      result = await doFind('SitusFullAddress');
     }
 
-    if (!feat) {
-      console.log('Assessor: no parcel found for', streetAddr);
+    if (!result) {
+      console.log('[assessor] no match for:', searchText);
       return null;
     }
 
-    const attrs = feat.attributes;
-    console.log('Assessor hit:', attrs.SitusFullAddress || attrs.SitusAddress, '| geom type:', feat.geometry ? Object.keys(feat.geometry) : 'none');
+    const attrs = result.attributes || {};
+    console.log('[assessor] hit:', attrs.SitusFullAddress || attrs.SitusAddress,
+      '| geom:', result.geometryType, Object.keys(result.geometry || {}));
 
-    // Centroid from polygon rings (outSR=4326 so rings are [lng, lat] pairs)
+    // Centroid from polygon rings — outSR=4326 so rings are [lng, lat]
     let lat = null, lng = null;
-    if (feat.geometry) {
-      if (feat.geometry.x !== undefined && feat.geometry.y !== undefined) {
-        // Point geometry
-        lng = feat.geometry.x; lat = feat.geometry.y;
-      } else if (feat.geometry.rings && feat.geometry.rings.length) {
-        // Polygon — centroid of outer ring
-        const ring = feat.geometry.rings[0];
+    const geom = result.geometry;
+    if (geom) {
+      if (geom.x !== undefined && geom.y !== undefined) {
+        lng = geom.x; lat = geom.y;
+      } else if (geom.rings && geom.rings.length) {
+        const ring = geom.rings[0];
         lng = ring.reduce((s, p) => s + p[0], 0) / ring.length;
         lat = ring.reduce((s, p) => s + p[1], 0) / ring.length;
       }
     }
-    if (!lat || !lng) { console.warn('Assessor: geometry missing or unusable'); return null; }
+    if (!lat || !lng) { console.warn('[assessor] geometry missing'); return null; }
 
-    // Sanity check: coordinates should be in LA County range
-    if (lat < 33.5 || lat > 34.9 || lng < -118.9 || lng > -117.6) {
-      console.warn('Assessor: coordinates out of LA County range:', lat, lng);
+    // Sanity-check: LA County bounding box
+    if (lat < 33.5 || lat > 34.9 || lng < -118.95 || lng > -117.6) {
+      console.warn('[assessor] coords outside LA County:', lat, lng);
       return null;
     }
 
@@ -3417,11 +3421,11 @@ async function queryAssessorParcel(streetAddr) {
       apn:       attrs.APN  || attrs.AIN || '',
       ain:       attrs.AIN  || '',
       owner:     attrs.OwnerName || '',
-      matchAddr: attrs.SitusFullAddress || attrs.SitusAddress || `${houseNo} ${streetBase}`,
+      matchAddr: attrs.SitusFullAddress || attrs.SitusAddress || searchText,
       city:      attrs.SitusCity || '',
     };
   } catch(e) {
-    console.warn('Assessor query exception:', e.message);
+    console.warn('[assessor] exception:', e.message);
     return null;
   }
 }

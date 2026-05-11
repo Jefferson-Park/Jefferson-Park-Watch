@@ -1572,26 +1572,51 @@ function initMap() {
     { attribution: 'Esri, Maxar, Earthstar Geographics', maxZoom: 19 }
   );
 
-  // LA County Assessor parcel layer — tile cache, no CORS probe needed
-  // The LACounty_Cache tile service is public and browser-accessible without auth.
-  // We no longer probe the FeatureServer endpoints (they block CORS from the browser).
-  (function initParcelLayer() {
-    try {
-      TILE_PARCEL = L.tileLayer(
-        'https://cache.gis.lacounty.gov/cache/rest/services/LACounty_Cache/LACounty_Parcels/MapServer/tile/{z}/{y}/{x}',
-        {
-          attribution: '© LA County Assessor',
-          minZoom: 15,
-          maxZoom: 21,
-          opacity: 0.85,
+  // LA County parcel layer — uses dynamicMapLayer (single /export image per view)
+  // instead of a tile cache. The tile cache requires auth and returns 404/403.
+  // dynamicMapLayer fires one bbox image request per pan/zoom — no pre-cached tiles,
+  // no 404 spam. Requires esri-leaflet (already loaded above).
+  (async function initParcelLayer() {
+    // Two candidate MapServer roots — layer 43 on LMS_Data_Public is parcels
+    const CANDIDATES = [
+      { url: 'https://public.gis.lacounty.gov/public/rest/services/LACounty_Dynamic/LMS_Data_Public/MapServer', layers: [43] },
+      { url: 'https://map.assessor.lacounty.gov/arcgis/rest/services/MAPPING/Assessor/MapServer',                layers: [0]  },
+    ];
+
+    for (const { url, layers } of CANDIDATES) {
+      try {
+        // Lightweight probe: just fetch the service JSON to confirm it responds
+        const probe = await fetch(url + '?f=json', { signal: AbortSignal.timeout(7000) });
+        if (!probe.ok) continue;
+        const json = await probe.json();
+        // Must be a MapServer (has .layers or .serviceDescription)
+        if (!json.layers && !json.serviceDescription && !json.mapName) continue;
+
+        if (typeof L.esri === 'undefined' || typeof L.esri.dynamicMapLayer === 'undefined') {
+          console.warn('esri-leaflet not available — parcel layer skipped');
+          return;
         }
-      );
-      const parcelBtn = document.getElementById('bm-parcel');
-      if (parcelBtn) parcelBtn.style.display = 'block';
-      console.log('✅ Parcel tile layer ready');
-    } catch(e) {
-      console.warn('Parcel layer init failed:', e.message);
+
+        TILE_PARCEL = L.esri.dynamicMapLayer({
+          url,
+          layers,
+          opacity:     0.7,
+          f:           'image',
+          format:      'png32',
+          transparent: true,
+          // Only render at zoom 15+ to avoid a blurry county-wide image
+          // We enforce this in setBasemap() with a zoom check
+        });
+
+        const parcelBtn = document.getElementById('bm-parcel');
+        if (parcelBtn) parcelBtn.style.display = 'block';
+        console.log('✅ Parcel dynamicMapLayer ready:', url);
+        return;
+      } catch(e) {
+        console.log('Parcel candidate failed:', url, e.message);
+      }
     }
+    console.warn('All parcel endpoints failed — parcel layer unavailable');
   })();
 
   map = L.map('map', {
@@ -1701,10 +1726,12 @@ function setBasemap(type) {
   }
 
   if (type === 'parcel' && TILE_PARCEL) {
-    TILE_PARCEL.addTo(map);   // esri featureLayer uses addTo, not map.addLayer
+    TILE_PARCEL.addTo(map);
     if (map.getZoom() < 15) {
-      map.setZoom(15);  // zoom in so parcels actually load
-      showToast('Zoomed in — parcel boundaries load at zoom 15+', 'ok');
+      map.setZoom(16);  // dynamicMapLayer renders at any zoom but parcels are too small to see below 15
+      showToast('Zoomed in — parcel boundaries visible at zoom 15+', 'ok');
+    } else {
+      showToast('Parcel layer on — orange lines show property boundaries', 'ok');
     }
   }
 

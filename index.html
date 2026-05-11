@@ -3479,9 +3479,17 @@ async function queryAssessorParcel(streetAddr) {
     }
     if (!lat || !lng) { console.warn('[assessor] geometry missing'); return null; }
 
+    // If outSR=4326 was ignored and coords came back in Web Mercator (EPSG:3857),
+    // the values will be large numbers (x ~±20M, y ~±20M). Convert to WGS84.
+    if (Math.abs(lng) > 180 || Math.abs(lat) > 90) {
+      console.log('[assessor] converting Web Mercator → WGS84');
+      lng = lng / 20037508.34 * 180;
+      lat = Math.atan(Math.exp(lat / 20037508.34 * Math.PI)) * 360 / Math.PI - 90;
+    }
+
     // Sanity-check: LA County bounding box
     if (lat < 33.5 || lat > 34.9 || lng < -118.95 || lng > -117.6) {
-      console.warn('[assessor] coords outside LA County:', lat, lng);
+      console.warn('[assessor] coords outside LA County after conversion:', lat, lng);
       return null;
     }
 

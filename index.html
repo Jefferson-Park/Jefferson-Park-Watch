@@ -1572,51 +1572,26 @@ function initMap() {
     { attribution: 'Esri, Maxar, Earthstar Geographics', maxZoom: 19 }
   );
 
-  // LA County Assessor parcel layer — probes multiple endpoints and uses first that responds
-  // Runs from the user's browser so actual connectivity is tested, not assumed
-  (async function initParcelLayer() {
-    const PARCEL_CANDIDATES = [
-      // ✅ Confirmed working — LA County public GIS mirror
-      'https://public.gis.lacounty.gov/public/rest/services/LACounty_Dynamic/LMS_Data_Public/MapServer/43',
-      // Fallback: LA County Assessor
-      'https://map.assessor.lacounty.gov/arcgis/rest/services/MAPPING/Assessor/MapServer/0',
-    ];
-
-    const parcelStyle = () => ({
-      color: '#e67e22', weight: 1.5, opacity: 1,
-      fill: true, fillColor: '#e67e22', fillOpacity: 0.08,
-    });
-
-    for (const url of PARCEL_CANDIDATES) {
-      try {
-        const probe = await fetch(url + '?f=json', { signal: AbortSignal.timeout(6000) });
-        if (!probe.ok) continue;
-        const json = await probe.json();
-        // Confirm it's a real ArcGIS layer
-        if (!json.type && !json.geometryType && !json.layers) continue;
-
-        console.log('Parcel endpoint OK:', url);
-        if (typeof L.esri !== 'undefined') {
-          TILE_PARCEL = L.esri.featureLayer({
-            url, style: parcelStyle, minZoom: 15, simplifyFactor: 0.35, precision: 5,
-          });
-        } else {
-          // esri-leaflet failed to load — fall back to dynamic map image via WMS-like tile
-          TILE_PARCEL = L.tileLayer(
-            url.replace(/\/MapServer.*/, '/MapServer') +
-            '/export?bbox={bbox-epsg-3857}&bboxSR=102100&imageSR=102100&size=256,256&format=png32&transparent=true&f=image',
-            { tileSize: 256, attribution: '© LA County Assessor', minZoom: 15, maxZoom: 21 }
-          );
+  // LA County Assessor parcel layer — tile cache, no CORS probe needed
+  // The LACounty_Cache tile service is public and browser-accessible without auth.
+  // We no longer probe the FeatureServer endpoints (they block CORS from the browser).
+  (function initParcelLayer() {
+    try {
+      TILE_PARCEL = L.tileLayer(
+        'https://cache.gis.lacounty.gov/cache/rest/services/LACounty_Cache/LACounty_Parcels/MapServer/tile/{z}/{y}/{x}',
+        {
+          attribution: '© LA County Assessor',
+          minZoom: 15,
+          maxZoom: 21,
+          opacity: 0.85,
         }
-        const parcelBtn = document.getElementById('bm-parcel');
-        if (parcelBtn) parcelBtn.style.display = 'block';
-        return; // stop after first working endpoint
-      } catch(e) {
-        console.log('Parcel endpoint failed:', url, e.message);
-      }
+      );
+      const parcelBtn = document.getElementById('bm-parcel');
+      if (parcelBtn) parcelBtn.style.display = 'block';
+      console.log('✅ Parcel tile layer ready');
+    } catch(e) {
+      console.warn('Parcel layer init failed:', e.message);
     }
-    console.warn('All parcel endpoints failed — parcel layer unavailable');
-    // Keep button hidden (default) — no parcel layer
   })();
 
   map = L.map('map', {
@@ -2729,7 +2704,61 @@ let searchTimer;
 async function runAddressSearch(q, autoFly) {
   const box = document.getElementById('search-results');
   try {
-    // Parse query into structured Nominatim fields for parcel-level accuracy
+    // ── Stage 1: LA County Assessor parcel query ──────────────────
+    const streetOnly = q.replace(/,.*$/, '').trim();
+    const parcel = await queryAssessorParcel(streetOnly);
+    if (parcel) {
+      if (autoFly) {
+        box.style.display = 'none';
+        flyTo(parcel.lng, parcel.lat, parcel.matchAddr);
+        return;
+      }
+      // Show assessor result at top with parcel badge, then fall through for more Nominatim results
+      const parcelRow = `<div class="s-result" style="border-bottom:1px solid var(--border);background:rgba(0,194,168,0.07)"
+        onclick="flyTo(${parcel.lng},${parcel.lat},'${parcel.matchAddr.replace(/'/g,"\\'")}')">
+        <span style="color:var(--accent);font-family:var(--mono);font-size:10px">📋 PARCEL</span>
+        &nbsp;${parcel.matchAddr}
+        ${parcel.apn ? `<span style="color:var(--muted);font-size:10px;margin-left:6px">APN ${parcel.apn}</span>` : ''}
+      </div>`;
+
+      // Also fetch Nominatim for additional results
+      const hasCity = /,/.test(q.trim());
+      let street = q.trim(), city = '', state = '', country = 'US';
+      if (hasCity) {
+        const parts = q.trim().split(',').map(s => s.trim());
+        street = parts[0];
+        const rest = parts.slice(1).join(' ');
+        const stateMatch = rest.match(/\b([A-Z]{2})\b/);
+        state = stateMatch ? stateMatch[1] : GEOCODE_CITY.split(',')[1]?.trim() || '';
+        city  = rest.replace(/\b[A-Z]{2}\b/, '').replace(/\d{5}/, '').trim().replace(/,$/, '').trim();
+      } else {
+        const cityState = GEOCODE_CITY.split(',');
+        city  = cityState[0]?.trim() || '';
+        state = cityState[1]?.trim() || '';
+      }
+      let nominatimRows = '';
+      try {
+        const params = new URLSearchParams({ street, city, state, country, format:'json', limit:'4', addressdetails:'1', zoom:'19' });
+        const res  = await fetch('https://nominatim.openstreetmap.org/search?' + params, { headers:{ 'Accept-Language':'en' } });
+        const data = await res.json();
+        nominatimRows = data.map(r => {
+          const a = r.address || {};
+          let label = '';
+          if (a.house_number && a.road) label = `${a.house_number} ${a.road}`;
+          else if (a.road)              label = a.road;
+          else                          label = r.display_name.split(',')[0].trim();
+          if (a.neighbourhood || a.suburb) label += ` — ${a.neighbourhood || a.suburb}`;
+          else if (a.city || a.town)       label += `, ${a.city || a.town}`;
+          return `<div class="s-result" onclick="flyTo(${r.lon},${r.lat},'${r.display_name.replace(/'/g,"\\'")}')">` + label + `</div>`;
+        }).join('');
+      } catch(_) {}
+
+      box.innerHTML = parcelRow + nominatimRows;
+      box.style.display = 'block';
+      return;
+    }
+
+    // ── Stage 2: Nominatim only (assessor had no match) ───────────
     const hasCity = /,/.test(q.trim());
     let street = q.trim(), city = '', state = '', country = 'US';
     if (hasCity) {
@@ -2769,7 +2798,7 @@ async function runAddressSearch(q, autoFly) {
       else                          label = r.display_name.split(',')[0].trim();
       if (a.neighbourhood || a.suburb) label += ` — ${a.neighbourhood || a.suburb}`;
       else if (a.city || a.town)       label += `, ${a.city || a.town}`;
-      return `<div class="s-result" onclick="flyTo(${r.lon},${r.lat},'${r.display_name.replace(/'/g,"\'")}')">` + label + `</div>`;
+      return `<div class="s-result" onclick="flyTo(${r.lon},${r.lat},'${r.display_name.replace(/'/g,"\\'")}')">` + label + `</div>`;
     }).join('');
     box.style.display = 'block';
   } catch(err) {
@@ -3280,42 +3309,132 @@ function openAddRecordFromDraw() {
 // NOTE: intentionally NOT passed to Nominatim geocoding; city+state context is more accurate
 const JP_VIEWBOX = '-118.355,34.038,-118.295,33.988';
 
+// ── Assessor parcel lookup ────────────────────────────────────────────────────
+// Queries the LA County public parcel FeatureServer for an address and returns
+// { lat, lng, apn, owner, lotSqFt, matchAddr } or null on no match.
+// This is a REST query (not a tile request) — CORS-open on the public endpoint.
+const ASSESSOR_QUERY_URL =
+  'https://public.gis.lacounty.gov/public/rest/services/LACounty_Dynamic/LMS_Data_Public/MapServer/43/query';
+
+async function queryAssessorParcel(streetAddr) {
+  // Normalise: strip unit suffixes, uppercase for LIKE match
+  const normalized = streetAddr.replace(/\*+/g, '').replace(/\s+/g,' ').trim().toUpperCase();
+  // The assessor field is SitusFullAddress — we search the street number + first word of street
+  const parts = normalized.split(' ');
+  const houseNum = parts[0] || '';
+  // Build a generous LIKE that matches "3100 CRENSHAW%" → catches "BLVD", "AVE", etc.
+  const likeStr = houseNum + ' ' + (parts[1] || '') + '%';
+  const params = new URLSearchParams({
+    where: `SitusFullAddress LIKE '${likeStr}'`,
+    outFields: 'APN,SitusFullAddress,OwnerName,LotSizeSquareFeet,Shape',
+    returnGeometry: 'true',
+    outSR: '4326',
+    f: 'json',
+    resultRecordCount: '5',
+  });
+  try {
+    const res = await fetch(ASSESSOR_QUERY_URL + '?' + params, {
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data.features || !data.features.length) return null;
+    // Pick the closest match by address string
+    const feat = data.features[0];
+    const attrs = feat.attributes;
+    // Geometry is the parcel polygon — centroid via average of rings
+    let lat = null, lng = null;
+    if (feat.geometry) {
+      if (feat.geometry.x !== undefined) {
+        // Point geometry
+        lng = feat.geometry.x; lat = feat.geometry.y;
+      } else if (feat.geometry.rings) {
+        // Polygon — compute centroid of outer ring
+        const ring = feat.geometry.rings[0];
+        lng = ring.reduce((s, p) => s + p[0], 0) / ring.length;
+        lat = ring.reduce((s, p) => s + p[1], 0) / ring.length;
+      }
+    }
+    if (!lat || !lng) return null;
+    return {
+      lat, lng,
+      apn:        attrs.APN || '',
+      owner:      attrs.OwnerName || '',
+      lotSqFt:    attrs.LotSizeSquareFeet || '',
+      matchAddr:  attrs.SitusFullAddress || streetAddr,
+    };
+  } catch(e) {
+    console.warn('Assessor query failed:', e.message);
+    return null;
+  }
+}
+
+// Auto-fill APN / owner / lot into form fields when category supports it
+function applyAssessorToForm(parcel) {
+  if (!parcel) return;
+  // APN → parcel field (vacant_lot category)
+  const apnEl = document.getElementById('add-field-parcel');
+  if (apnEl && !apnEl.value) apnEl.value = parcel.apn;
+  // Owner → owner field (vacant_lot, public_property)
+  const ownerEl = document.getElementById('add-field-owner');
+  if (ownerEl && !ownerEl.value) ownerEl.value = parcel.owner;
+  // Lot size → units field (mix_use_residential)
+  const unitsEl = document.getElementById('add-field-units');
+  if (unitsEl && !unitsEl.value && parcel.lotSqFt)
+    unitsEl.value = Math.round(parcel.lotSqFt).toLocaleString() + ' sq ft (lot)';
+}
+
 function geocodeAddr() {
   clearTimeout(geocodeTimer);
   const addr = document.getElementById('add-addr').value.trim();
   if (addr.length < 5) return;
+  // Clear stale result immediately so old coordinates can't be submitted
+  geocodeLng = geocodeLat = null;
   document.getElementById('geocode-status').textContent = 'Geocoding…';
+
   geocodeTimer = setTimeout(async () => {
-    // Parse the typed address into structured parts for Nominatim structured search.
-    // Structured mode (street= / city= / state= / country=) skips Nominatim's text
-    // parser and matches fields directly — significantly more accurate for house numbers.
+    // ── Stage 1: LA County Assessor parcel query ──────────────────
+    // Strips city/state suffix before querying (assessor only stores street portion)
+    const streetOnly = addr.replace(/,.*$/, '').trim();
+    const parcel = await queryAssessorParcel(streetOnly);
+
+    if (parcel) {
+      geocodeLat = parcel.lat;
+      geocodeLng = parcel.lng;
+      document.getElementById('geocode-status').textContent =
+        `📋 Parcel confirmed ✓  APN: ${parcel.apn || 'n/a'} — ${parcel.matchAddr}`;
+      document.getElementById('add-coords').textContent =
+        geocodeLat.toFixed(6) + ', ' + geocodeLng.toFixed(6);
+      applyAssessorToForm(parcel);
+      _placeGeocodePin(geocodeLat, geocodeLng);
+      return;
+    }
+
+    // ── Stage 2: Nominatim fallback (structured) ──────────────────
     const clean = addr.replace(/\*+/g, '50').trim();
-    // Split off any trailing city/state the user may have typed, defaulting to GEOCODE_CITY
     const hasCity = /,/.test(clean);
     let street = clean, city = '', state = '', country = 'US';
     if (hasCity) {
       const parts = clean.split(',').map(s => s.trim());
       street = parts[0];
-      // Remaining parts treated as city [state] [zip] — pull state from last 2-char token
       const rest = parts.slice(1).join(' ');
       const stateMatch = rest.match(/\b([A-Z]{2})\b/);
       state = stateMatch ? stateMatch[1] : GEOCODE_CITY.split(',')[1]?.trim() || '';
-      city = rest.replace(/\b[A-Z]{2}\b/, '').replace(/\d{5}/, '').trim().replace(/,$/, '').trim();
+      city  = rest.replace(/\b[A-Z]{2}\b/, '').replace(/\d{5}/, '').trim().replace(/,$/, '').trim();
     } else {
       const cityState = GEOCODE_CITY.split(',');
       city  = cityState[0]?.trim() || '';
       state = cityState[1]?.trim() || '';
     }
     try {
-      // Structured Nominatim search — each field matched independently, no text-parser ambiguity
       const params = new URLSearchParams({
         street, city, state, country,
         format: 'json', limit: '3', addressdetails: '1', zoom: '19',
       });
-      const url = 'https://nominatim.openstreetmap.org/search?' + params.toString();
-      const res  = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+      const res  = await fetch('https://nominatim.openstreetmap.org/search?' + params, {
+        headers: { 'Accept-Language': 'en' },
+      });
       const data = await res.json();
-      // Prefer result with matching house_number; fall back to first result
       const best = data.find(r => r.address?.house_number) || data[0];
       if (best) {
         geocodeLng = parseFloat(best.lon);
@@ -3326,27 +3445,38 @@ function geocodeAddr() {
         else if (a.road)              addrLabel = a.road;
         else                          addrLabel = best.display_name.split(',').slice(0,2).join(',').trim();
         if (a.city || a.town || a.suburb) addrLabel += `, ${a.city || a.town || a.suburb}`;
-        document.getElementById('geocode-status').textContent = '✓ ' + addrLabel + ' — drag pin to adjust if needed';
-        document.getElementById('add-coords').textContent = geocodeLat.toFixed(6) + ', ' + geocodeLng.toFixed(6);
-        // Make the preview pin draggable so officers can correct Nominatim's estimate
-        if (addPreviewMarker) {
-          addPreviewMarker.setLatLng([geocodeLat, geocodeLng]);
-          if (!addPreviewMarker.dragging._enabled) addPreviewMarker.dragging.enable();
-        } else {
-          addPreviewMarker = L.marker([geocodeLat, geocodeLng], { draggable: true }).addTo(map);
-          addPreviewMarker.on('dragend', e => {
-            const p = e.target.getLatLng();
-            geocodeLat = p.lat; geocodeLng = p.lng;
-            document.getElementById('add-coords').textContent = geocodeLat.toFixed(6) + ', ' + geocodeLng.toFixed(6);
-            document.getElementById('geocode-status').textContent = '📍 Pin manually adjusted';
-          });
-        }
+        document.getElementById('geocode-status').textContent =
+          '✓ ' + addrLabel + ' (street-level) — drag pin to adjust';
+        document.getElementById('add-coords').textContent =
+          geocodeLat.toFixed(6) + ', ' + geocodeLng.toFixed(6);
+        _placeGeocodePin(geocodeLat, geocodeLng);
       } else {
         geocodeLng = geocodeLat = null;
-        document.getElementById('geocode-status').textContent = '⚠ Address not found — try a cross-street or use the pin drop';
+        document.getElementById('geocode-status').textContent =
+          '⚠ Address not found — try a cross-street or use the pin drop';
       }
-    } catch(e) { document.getElementById('geocode-status').textContent = '⚠ Geocoding failed'; }
+    } catch(e) {
+      document.getElementById('geocode-status').textContent = '⚠ Geocoding failed';
+    }
   }, 700);
+}
+
+// Shared helper — place/move the draggable preview pin
+function _placeGeocodePin(lat, lng) {
+  if (addPreviewMarker) {
+    addPreviewMarker.setLatLng([lat, lng]);
+    if (!addPreviewMarker.dragging._enabled) addPreviewMarker.dragging.enable();
+  } else {
+    addPreviewMarker = L.marker([lat, lng], { draggable: true }).addTo(map);
+    addPreviewMarker.on('dragend', e => {
+      const p = e.target.getLatLng();
+      geocodeLat = p.lat; geocodeLng = p.lng;
+      document.getElementById('add-coords').textContent =
+        geocodeLat.toFixed(6) + ', ' + geocodeLng.toFixed(6);
+      document.getElementById('geocode-status').textContent = '📍 Pin manually adjusted';
+    });
+  }
+  map.panTo([lat, lng]);
 }
 
 let pinDropMarker = null;   // temporary marker while in pin-drop mode

@@ -411,7 +411,7 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
         <div class="bm-toggle" id="bm-toggle-wrap">
           <button class="bm-btn active" id="bm-street" onclick="setBasemap('street')">🗺 Street</button>
           <button class="bm-btn" id="bm-sat" onclick="setBasemap('satellite')">🛰 Satellite</button>
-          <button class="bm-btn" id="bm-parcel" onclick="setBasemap('parcel')" style="display:none">📋 Parcel</button>
+          <button class="bm-btn" id="bm-parcel" onclick="setBasemap('parcel')" style="display:none" title="Property boundaries from LA County Assessor. Labels show APN (parcel ID numbers) — this is the county's standard display.">📋 Parcels</button>
         </div>
       </div>
 
@@ -3325,59 +3325,103 @@ const ASSESSOR_QUERY_URL =
   'https://public.gis.lacounty.gov/public/rest/services/LACounty_Cache/LACounty_Parcel/MapServer/0/query';
 
 async function queryAssessorParcel(streetAddr) {
-  // Parse "3100 Crenshaw Blvd" → houseNo="3100", street="CRENSHAW BLVD"
-  // Also handles "3100 W Crenshaw" (directional prefix stays with street name)
-  const clean = streetAddr.replace(/\*+/g, '').replace(/\s+/g, ' ').trim();
-  const match = clean.match(/^(\d+\s*(?:[½¼¾])?)\s+(.+)$/);
-  if (!match) return null;
-  const houseNo = match[1].trim().toUpperCase();
-  const streetRaw = match[2].trim().toUpperCase();
-  // Strip common suffix words so "CRENSHAW BLVD" and "CRENSHAW" both match "CRENSHAW%"
-  const streetBase = streetRaw.replace(/\s+(BLVD|BOULEVARD|AVE|AVENUE|ST|STREET|DR|DRIVE|RD|ROAD|LN|LANE|CT|COURT|PL|PLACE|WAY|PKWY|PARKWAY)\.?$/i, '').trim();
+  // The assessor stores addresses split across separate fields:
+  //   SitusHouseNo  = "3100"
+  //   SitusDirection = "W"   (optional directional prefix — separate field, not part of SitusStreet)
+  //   SitusStreet   = "CRENSHAW BLVD"  (name + suffix, NO leading directional)
+  //
+  // So "3100 W Crenshaw Blvd" must be parsed as houseNo=3100, street="CRENSHAW BLVD" (drop "W").
+  // If we leave the directional in the street query → SitusStreet LIKE 'W CRENSHAW%' → no match.
 
-  const where = `SitusHouseNo='${houseNo}' AND SitusStreet LIKE '${streetBase}%'`;
-  const params = new URLSearchParams({
-    where,
-    outFields: 'AIN,APN,SitusHouseNo,SitusStreet,SitusFullAddress,OwnerName,SitusCity',
-    returnGeometry: 'true',
-    outSR: '4326',
-    f: 'json',
-    resultRecordCount: '3',
-  });
-  try {
+  const clean = streetAddr.replace(/\*+/g, '').replace(/\s+/g, ' ').trim().toUpperCase();
+
+  // Extract house number (including fractions like "3100½")
+  const numMatch = clean.match(/^(\d+\s*[½¼¾]?)/);
+  if (!numMatch) return null;
+  const houseNo = numMatch[1].trim();
+
+  // Everything after the house number
+  let streetPart = clean.slice(numMatch[0].length).trim();
+
+  // Strip leading directional (N/S/E/W/NE/NW/SE/SW) — it goes in SitusDirection, not SitusStreet
+  streetPart = streetPart.replace(/^(N|S|E|W|NE|NW|SE|SW)\s+/i, '').trim();
+
+  // Strip trailing suffix so "CRENSHAW BLVD" and "CRENSHAW" both match stored "CRENSHAW BLVD"
+  // We do a LIKE 'CRENSHAW%' so the stored suffix is included in the match
+  const streetBase = streetPart
+    .replace(/\s+(BLVD|BOULEVARD|AVE|AVENUE|ST|STREET|DR|DRIVE|RD|ROAD|LN|LANE|CT|COURT|PL|PLACE|WAY|PKWY|PARKWAY|TERR|TER|TERRACE|CIR|CIRCLE|EXPY|EXPRESSWAY)\.?$/i, '')
+    .trim();
+
+  if (!streetBase) return null;
+
+  // Strategy: try structured query first (most precise), fall back to full-address LIKE
+  const tryQuery = async (where) => {
+    const params = new URLSearchParams({
+      where,
+      outFields: 'AIN,APN,SitusHouseNo,SitusDirection,SitusStreet,SitusAddress,SitusFullAddress,OwnerName,SitusCity',
+      returnGeometry: 'true',
+      outSR: '4326',
+      f: 'json',
+      resultRecordCount: '3',
+    });
     const res = await fetch(ASSESSOR_QUERY_URL + '?' + params, {
       signal: AbortSignal.timeout(8000),
     });
-    if (!res.ok) return null;
+    if (!res.ok) { console.warn('Assessor HTTP', res.status); return null; }
     const data = await res.json();
-    if (!data.features || !data.features.length) return null;
+    if (data.error) { console.warn('Assessor error:', data.error.message); return null; }
+    return (data.features && data.features.length) ? data.features[0] : null;
+  };
 
-    const feat = data.features[0];
+  try {
+    // Pass 1: exact house number + street name LIKE (no directional)
+    let feat = await tryQuery(`SitusHouseNo='${houseNo}' AND SitusStreet LIKE '${streetBase}%'`);
+
+    // Pass 2: full-address LIKE fallback (catches unusual formatting)
+    if (!feat) {
+      console.log('Assessor pass 1 no match — trying SitusAddress LIKE fallback');
+      feat = await tryQuery(`SitusAddress LIKE '${houseNo} %${streetBase}%'`);
+    }
+
+    if (!feat) {
+      console.log('Assessor: no parcel found for', streetAddr);
+      return null;
+    }
+
     const attrs = feat.attributes;
+    console.log('Assessor hit:', attrs.SitusFullAddress || attrs.SitusAddress, '| geom type:', feat.geometry ? Object.keys(feat.geometry) : 'none');
 
-    // Compute centroid from polygon ring
+    // Centroid from polygon rings (outSR=4326 so rings are [lng, lat] pairs)
     let lat = null, lng = null;
     if (feat.geometry) {
       if (feat.geometry.x !== undefined && feat.geometry.y !== undefined) {
+        // Point geometry
         lng = feat.geometry.x; lat = feat.geometry.y;
       } else if (feat.geometry.rings && feat.geometry.rings.length) {
+        // Polygon — centroid of outer ring
         const ring = feat.geometry.rings[0];
         lng = ring.reduce((s, p) => s + p[0], 0) / ring.length;
         lat = ring.reduce((s, p) => s + p[1], 0) / ring.length;
       }
     }
-    if (!lat || !lng) return null;
+    if (!lat || !lng) { console.warn('Assessor: geometry missing or unusable'); return null; }
+
+    // Sanity check: coordinates should be in LA County range
+    if (lat < 33.5 || lat > 34.9 || lng < -118.9 || lng > -117.6) {
+      console.warn('Assessor: coordinates out of LA County range:', lat, lng);
+      return null;
+    }
 
     return {
       lat, lng,
       apn:       attrs.APN  || attrs.AIN || '',
       ain:       attrs.AIN  || '',
       owner:     attrs.OwnerName || '',
-      matchAddr: attrs.SitusFullAddress || `${attrs.SitusHouseNo} ${attrs.SitusStreet}`,
+      matchAddr: attrs.SitusFullAddress || attrs.SitusAddress || `${houseNo} ${streetBase}`,
       city:      attrs.SitusCity || '',
     };
   } catch(e) {
-    console.warn('Assessor query failed:', e.message);
+    console.warn('Assessor query exception:', e.message);
     return null;
   }
 }
@@ -3409,9 +3453,11 @@ function geocodeAddr() {
     // ── Stage 1: LA County Assessor parcel query ──────────────────
     // Strips city/state suffix before querying (assessor only stores street portion)
     const streetOnly = addr.replace(/,.*$/, '').trim();
+    console.log('[geocode] querying assessor for:', streetOnly);
     const parcel = await queryAssessorParcel(streetOnly);
 
     if (parcel) {
+      console.log('[geocode] ASSESSOR HIT → lat:', parcel.lat, 'lng:', parcel.lng, 'addr:', parcel.matchAddr);
       geocodeLat = parcel.lat;
       geocodeLng = parcel.lng;
       document.getElementById('geocode-status').textContent =
@@ -3424,6 +3470,7 @@ function geocodeAddr() {
     }
 
     // ── Stage 2: Nominatim fallback (structured) ──────────────────
+    console.log('[geocode] assessor miss — falling back to Nominatim');
     const clean = addr.replace(/\*+/g, '50').trim();
     const hasCity = /,/.test(clean);
     let street = clean, city = '', state = '', country = 'US';

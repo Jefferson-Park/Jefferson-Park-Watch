@@ -2519,25 +2519,34 @@ async function promoteObsToAnnotation() {
 
   const notes    = document.getElementById('obs-modal-notes').value.trim();
   const annCat   = document.getElementById('obs-modal-ann-cat')?.value || 'observation';
-  const catCfg   = CATEGORY_LOOKUP[annCat];
+  const annLabel = OBS_CAT_LABELS[o.category] || o.category || 'Public Report';
+  const annNotes = [o.description, notes ? `Admin: ${notes}` : null].filter(Boolean).join('\n') || null;
 
-  // Build annotation record
-  const newAnn = {
-    label:           OBS_CAT_LABELS[o.category] || o.category || 'Public Report',
-    annotation_type: 'point',
-    category:        annCat,
-    notes:           [o.description, notes ? `Admin: ${notes}` : null].filter(Boolean).join('\n') || null,
-    lat:             o.lat,
-    lng:             o.lng,
-    status:          'draft',
-    is_public:       false,
-    is_sensitive:    false,
-    category_data:   { source: 'public_report', original_category: o.category, address: o.address || null },
-    created_by:      currentUser.id,
-  };
-
-  const { error: annErr } = await sb.from('map_annotations').insert(newAnn);
+  // Use insert_annotation RPC (same as Add Record) - builds PostGIS geometry from GeoJSON
+  const geojson = JSON.stringify({ type: 'Point', coordinates: [parseFloat(o.lng), parseFloat(o.lat)] });
+  const { error: annErr } = await sb.rpc('insert_annotation', {
+    p_created_by: currentUser.id,
+    p_label:      annLabel,
+    p_type:       'point',
+    p_geojson:    geojson,
+    p_notes:      annNotes,
+  });
   if (annErr) { showToast('Error creating annotation: '+annErr.message, 'err'); return; }
+
+  // Fetch the new record id, then patch category + metadata
+  const { data: newAnn } = await sb.from('map_annotations')
+    .select('id').eq('created_by', currentUser.id)
+    .order('created_at', { ascending: false }).limit(1).single();
+  const annId = newAnn?.id || null;
+  if (annId) {
+    await sb.from('map_annotations').update({
+      category:      annCat,
+      category_data: { source: 'public_report', original_category: o.category, address: o.address || null },
+      status:        'draft',
+      is_public:     false,
+      is_sensitive:  false,
+    }).eq('id', annId);
+  }
 
   // Mark original report as promoted, save admin_category
   await sb.from('public_comments').update({

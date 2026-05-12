@@ -1104,6 +1104,7 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
       <div style="position:relative;margin-bottom:6px">
         <input type="text" id="pub-address" placeholder="Type a street address (or use buttons below)"
           style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:12px;font-family:var(--font);outline:none;box-sizing:border-box"
+          autocomplete="off" name="pub-address-nofill"
           oninput="pubReportAddressInput(this.value)"
           onfocus="if(this.value.length>=4)pubReportAddressInput(this.value)"
           onblur="setTimeout(()=>{ document.getElementById('pub-address-suggestions').style.display='none'; },200)">
@@ -1219,6 +1220,29 @@ const CLAUDE_API_KEY = '';  // optional — only needed for PDF import
 //   Alternative (if above is slow): use WMS from https://map.assessor.lacounty.gov
 const GEOCODE_CITY    = 'Los Angeles, CA';
 const PARCEL_TILE_URL = 'https://cache.gis.lacounty.gov/cache/rest/services/LACounty_Cache/LACounty_Parcel/MapServer/tile/{z}/{y}/{x}';
+
+// ── Shared Nominatim structured-search param builder ──────────────
+// Parses city/state from the query (if it contains a comma) or falls
+// back to GEOCODE_CITY.  Returns a URLSearchParams ready to append to
+// the Nominatim /search endpoint.  Used by the top search bar AND the
+// public-report geocoder so both produce identical queries.
+function _buildNominatimParams(query, limit) {
+  const hasCity = /,/.test(query.trim());
+  let street = query.trim(), city = '', state = '', country = 'US';
+  if (hasCity) {
+    const parts = query.trim().split(',').map(s => s.trim());
+    street = parts[0];
+    const rest = parts.slice(1).join(' ');
+    const stateMatch = rest.match(/\b([A-Z]{2})\b/);
+    state = stateMatch ? stateMatch[1] : GEOCODE_CITY.split(',')[1]?.trim() || '';
+    city  = rest.replace(/\b[A-Z]{2}\b/, '').replace(/\d{5}/, '').trim().replace(/,$/, '').trim();
+  } else {
+    const cityState = GEOCODE_CITY.split(',');
+    city  = cityState[0]?.trim() || '';
+    state = cityState[1]?.trim() || '';
+  }
+  return new URLSearchParams({ street, city, state, country, format: 'json', limit: String(limit), addressdetails: '1', zoom: '19' });
+}
 // ──────────────────────────────────────────────────────
 
 // ══════════════════════════════════════════════════════════════════
@@ -2853,80 +2877,55 @@ async function pubReportGeocodeAddress(val) {
   sug.innerHTML = `<div style="padding:8px 10px;font-size:11px;color:var(--muted)">Searching...</div>`;
   sug.style.display = 'block';
   try {
-    // Stage 1: LA County Assessor (parcel-accurate)
+    // Stage 1: LA County Assessor (parcel label) — same flow as top search bar
     const streetOnly = query.replace(/,.*$/, '').trim();
     const parcel = await queryAssessorParcel(streetOnly);
     if (parcel) {
       const label = parcel.matchAddr || streetOnly;
-      // Use Assessor label for display but Nominatim for pin accuracy (parcel centroid drifts)
-      // Fetch Nominatim in background — if it finds a house-number match use its coords, else fall back to parcel
+      // Show confirmed row immediately using parcel centroid as initial coords;
+      // _pubReportNominatimPin will patch to a house-number hit if Nominatim finds one.
       sug.innerHTML = `<div style="padding:7px 10px;font-size:11px;cursor:pointer;border-bottom:1px solid var(--border)"
         id="pub-sug-assessor"
         onmouseover="this.style.background='var(--panel2)'" onmouseout="this.style.background=''">
         <span style="color:var(--accent);font-size:10px">&#x2713; Address confirmed &nbsp;</span>${label}
       </div>`;
       sug.style.display = 'block';
-      // Wire up with accurate coords once Nominatim resolves
+      // Resolve best pin coords in background, then append additional Nominatim rows
       _pubReportNominatimPin(query, label, parcel.lat, parcel.lng);
       _pubReportNominatim(query, sug, true);
       return;
     }
-    // Stage 2: Nominatim fallback (structured, same as search bar)
+    // Stage 2: Nominatim fallback — same structured params as top search bar
     _pubReportNominatim(query, sug, false);
   } catch(e) {
     sug.innerHTML = `<div style="padding:8px 10px;font-size:11px;color:var(--danger)">Search failed - try dropping a pin</div>`;
   }
 }
 
-// Resolves accurate street-level pin coords for an assessor-confirmed address
-// Falls back to parcel centroid if Nominatim finds no house-number match
+// Resolves accurate street-level pin coords for an assessor-confirmed address.
+// Uses _buildNominatimParams — the exact same helper as the top search bar.
+// Falls back to parcel centroid if Nominatim finds no house_number match.
 async function _pubReportNominatimPin(query, label, fallbackLat, fallbackLng) {
-  const hasCity = /,/.test(query.trim());
-  let street = query.trim(), city = '', state = '', country = 'US';
-  if (!hasCity) {
-    const cityState = GEOCODE_CITY.split(',');
-    city  = cityState[0]?.trim() || '';
-    state = cityState[1]?.trim() || '';
-  } else {
-    const parts = query.trim().split(',').map(s => s.trim());
-    street = parts[0];
-    const rest = parts.slice(1).join(' ');
-    const stateMatch = rest.match(/\b([A-Z]{2})\b/);
-    state = stateMatch ? stateMatch[1] : GEOCODE_CITY.split(',')[1]?.trim() || '';
-    city  = rest.replace(/\b[A-Z]{2}\b/, '').replace(/\d{5}/, '').trim().replace(/,$/, '').trim();
-  }
   let pinLat = fallbackLat, pinLng = fallbackLng;
   try {
-    const params = new URLSearchParams({ street, city, state, country, format: 'json', limit: '3', addressdetails: '1', zoom: '19' });
+    const params = _buildNominatimParams(query, 3);
     const res  = await fetch('https://nominatim.openstreetmap.org/search?' + params, { headers: { 'Accept-Language': 'en' } });
     const data = await res.json();
     const best = data.find(r => r.address?.house_number) || null;
     if (best) { pinLat = parseFloat(best.lat); pinLng = parseFloat(best.lon); }
   } catch(e) { /* use parcel fallback */ }
-  // Wire the confirmed row to the resolved coords
+  // Patch the confirmed row to the resolved coords
   const row = document.getElementById('pub-sug-assessor');
   if (row) {
     row.onmousedown = () => pubReportSelectAddress(pinLat, pinLng, label);
   }
 }
 
+// Fetches Nominatim suggestion rows and appends/replaces the dropdown.
+// Uses _buildNominatimParams — the exact same helper as the top search bar.
 async function _pubReportNominatim(query, sug, append) {
-  const hasCity = /,/.test(query.trim());
-  let street = query.trim(), city = '', state = '', country = 'US';
-  if (hasCity) {
-    const parts = query.trim().split(',').map(s => s.trim());
-    street = parts[0];
-    const rest = parts.slice(1).join(' ');
-    const stateMatch = rest.match(/\b([A-Z]{2})\b/);
-    state = stateMatch ? stateMatch[1] : GEOCODE_CITY.split(',')[1]?.trim() || '';
-    city  = rest.replace(/\b[A-Z]{2}\b/, '').replace(/\d{5}/, '').trim().replace(/,$/, '').trim();
-  } else {
-    const cityState = GEOCODE_CITY.split(',');
-    city  = cityState[0]?.trim() || '';
-    state = cityState[1]?.trim() || '';
-  }
   try {
-    const params = new URLSearchParams({ street, city, state, country, format: 'json', limit: '4', addressdetails: '1', zoom: '19' });
+    const params = _buildNominatimParams(query, 4);
     const res  = await fetch('https://nominatim.openstreetmap.org/search?' + params, { headers: { 'Accept-Language': 'en' } });
     const data = await res.json();
     if (!data.length) {

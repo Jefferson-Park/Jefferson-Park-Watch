@@ -605,6 +605,11 @@ tbody td{padding:7px 10px;vertical-align:middle}
         <label>Admin Notes (internal)</label>
         <textarea id="obs-modal-notes" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 9px;color:var(--text);font-size:12px;font-family:var(--font);outline:none;resize:vertical;min-height:60px;width:100%"></textarea>
       </div>
+      <div class="em-f" style="grid-column:1/-1">
+        <label>Classify as Annotation Category</label>
+        <select id="obs-modal-ann-cat" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:12px;font-family:var(--font);outline:none"></select>
+        <div style="font-size:10px;color:var(--muted);margin-top:3px">Used when promoting to map. Also saved on Mark Reviewed.</div>
+      </div>
     </div>
     <div style="padding:10px 0 4px;border-top:1px solid var(--border);font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Actions</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -2431,14 +2436,42 @@ function openObsModal(id) {
   document.getElementById('obs-modal-id').value   = o.id;
   document.getElementById('obs-modal-cat').textContent  = OBS_CAT_LABELS[o.category] || o.category || '—';
   document.getElementById('obs-modal-date').textContent = o.created_at ? new Date(o.created_at).toLocaleString() : '—';
-  document.getElementById('obs-modal-loc').textContent  = (o.lat != null && o.lng != null)
-    ? `${parseFloat(o.lat).toFixed(6)}, ${parseFloat(o.lng).toFixed(6)}`
-    : 'No location provided';
+  // Show address if stored, fall back to coords
+  document.getElementById('obs-modal-loc').textContent  = o.address
+    ? o.address
+    : (o.lat != null && o.lng != null)
+      ? `${parseFloat(o.lat).toFixed(6)}, ${parseFloat(o.lng).toFixed(6)}`
+      : 'No location provided';
   document.getElementById('obs-modal-desc').textContent = o.description || '—';
   document.getElementById('obs-modal-contact').textContent = o.submitter_email || '(no contact info)';
   document.getElementById('obs-modal-notes').value = o.notes || '';
   document.getElementById('obs-modal-title').textContent =
     `Review: ${OBS_CAT_LABELS[o.category] || o.category || 'Public Report'}`;
+
+  // Populate annotation category dropdown
+  const catSelect = document.getElementById('obs-modal-ann-cat');
+  catSelect.innerHTML = '';
+  Object.entries(CATEGORY_MAP).forEach(([group, cats]) => {
+    const grp = document.createElement('optgroup');
+    grp.label = group;
+    cats.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.value;
+      opt.textContent = `${c.icon || ''} ${c.label}`;
+      grp.appendChild(opt);
+    });
+    catSelect.appendChild(grp);
+  });
+  // Pre-select: use stored admin_category, else auto-map from obs category
+  const catMap = {
+    graffiti:'vandalism', illegal_dumping:'trash', pothole:'lighting',
+    sidewalk:'lighting', encampment:'encampment', hazard:'hazard',
+    abandoned_vehicle:'trash', noise:'observation', lighting:'lighting',
+    other:'observation',
+  };
+  const preselect = o.admin_category || catMap[o.category] || 'observation';
+  catSelect.value = preselect;
+
   document.getElementById('obs-modal').style.display = 'flex';
 }
 
@@ -2454,8 +2487,10 @@ async function saveObsNotes() {
 async function saveObsReview(newStatus) {
   const id    = document.getElementById('obs-modal-id').value;
   const notes = document.getElementById('obs-modal-notes').value.trim();
+  const adminCat = document.getElementById('obs-modal-ann-cat')?.value || null;
   const patch = { status: newStatus, reviewed_by: currentUser.id };
   if (notes) patch.notes = notes;
+  if (adminCat) patch.admin_category = adminCat;
   const { error } = await sb.from('public_comments').update(patch).eq('id', id);
   if (error) { showToast('Error: '+error.message, 'err'); return; }
   const label = { reviewed:'✅ Marked as reviewed', dismissed:'— Dismissed' }[newStatus] || 'Updated';
@@ -2482,17 +2517,9 @@ async function promoteObsToAnnotation() {
     return;
   }
 
-  const notes = document.getElementById('obs-modal-notes').value.trim();
-
-  // Map obs category to annotation category value
-  const catMap = {
-    graffiti:'vandalism', illegal_dumping:'trash', pothole:'lighting',
-    sidewalk:'lighting',  encampment:'encampment', hazard:'hazard',
-    abandoned_vehicle:'trash', noise:'observation', lighting:'lighting',
-    other:'observation',
-  };
-  const annCat = catMap[o.category] || 'observation';
-  const catCfg = CATEGORY_LOOKUP[annCat];
+  const notes    = document.getElementById('obs-modal-notes').value.trim();
+  const annCat   = document.getElementById('obs-modal-ann-cat')?.value || 'observation';
+  const catCfg   = CATEGORY_LOOKUP[annCat];
 
   // Build annotation record
   const newAnn = {
@@ -2505,16 +2532,17 @@ async function promoteObsToAnnotation() {
     status:          'draft',
     is_public:       false,
     is_sensitive:    false,
-    category_data:   { source: 'public_report', original_category: o.category },
+    category_data:   { source: 'public_report', original_category: o.category, address: o.address || null },
     created_by:      currentUser.id,
   };
 
   const { error: annErr } = await sb.from('map_annotations').insert(newAnn);
   if (annErr) { showToast('Error creating annotation: '+annErr.message, 'err'); return; }
 
-  // Mark original report as promoted
+  // Mark original report as promoted, save admin_category
   await sb.from('public_comments').update({
     status: 'promoted', reviewed_by: currentUser.id,
+    admin_category: annCat,
     notes: notes || 'Promoted to map_annotations'
   }).eq('id', id);
 

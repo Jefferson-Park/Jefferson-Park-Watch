@@ -1101,6 +1101,11 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
     <!-- Location -->
     <div class="mf">
       <label>Location <span style="color:var(--danger)">*</span></label>
+      <input type="text" id="pub-address" placeholder="Type a street address (or use buttons below)"
+        style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:12px;font-family:var(--font);outline:none;margin-bottom:6px"
+        oninput="pubReportAddressInput(this.value)"
+        onblur="pubReportGeocodeAddress()">
+      <div id="pub-address-suggestions" style="display:none;position:relative;z-index:9999;background:var(--panel);border:1px solid var(--border);border-radius:6px;margin-top:-4px;margin-bottom:6px;max-height:160px;overflow-y:auto"></div>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
         <div id="pub-loc-status" style="flex:1;font-size:12px;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;min-height:36px;display:flex;align-items:center">
           📍 No location set — use buttons →
@@ -1112,7 +1117,7 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
           🗺 Drop Pin
         </button>
       </div>
-      <div style="font-size:10px;color:var(--muted);margin-top:4px">Tap the map after clicking "Drop Pin", or use "My Location" if on mobile.</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">Type an address above, or tap "My Location" / "Drop Pin".</div>
     </div>
 
     <!-- Optional contact info -->
@@ -2778,8 +2783,10 @@ function toggleGroup(name) {
 // PUBLIC REPORT OBSERVATION — Phase 5 implementation
 // ══════════════════════════════════════════════════════════════════
 let pubReportLat = null, pubReportLng = null;
+let pubReportAddress = null;
 let pubReportMarker = null;  // red preview pin while choosing
 let pubReportDropMode = false;
+let pubReportAddrTimer = null;
 const pubObservationMarkers = []; // persisted red drop pins
 
 function openPublicReport() {
@@ -2789,6 +2796,9 @@ function openPublicReport() {
   if (document.getElementById('pub-name')) document.getElementById('pub-name').value = '';
   if (document.getElementById('pub-email')) document.getElementById('pub-email').value = '';
   document.getElementById('pub-report-msg').textContent = '';
+  document.getElementById('pub-address').value = '';
+  document.getElementById('pub-address-suggestions').style.display = 'none';
+  pubReportAddress = null;
   pubReportLat = pubReportLng = null;
   updatePubLocStatus();
   openModal('pub-report-modal');
@@ -2799,16 +2809,79 @@ function closePubReport() {
   // Remove temp preview pin if still showing
   if (pubReportMarker) { map.removeLayer(pubReportMarker); pubReportMarker = null; }
   pubReportDropMode = false;
+  pubReportAddress = null;
   document.getElementById('pub-pin-btn').classList.remove('btn-accent');
 }
 
 function updatePubLocStatus() {
   const el = document.getElementById('pub-loc-status');
-  if (pubReportLat && pubReportLng) {
+  if (pubReportAddress && pubReportLat && pubReportLng) {
+    el.innerHTML = `<span style="color:var(--accent)">✓ ${pubReportAddress}</span>`;
+  } else if (pubReportLat && pubReportLng) {
     el.innerHTML = `<span style="color:var(--accent)">✓ ${pubReportLat.toFixed(5)}, ${pubReportLng.toFixed(5)}</span>`;
   } else {
     el.innerHTML = `<span style="color:var(--muted)">📍 No location set — use buttons →</span>`;
   }
+}
+
+// Debounce address input — geocode after user pauses typing
+function pubReportAddressInput(val) {
+  clearTimeout(pubReportAddrTimer);
+  const sug = document.getElementById('pub-address-suggestions');
+  if (!val || val.length < 4) { sug.style.display = 'none'; return; }
+  pubReportAddrTimer = setTimeout(() => pubReportGeocodeAddress(val), 600);
+}
+
+async function pubReportGeocodeAddress(val) {
+  const query = val || document.getElementById('pub-address').value.trim();
+  if (!query || query.length < 4) return;
+  const sug = document.getElementById('pub-address-suggestions');
+  sug.innerHTML = `<div style="padding:8px 10px;font-size:11px;color:var(--muted)">Searching…</div>`;
+  sug.style.display = 'block';
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=4&addressdetails=1&countrycodes=us&q=${encodeURIComponent(query + ' Los Angeles CA')}`, {
+      headers: { 'Accept-Language': 'en', 'User-Agent': 'JeffersonParkMap/1.0' }
+    });
+    const results = await res.json();
+    if (!results.length) {
+      sug.innerHTML = `<div style="padding:8px 10px;font-size:11px;color:var(--muted)">No results found</div>`;
+      return;
+    }
+    sug.innerHTML = results.map((r, i) => {
+      const label = r.display_name.split(',').slice(0,3).join(',');
+      return `<div style="padding:7px 10px;font-size:11px;cursor:pointer;border-bottom:1px solid var(--border)"
+        onmousedown="pubReportSelectAddress('${r.lat}','${r.lon}','${label.replace(/'/g,'&#39;')}')"
+        onmouseover="this.style.background='var(--panel2)'" onmouseout="this.style.background=''">${label}</div>`;
+    }).join('');
+  } catch(e) {
+    sug.innerHTML = `<div style="padding:8px 10px;font-size:11px;color:var(--danger)">Geocode error</div>`;
+  }
+}
+
+function pubReportSelectAddress(lat, lng, label) {
+  pubReportLat = parseFloat(lat);
+  pubReportLng = parseFloat(lng);
+  pubReportAddress = label;
+  document.getElementById('pub-address').value = label;
+  document.getElementById('pub-address-suggestions').style.display = 'none';
+  updatePubLocStatus();
+  if (pubReportMarker) map.removeLayer(pubReportMarker);
+  pubReportMarker = L.marker([pubReportLat, pubReportLng], { icon: makePubReportIcon('preview') }).addTo(map);
+  map.flyTo([pubReportLat, pubReportLng], 17);
+}
+
+async function pubReportReverseGeocode(lat, lng) {
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=17&addressdetails=1`, {
+      headers: { 'Accept-Language': 'en', 'User-Agent': 'JeffersonParkMap/1.0' }
+    });
+    const data = await res.json();
+    if (data?.display_name) {
+      pubReportAddress = data.display_name.split(',').slice(0,3).join(',');
+      document.getElementById('pub-address').value = pubReportAddress;
+      updatePubLocStatus();
+    }
+  } catch(e) { /* silent — coords already set */ }
 }
 
 function pubReportUseCurrentLocation() {
@@ -2823,6 +2896,7 @@ function pubReportUseCurrentLocation() {
       if (pubReportMarker) map.removeLayer(pubReportMarker);
       pubReportMarker = L.marker([pubReportLat, pubReportLng], { icon: makePubReportIcon('preview') }).addTo(map);
       map.flyTo([pubReportLat, pubReportLng], 18);
+      pubReportReverseGeocode(pubReportLat, pubReportLng);
     },
     err => {
       showToast('Location error: ' + err.message, 'err');
@@ -2853,6 +2927,7 @@ function pubReportDropPin() {
       pubReportMarker = L.marker([pubReportLat, pubReportLng], { icon: makePubReportIcon('preview') }).addTo(map);
       openModal('pub-report-modal');
       updatePubLocStatus();
+      pubReportReverseGeocode(pubReportLat, pubReportLng);
       btn.style.borderColor = '';
       btn.style.color = '';
     });
@@ -2900,6 +2975,7 @@ async function submitPublicReport() {
     const { error } = await sb.from('public_comments').insert({
       lat: pubReportLat,
       lng: pubReportLng,
+      address: pubReportAddress || null,
       category: cat,
       description: desc,
       submitter_email: email || null,

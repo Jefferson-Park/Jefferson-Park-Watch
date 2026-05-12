@@ -1101,11 +1101,13 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
     <!-- Location -->
     <div class="mf">
       <label>Location <span style="color:var(--danger)">*</span></label>
-      <input type="text" id="pub-address" placeholder="Type a street address (or use buttons below)"
-        style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:12px;font-family:var(--font);outline:none;margin-bottom:6px"
-        oninput="pubReportAddressInput(this.value)"
-        onblur="pubReportGeocodeAddress()">
-      <div id="pub-address-suggestions" style="display:none;position:relative;z-index:9999;background:var(--panel);border:1px solid var(--border);border-radius:6px;margin-top:-4px;margin-bottom:6px;max-height:160px;overflow-y:auto"></div>
+      <div style="position:relative;margin-bottom:6px">
+        <input type="text" id="pub-address" placeholder="Type a street address (or use buttons below)"
+          style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:12px;font-family:var(--font);outline:none;box-sizing:border-box"
+          oninput="pubReportAddressInput(this.value)"
+          onfocus="if(this.value.length>=4)pubReportAddressInput(this.value)"
+          onblur="setTimeout(()=>{ document.getElementById('pub-address-suggestions').style.display='none'; },200)">
+      </div>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
         <div id="pub-loc-status" style="flex:1;font-size:12px;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;min-height:36px;display:flex;align-items:center">
           📍 No location set — use buttons →
@@ -1160,6 +1162,7 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
 
 <!-- Toast & photo input -->
 <div id="toast"></div>
+<div id="pub-address-suggestions" style="display:none;position:fixed;z-index:99999;background:var(--panel);border:1px solid var(--border);border-radius:6px;max-height:160px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.5);min-width:260px"></div>
 <!-- File inputs — images and PDFs/docs -->
 <input type="file" id="photo-input" accept="image/*,application/pdf,.pdf" style="display:none" onchange="uploadAttachment(event)">
 <!-- Attachment picker modal -->
@@ -2829,6 +2832,12 @@ function pubReportAddressInput(val) {
   clearTimeout(pubReportAddrTimer);
   const sug = document.getElementById('pub-address-suggestions');
   if (!val || val.length < 4) { sug.style.display = 'none'; return; }
+  // Position fixed dropdown below the input
+  const inp = document.getElementById('pub-address');
+  const rect = inp.getBoundingClientRect();
+  sug.style.left  = rect.left + 'px';
+  sug.style.top   = (rect.bottom + 4) + 'px';
+  sug.style.width = rect.width + 'px';
   pubReportAddrTimer = setTimeout(() => pubReportGeocodeAddress(val), 600);
 }
 
@@ -2836,26 +2845,71 @@ async function pubReportGeocodeAddress(val) {
   const query = val || document.getElementById('pub-address').value.trim();
   if (!query || query.length < 4) return;
   const sug = document.getElementById('pub-address-suggestions');
-  sug.innerHTML = `<div style="padding:8px 10px;font-size:11px;color:var(--muted)">Searching…</div>`;
+  const inp = document.getElementById('pub-address');
+  const rect = inp.getBoundingClientRect();
+  sug.style.left  = rect.left + 'px';
+  sug.style.top   = (rect.bottom + 4) + 'px';
+  sug.style.width = rect.width + 'px';
+  sug.innerHTML = `<div style="padding:8px 10px;font-size:11px;color:var(--muted)">Searching...</div>`;
   sug.style.display = 'block';
   try {
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=4&addressdetails=1&countrycodes=us&q=${encodeURIComponent(query + ' Los Angeles CA')}`, {
-      headers: { 'Accept-Language': 'en', 'User-Agent': 'JeffersonParkMap/1.0' }
-    });
-    const results = await res.json();
-    if (!results.length) {
-      sug.innerHTML = `<div style="padding:8px 10px;font-size:11px;color:var(--muted)">No results found</div>`;
+    // Stage 1: LA County Assessor (parcel-accurate)
+    const streetOnly = query.replace(/,.*$/, '').trim();
+    const parcel = await queryAssessorParcel(streetOnly);
+    if (parcel) {
+      const label = parcel.matchAddr || streetOnly;
+      sug.innerHTML = `<div style="padding:7px 10px;font-size:11px;cursor:pointer;border-bottom:1px solid var(--border)"
+        onmousedown="pubReportSelectAddress('${parcel.lat}','${parcel.lng}','${label.replace(/'/g,'&#39;')}')"
+        onmouseover="this.style.background='var(--panel2)'" onmouseout="this.style.background=''">
+        <span style="color:var(--accent);font-size:10px">&#x2713; Address confirmed &nbsp;</span>${label}
+      </div>`;
+      _pubReportNominatim(query, sug, true);
       return;
     }
-    sug.innerHTML = results.map((r, i) => {
-      const label = r.display_name.split(',').slice(0,3).join(',');
+    // Stage 2: Nominatim fallback (structured, same as search bar)
+    _pubReportNominatim(query, sug, false);
+  } catch(e) {
+    sug.innerHTML = `<div style="padding:8px 10px;font-size:11px;color:var(--danger)">Search failed - try dropping a pin</div>`;
+  }
+}
+
+async function _pubReportNominatim(query, sug, append) {
+  const hasCity = /,/.test(query.trim());
+  let street = query.trim(), city = '', state = '', country = 'US';
+  if (hasCity) {
+    const parts = query.trim().split(',').map(s => s.trim());
+    street = parts[0];
+    const rest = parts.slice(1).join(' ');
+    const stateMatch = rest.match(/\b([A-Z]{2})\b/);
+    state = stateMatch ? stateMatch[1] : GEOCODE_CITY.split(',')[1]?.trim() || '';
+    city  = rest.replace(/\b[A-Z]{2}\b/, '').replace(/\d{5}/, '').trim().replace(/,$/, '').trim();
+  } else {
+    const cityState = GEOCODE_CITY.split(',');
+    city  = cityState[0]?.trim() || '';
+    state = cityState[1]?.trim() || '';
+  }
+  try {
+    const params = new URLSearchParams({ street, city, state, country, format: 'json', limit: '4', addressdetails: '1', zoom: '19' });
+    const res  = await fetch('https://nominatim.openstreetmap.org/search?' + params, { headers: { 'Accept-Language': 'en' } });
+    const data = await res.json();
+    if (!data.length) {
+      if (!append) sug.innerHTML = `<div style="padding:8px 10px;font-size:11px;color:var(--muted)">No results - try a nearby cross-street or drop a pin</div>`;
+      return;
+    }
+    const rows = data.map(r => {
+      const a = r.address || {};
+      let label = '';
+      if (a.house_number && a.road) label = `${a.house_number} ${a.road}`;
+      else if (a.road)              label = a.road;
+      else                          label = r.display_name.split(',').slice(0,2).join(',').trim();
+      if (a.neighbourhood || a.suburb) label += `, ${a.neighbourhood || a.suburb}`;
+      else if (a.city || a.town)       label += `, ${a.city || a.town}`;
       return `<div style="padding:7px 10px;font-size:11px;cursor:pointer;border-bottom:1px solid var(--border)"
         onmousedown="pubReportSelectAddress('${r.lat}','${r.lon}','${label.replace(/'/g,'&#39;')}')"
         onmouseover="this.style.background='var(--panel2)'" onmouseout="this.style.background=''">${label}</div>`;
     }).join('');
-  } catch(e) {
-    sug.innerHTML = `<div style="padding:8px 10px;font-size:11px;color:var(--danger)">Geocode error</div>`;
-  }
+    if (append) { sug.innerHTML += rows; } else { sug.innerHTML = rows; }
+  } catch(e) { /* silent if assessor result already shown */ }
 }
 
 function pubReportSelectAddress(lat, lng, label) {

@@ -118,6 +118,101 @@ tbody td{padding:7px 10px;vertical-align:middle}
 .b-polygon{background:rgba(0,194,168,.12);color:var(--accent)}
 .b-line{background:rgba(240,165,0,.12);color:var(--amber)}
 .b-point{background:rgba(45,139,255,.12);color:var(--blue)}
+.b-new{background:rgba(45,139,255,.15);color:var(--blue)}
+.b-reviewed{background:rgba(34,197,94,.15);color:var(--green)}
+.b-promoted{background:rgba(0,194,168,.15);color:var(--accent)}
+.b-dismissed{background:rgba(123,130,160,.15);color:var(--muted)}
+
+/* ── Parcel hover label ── */
+.parcel-hover-label {
+  background: rgba(15,17,23,.92) !important;
+  border: 1px solid var(--accent) !important;
+  color: var(--accent) !important;
+  font-family: var(--mono) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  padding: 3px 8px !important;
+  border-radius: 4px !important;
+  white-space: nowrap !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,.5) !important;
+}
+.parcel-hover-label::before { display: none !important; }
+
+/* ── Parcel detail popup ── */
+.parcel-popup {
+  position: fixed;
+  z-index: 2000;
+  width: 280px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(0,0,0,.6);
+  overflow: hidden;
+  font-family: var(--font);
+  color: var(--text);
+}
+.parcel-popup-header {
+  background: var(--panel2);
+  padding: 10px 14px 9px;
+  position: relative;
+  border-bottom: 1px solid var(--border);
+}
+.parcel-popup-addr { font-size: 12px; font-weight: 600; padding-right: 22px; }
+.parcel-popup-city { font-size: 10px; color: var(--muted); margin-top: 2px; }
+.parcel-popup-close {
+  position: absolute; top: 8px; right: 8px;
+  background: none; border: none; color: var(--muted);
+  font-size: 14px; cursor: pointer; line-height: 1;
+  width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;
+  border-radius: 4px;
+}
+.parcel-popup-close:hover { color: var(--text); background: var(--panel2); }
+.parcel-popup-body { padding: 10px 14px 12px; }
+.parcel-row {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  padding: 4px 0; border-bottom: 1px solid rgba(46,51,80,.4); gap: 8px;
+  font-size: 11px;
+}
+.parcel-row:last-child { border-bottom: none; }
+.parcel-label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+.parcel-value { color: var(--text); font-family: var(--mono); font-size: 11px; text-align: right; max-width: 160px; word-break: break-word; }
+.parcel-value.highlight { color: var(--accent); }
+.parcel-popup-footer {
+  padding: 8px 14px 10px;
+  border-top: 1px solid var(--border);
+  background: var(--panel2);
+}
+.parcel-popup-footer a {
+  display: block; font-size: 11px; text-align: center;
+  color: var(--muted); text-decoration: none;
+  padding: 5px 10px; border: 1px solid var(--border);
+  border-radius: 6px; transition: all .2s;
+}
+.parcel-popup-footer a:hover { border-color: var(--accent); color: var(--accent); }
+.parcel-loading { font-size: 11px; color: var(--muted); text-align: center; padding: 8px 0; }
+
+/* ── Observation queue card ── */
+.obs-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color .15s;
+}
+.obs-card:hover { border-color: rgba(45,139,255,.4); }
+.obs-card.status-new { border-left: 3px solid var(--blue); }
+.obs-card.status-reviewed { border-left: 3px solid var(--green); }
+.obs-card.status-promoted { border-left: 3px solid var(--accent); }
+.obs-card.status-dismissed { border-left: 3px solid var(--border); opacity: .6; }
+.obs-header { display: flex; align-items: center; gap: 8px; }
+.obs-cat { font-size: 11px; font-weight: 600; }
+.obs-date { font-size: 10px; color: var(--muted); font-family: var(--mono); margin-left: auto; }
+.obs-desc { font-size: 12px; line-height: 1.5; color: var(--text); }
+.obs-meta { font-size: 10px; color: var(--muted); display: flex; gap: 10px; flex-wrap: wrap; }
+.obs-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
 
 /* toggle switch */
 .sw{width:30px;height:17px;background:var(--border);border-radius:9px;position:relative;cursor:pointer;transition:background .2s;flex-shrink:0;display:inline-block}
@@ -246,6 +341,10 @@ tbody td{padding:7px 10px;vertical-align:middle}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
         Users
       </div>
+      <div class="ntab" onclick="showTab('observations')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Public Reports <span class="cnt" id="cnt-obs" style="background:rgba(45,139,255,.2);color:var(--blue)">—</span>
+      </div>
     </div>
 
     <div class="nav-r">
@@ -264,6 +363,8 @@ tbody td{padding:7px 10px;vertical-align:middle}
       <button class="maptb-btn" id="mb-sat" onclick="setBasemap('satellite')">🛰 Satellite</button>
       <button class="maptb-btn" id="mb-crimes" onclick="toggleMapLayer('crimes')">● Crimes</button>
       <button class="maptb-btn on" id="mb-ann" onclick="toggleMapLayer('ann')">◈ Annotations</button>
+      <button class="maptb-btn" id="mb-obs" onclick="toggleMapLayer('obs')">📍 Reports</button>
+      <button class="maptb-btn" id="mb-parcel" onclick="toggleParcelLayer()">📋 Parcels</button>
       <button class="maptb-btn" id="mb-slo" onclick="toggleMapLayer('slo')">▭ SLO</button>
       <button class="maptb-btn" id="mb-unnc" onclick="toggleMapLayer('unnc')">▭ UNNC</button>
       <button class="maptb-btn" onclick="fitAllData()">⊙ Fit All</button>
@@ -441,8 +542,85 @@ tbody td{padding:7px 10px;vertical-align:middle}
       <div class="users-wrap" id="users-wrap"></div>
     </div>
 
+    <!-- OBSERVATIONS TAB -->
+    <div class="tab-pane" id="tab-observations">
+      <div class="tbar">
+        <h3>Public Reports</h3>
+        <span class="tbar-count" id="obs-tcount"></span>
+        <input class="tf tf-search" id="obs-search" placeholder="Search description, category…" oninput="filterObs()" style="width:200px">
+        <select class="tf" id="obs-filter-status" onchange="filterObs()" style="width:130px">
+          <option value="">All statuses</option>
+          <option value="new">🔵 New</option>
+          <option value="reviewed">✅ Reviewed</option>
+          <option value="promoted">🌐 Promoted</option>
+          <option value="dismissed">— Dismissed</option>
+        </select>
+        <select class="tf" id="obs-filter-cat" onchange="filterObs()" style="width:160px">
+          <option value="">All categories</option>
+        </select>
+        <div class="tbar-spacer"></div>
+        <button class="btn" onclick="loadObservations()" title="Reload from database">↻ Refresh</button>
+        <button class="btn btn-accent" onclick="exportObsCSV()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export CSV
+        </button>
+      </div>
+      <!-- New-only banner -->
+      <div id="obs-new-banner" style="display:none;background:rgba(45,139,255,.08);border-bottom:1px solid rgba(45,139,255,.25);padding:8px 16px;font-size:12px;color:var(--blue);flex-shrink:0">
+        <span id="obs-new-count"></span> unreviewed public report(s) waiting for review
+      </div>
+      <div id="obs-grid" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;min-height:0"></div>
+    </div>
+
   </div><!-- #data-panel -->
 </div><!-- #app -->
+
+<!-- ── OBSERVATION REVIEW MODAL ── -->
+<div id="obs-modal" style="position:fixed;inset:0;z-index:5500;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center">
+  <div class="em" style="width:540px">
+    <div class="em-title" id="obs-modal-title">Review Public Report</div>
+    <input type="hidden" id="obs-modal-id">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div class="em-f">
+        <label>Category</label>
+        <div id="obs-modal-cat" style="padding:7px 9px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:12px"></div>
+      </div>
+      <div class="em-f">
+        <label>Submitted</label>
+        <div id="obs-modal-date" style="padding:7px 9px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:var(--mono)"></div>
+      </div>
+      <div class="em-f" style="grid-column:1/-1">
+        <label>Location</label>
+        <div id="obs-modal-loc" style="padding:7px 9px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:var(--mono)"></div>
+      </div>
+      <div class="em-f" style="grid-column:1/-1">
+        <label>Description (from public)</label>
+        <div id="obs-modal-desc" style="padding:8px 9px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:12px;line-height:1.5;min-height:60px"></div>
+      </div>
+      <div class="em-f" style="grid-column:1/-1">
+        <label>Contact (private — not shared)</label>
+        <div id="obs-modal-contact" style="padding:7px 9px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:var(--mono);color:var(--muted)"></div>
+      </div>
+      <div class="em-f" style="grid-column:1/-1">
+        <label>Admin Notes (internal)</label>
+        <textarea id="obs-modal-notes" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 9px;color:var(--text);font-size:12px;font-family:var(--font);outline:none;resize:vertical;min-height:60px;width:100%"></textarea>
+      </div>
+    </div>
+    <div style="padding:10px 0 4px;border-top:1px solid var(--border);font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Actions</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn" style="flex:1;justify-content:center;color:var(--green);border-color:var(--green)"
+        onclick="saveObsReview('reviewed')">✓ Mark Reviewed</button>
+      <button class="btn" style="flex:1;justify-content:center;color:var(--accent);border-color:var(--accent)"
+        onclick="promoteObsToAnnotation()">⬆ Promote to Map</button>
+      <button class="btn" style="flex:1;justify-content:center;color:var(--muted);border-color:var(--border)"
+        onclick="saveObsReview('dismissed')">✕ Dismiss</button>
+    </div>
+    <div class="em-footer" style="margin-top:12px">
+      <button class="btn" onclick="document.getElementById('obs-modal').style.display='none'">Close</button>
+      <button class="btn btn-accent" onclick="saveObsNotes()">💾 Save Notes</button>
+    </div>
+  </div>
+</div>
 
 <!-- Edit Annotation Modal -->
 <div id="edit-ann-modal" style="position:fixed;inset:0;z-index:5000;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center">
@@ -552,8 +730,15 @@ let allAnnotations = [], allPhotos = [];
 let profileMap = {}; // uuid -> email for author display
 let adminMap = null;
 let crimeCluster = null, annLayerGrp = null, sloLayerGrp = null, unncLayerGrp = null;
+let obsLayerGrp = null;
 let tileStreet = null, tileSat = null;
-let layerOn = { crimes:false, ann:true, slo:false, unnc:false };
+let layerOn = { crimes:false, ann:true, slo:false, unnc:false, obs:false };
+
+// Parcel layer state
+let TILE_PARCEL = null, parcelOn = false;
+let parcelVectorLayer = null, parcelPopup = null, parcelHoverLabel = null;
+let parcelHoverTimer = null, parcelLastHoverAIN = null;
+const PARCEL_IDENTIFY_URL = 'https://public.gis.lacounty.gov/public/rest/services/LACounty_Cache/LACounty_Parcel/MapServer/identify';
 let sortCol = 'created_at', sortDir = -1;
 let page = 1; const PG = 50;
 
@@ -670,7 +855,7 @@ async function launch() {
   });
 
   initMap();
-  await Promise.all([loadCrimes(), loadAnnotations(), loadUsers()]);
+  await Promise.all([loadCrimes(), loadAnnotations(), loadUsers(), loadObservations()]);
   await loadPhotos();
   setupResize();
 }
@@ -690,8 +875,15 @@ function initMap() {
   // Admin map uses plain layer group — no clustering for full data visibility
   crimeCluster = L.layerGroup(); // NOT added to map by default — crimes off
   annLayerGrp  = L.layerGroup().addTo(adminMap);
+  obsLayerGrp  = L.layerGroup(); // public_comments pins — off by default
   sloLayerGrp  = L.layerGroup();
   unncLayerGrp = L.layerGroup();
+
+  // Parcel tile layer — always available, toggled via button
+  TILE_PARCEL = L.tileLayer(
+    'https://cache.gis.lacounty.gov/cache/rest/services/LACounty_Cache/LACounty_Parcel/MapServer/tile/{z}/{y}/{x}',
+    { attribution: 'LA County Assessor', maxZoom: 21, minZoom: 15, opacity: 0.7 }
+  );
 }
 
 function setBasemap(type) {
@@ -709,7 +901,7 @@ function setBasemap(type) {
 function toggleMapLayer(type) {
   layerOn[type] = !layerOn[type];
   document.getElementById('mb-'+type).classList.toggle('on',layerOn[type]);
-  const grp = {crimes:crimeCluster,ann:annLayerGrp,slo:sloLayerGrp,unnc:unncLayerGrp}[type];
+  const grp = {crimes:crimeCluster,ann:annLayerGrp,slo:sloLayerGrp,unnc:unncLayerGrp,obs:obsLayerGrp}[type];
   if (!grp) return;
   if (layerOn[type]) grp.addTo(adminMap); else adminMap.removeLayer(grp);
 }
@@ -1797,8 +1989,9 @@ function showTab(name) {
   document.querySelectorAll('.tab-pane').forEach(el=>el.classList.remove('active'));
   document.querySelectorAll('.ntab').forEach(el=>el.classList.remove('active'));
   document.getElementById('tab-'+name).classList.add('active');
-  const idx={crimes:0,annotations:1,photos:2,users:3}[name]??0;
+  const idx={crimes:0,annotations:1,photos:2,users:3,observations:4}[name]??0;
   document.querySelectorAll('.ntab')[idx]?.classList.add('active');
+  if (name === 'observations') filterObs();
 }
 
 // ══════════════════════════════════════════════════════
@@ -1889,6 +2082,34 @@ CREATE POLICY "Admin delete photos"
   ON photos FOR DELETE TO authenticated
   USING (EXISTS (
     SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+  ));
+
+-- 7. Public INSERT on public_comments (required for Report Observation to work)
+ALTER TABLE public_comments ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_insert" ON public_comments;
+CREATE POLICY "anon_insert"
+  ON public_comments FOR INSERT TO anon WITH CHECK (true);
+
+-- 8. Admin SELECT / UPDATE / DELETE public_comments
+DROP POLICY IF EXISTS "Admin read public_comments" ON public_comments;
+CREATE POLICY "Admin read public_comments"
+  ON public_comments FOR SELECT TO authenticated
+  USING (EXISTS (
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+  ));
+
+DROP POLICY IF EXISTS "Admin update public_comments" ON public_comments;
+CREATE POLICY "Admin update public_comments"
+  ON public_comments FOR UPDATE TO authenticated
+  USING (EXISTS (
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+  )) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Admin delete public_comments" ON public_comments;
+CREATE POLICY "Admin delete public_comments"
+  ON public_comments FOR DELETE TO authenticated
+  USING (EXISTS (
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
   ));`;
 
 function showRLSFix() {
@@ -1899,6 +2120,423 @@ function copyRLSSQL() {
   navigator.clipboard.writeText(RLS_SQL)
     .then(() => showToast('SQL copied — paste into Supabase SQL Editor', 'ok'))
     .catch(() => showToast('Copy failed — select and copy manually', 'err'));
+}
+
+// ══════════════════════════════════════════════════════
+// PARCEL LAYER — identify-based (no bulk vector fetch)
+// ══════════════════════════════════════════════════════
+function toggleParcelLayer() {
+  parcelOn = !parcelOn;
+  document.getElementById('mb-parcel').classList.toggle('on', parcelOn);
+  if (parcelOn) {
+    TILE_PARCEL.addTo(adminMap);
+    adminMap.on('mousemove', onParcelMouseMove);
+    adminMap.on('click', onParcelClick);
+    if (adminMap.getZoom() < 15)
+      showToast('Zoom in to 15+ to see parcel boundaries', 'ok');
+    else
+      showToast('Parcel layer on — hover for address · click for details', 'ok');
+  } else {
+    destroyParcelVectorLayer();
+  }
+}
+
+async function identifyParcelAt(latlng) {
+  const mapSize   = adminMap.getSize();
+  const mapBounds = adminMap.getBounds();
+  const bbox = [
+    mapBounds.getWest(), mapBounds.getSouth(),
+    mapBounds.getEast(), mapBounds.getNorth(),
+  ].join(',');
+  const params = new URLSearchParams({
+    geometry:       `${latlng.lng},${latlng.lat}`,
+    geometryType:   'esriGeometryPoint',
+    sr:             '4326',
+    layers:         'all:0',
+    tolerance:      '2',
+    mapExtent:      bbox,
+    imageDisplay:   `${mapSize.x},${mapSize.y},96`,
+    returnGeometry: 'false',
+    outFields:      'AIN,APN,SitusHouseNo,SitusDirection,SitusStreet,SitusCity,SitusZip,SitusFullAddress,OwnerName,UseDescription,UseCode,TaxRateArea',
+    f:              'json',
+  });
+  const res = await fetch(PARCEL_IDENTIFY_URL + '?' + params, { signal: AbortSignal.timeout(6000) });
+  if (!res.ok) return null;
+  const data = await res.json();
+  if (data.error) { console.warn('[parcel identify]', data.error.message); return null; }
+  const result = data.results && data.results[0];
+  if (!result) return null;
+  const attrs = result.attributes || {};
+  const houseNum  = attrs.SitusHouseNo || '';
+  const dir       = attrs.SitusDirection ? attrs.SitusDirection + ' ' : '';
+  const street    = attrs.SitusStreet || '';
+  const shortAddr = [houseNum, dir + street].filter(Boolean).join(' ').trim();
+  const ain       = attrs.AIN || attrs.APN || '';
+  return { shortAddr, ain, attrs, city: attrs.SitusCity || '', zip: attrs.SitusZip || '' };
+}
+
+function onParcelMouseMove(e) {
+  clearTimeout(parcelHoverTimer);
+  parcelHoverTimer = setTimeout(async () => {
+    try {
+      const info = await identifyParcelAt(e.latlng);
+      if (!info || !info.shortAddr) {
+        if (parcelHoverLabel) { parcelHoverLabel.remove(); parcelHoverLabel = null; }
+        return;
+      }
+      if (info.ain && info.ain === parcelLastHoverAIN && parcelHoverLabel) {
+        parcelHoverLabel.setLatLng(e.latlng); return;
+      }
+      parcelLastHoverAIN = info.ain;
+      if (parcelHoverLabel) { parcelHoverLabel.remove(); parcelHoverLabel = null; }
+      parcelHoverLabel = L.tooltip({ permanent: false, direction: 'top', className: 'parcel-hover-label', offset: [0,-6], opacity:1 })
+        .setContent(info.shortAddr).setLatLng(e.latlng).addTo(adminMap);
+    } catch(e) { /* silent */ }
+  }, 180);
+}
+
+async function onParcelClick(e) {
+  if (parcelHoverLabel) { parcelHoverLabel.remove(); parcelHoverLabel = null; }
+  clearTimeout(parcelHoverTimer);
+  try {
+    openParcelPopup(e.originalEvent, '…', '', '', '', {});
+    const info = await identifyParcelAt(e.latlng);
+    if (!info) { closeParcelPopup(); return; }
+    openParcelPopup(e.originalEvent, info.shortAddr, info.city, info.zip, info.ain, info.attrs);
+  } catch(err) { console.warn('[parcel click]', err.message); closeParcelPopup(); }
+}
+
+function destroyParcelVectorLayer() {
+  clearTimeout(parcelHoverTimer);
+  parcelLastHoverAIN = null;
+  if (adminMap) { adminMap.off('mousemove', onParcelMouseMove); adminMap.off('click', onParcelClick); }
+  if (TILE_PARCEL && adminMap.hasLayer(TILE_PARCEL)) adminMap.removeLayer(TILE_PARCEL);
+  if (parcelVectorLayer) { adminMap.removeLayer(parcelVectorLayer); parcelVectorLayer = null; }
+  if (parcelHoverLabel)  { parcelHoverLabel.remove(); parcelHoverLabel = null; }
+  closeParcelPopup();
+}
+
+function closeParcelPopup() {
+  if (parcelPopup) { parcelPopup.remove(); parcelPopup = null; }
+}
+
+function openParcelPopup(mouseEvent, shortAddr, city, zip, ain, attrs) {
+  closeParcelPopup();
+  const x = Math.min(mouseEvent.clientX + 12, window.innerWidth  - 296);
+  const y = Math.min(mouseEvent.clientY - 20,  window.innerHeight - 320);
+  const el = document.createElement('div');
+  el.className = 'parcel-popup';
+  el.style.left = x + 'px';
+  el.style.top  = y + 'px';
+  const cityLine = [city, zip].filter(Boolean).join(' ');
+  el.innerHTML = `
+    <div class="parcel-popup-header">
+      <div class="parcel-popup-addr">📋 ${shortAddr || 'Unknown Address'}</div>
+      ${cityLine ? `<div class="parcel-popup-city">${cityLine}</div>` : ''}
+      <button class="parcel-popup-close" onclick="closeParcelPopup()">✕</button>
+    </div>
+    <div class="parcel-popup-body" id="parcel-popup-body">
+      <div class="parcel-loading">Loading assessor data…</div>
+    </div>
+    ${ain ? `<div class="parcel-popup-footer">
+      <a href="https://portal.assessor.lacounty.gov/parceldetail/${ain}" target="_blank" rel="noopener">Full Assessor Record ↗</a>
+    </div>` : ''}`;
+  document.body.appendChild(el);
+  parcelPopup = el;
+  renderParcelBody(ain, attrs);
+}
+
+function renderParcelBody(ain, attrs) {
+  const body = document.getElementById('parcel-popup-body');
+  if (!body) return;
+  const fmt = v => (v && String(v).trim()) ? String(v).trim() : null;
+  const apn     = fmt(attrs.APN || attrs.AIN || ain) || ain || '—';
+  const owner   = fmt(attrs.OwnerName);
+  const useDesc = fmt(attrs.UseDescription) || fmt(attrs.UseCode);
+  const taxArea = fmt(attrs.TaxRateArea);
+  const row = (label, val, cls='') => val
+    ? `<div class="parcel-row"><span class="parcel-label">${label}</span><span class="parcel-value${cls?' '+cls:''}">${val}</span></div>`
+    : '';
+  body.innerHTML =
+    row('APN', apn, 'highlight') +
+    (owner   ? row('Owner',         owner)   : '') +
+    (useDesc ? row('Use',           useDesc) : '') +
+    (taxArea ? row('Tax Rate Area', taxArea) : '') +
+    `<div style="font-size:10px;color:var(--muted);padding:6px 0 2px;text-align:center">Full financial details via Assessor Record ↗</div>`;
+}
+
+document.addEventListener('click', e => {
+  if (parcelPopup && !parcelPopup.contains(e.target)) closeParcelPopup();
+});
+
+// ══════════════════════════════════════════════════════
+// PUBLIC OBSERVATIONS (public_comments table)
+// ══════════════════════════════════════════════════════
+// Schema: id, created_at, lat, lng, category, description,
+//         submitter_email, status, reviewed_by, notes
+let allObservations = [], filteredObservations = [];
+
+const OBS_CAT_LABELS = {
+  graffiti:'🖌 Graffiti', illegal_dumping:'🗑 Illegal Dumping', pothole:'🔧 Pothole',
+  sidewalk:'🚶 Sidewalk', encampment:'⛺ Encampment', hazard:'⚠️ Hazard',
+  abandoned_vehicle:'🚗 Abandoned Vehicle', noise:'🔊 Noise', lighting:'💡 Lighting',
+  other:'📍 Other',
+};
+
+async function loadObservations() {
+  try {
+    const { data, error } = await sb.from('public_comments')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    allObservations = data || [];
+  } catch(e) {
+    console.error('loadObservations:', e.message);
+    allObservations = [];
+  }
+  // Update badge — highlight new count in blue
+  const newCount = allObservations.filter(o => o.status === 'new' || !o.status).length;
+  const badge = document.getElementById('cnt-obs');
+  if (badge) {
+    badge.textContent = allObservations.length;
+    badge.style.background = newCount > 0 ? 'rgba(45,139,255,.3)' : 'var(--panel2)';
+    badge.style.color = newCount > 0 ? 'var(--blue)' : 'var(--muted)';
+  }
+  // Populate category filter
+  buildObsCatFilter();
+  renderObsMarkers();
+  filterObs();
+}
+
+function buildObsCatFilter() {
+  const sel = document.getElementById('obs-filter-cat');
+  if (!sel) return;
+  const used = new Set(allObservations.map(o => o.category).filter(Boolean));
+  sel.innerHTML = '<option value="">All categories</option>';
+  used.forEach(cat => {
+    const opt = document.createElement('option');
+    opt.value = cat;
+    opt.textContent = OBS_CAT_LABELS[cat] || cat;
+    sel.appendChild(opt);
+  });
+}
+
+function filterObs() {
+  const q      = (document.getElementById('obs-search')?.value || '').toLowerCase().trim();
+  const statusF= document.getElementById('obs-filter-status')?.value || '';
+  const catF   = document.getElementById('obs-filter-cat')?.value || '';
+
+  filteredObservations = allObservations.filter(o => {
+    if (statusF && (o.status || 'new') !== statusF) return false;
+    if (catF    && (o.category || '')  !== catF)    return false;
+    if (q) {
+      const hay = [o.description, o.category, o.notes, o.submitter_email]
+        .filter(Boolean).join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  // Update new-observations banner
+  const newCount = allObservations.filter(o => !o.status || o.status === 'new').length;
+  const banner = document.getElementById('obs-new-banner');
+  const bannerCount = document.getElementById('obs-new-count');
+  if (banner) banner.style.display = newCount > 0 ? 'block' : 'none';
+  if (bannerCount) bannerCount.textContent = newCount;
+
+  document.getElementById('obs-tcount').textContent =
+    `${filteredObservations.length}${filteredObservations.length < allObservations.length ? ' of '+allObservations.length : ''} reports`;
+
+  renderObsGrid();
+}
+
+function renderObsGrid() {
+  const grid = document.getElementById('obs-grid');
+  if (!filteredObservations.length) {
+    grid.innerHTML = `<div class="empty-state">${allObservations.length ? 'No reports match your filter' : 'No public reports yet — they appear here when the public submits an observation via the field map'}</div>`;
+    return;
+  }
+  grid.innerHTML = filteredObservations.map(o => {
+    const status   = o.status || 'new';
+    const catLabel = OBS_CAT_LABELS[o.category] || (o.category || '📍 Observation');
+    const dateStr  = o.created_at ? new Date(o.created_at).toLocaleString() : '—';
+    const hasLoc   = o.lat != null && o.lng != null;
+    const statusBadge = {
+      new:       `<span class="badge b-new">🔵 New</span>`,
+      reviewed:  `<span class="badge b-reviewed">✅ Reviewed</span>`,
+      promoted:  `<span class="badge b-promoted">🌐 Promoted</span>`,
+      dismissed: `<span class="badge b-dismissed">— Dismissed</span>`,
+    }[status] || `<span class="badge">${status}</span>`;
+
+    return `<div class="obs-card status-${status}" id="obscard-${o.id}">
+      <div class="obs-header">
+        <span class="obs-cat">${catLabel}</span>
+        ${statusBadge}
+        <span class="obs-date">${dateStr}</span>
+      </div>
+      <div class="obs-desc">${o.description || '—'}</div>
+      <div class="obs-meta">
+        ${hasLoc ? `<span>📍 ${parseFloat(o.lat).toFixed(5)}, ${parseFloat(o.lng).toFixed(5)}</span>` : '<span style="color:var(--danger)">No location</span>'}
+        ${o.submitter_email ? `<span>✉️ ${o.submitter_email}</span>` : ''}
+        ${o.notes ? `<span>📝 ${o.notes.slice(0,60)}${o.notes.length>60?'…':''}</span>` : ''}
+      </div>
+      <div class="obs-actions">
+        ${hasLoc ? `<button class="btn btn-sm" onclick="flyToObs(${o.lat},${o.lng},'${o.id}')">⭐ Map</button>` : ''}
+        <button class="btn btn-sm" onclick="openObsModal('${o.id}')">🔍 Review</button>
+        ${status === 'new' ? `<button class="btn btn-sm" style="color:var(--green);border-color:var(--green)" onclick="quickMarkObs('${o.id}','reviewed')">✓ Mark Reviewed</button>` : ''}
+        ${(status === 'new' || status === 'reviewed') ? `<button class="btn btn-sm" style="color:var(--accent);border-color:var(--accent)" onclick="openObsModal('${o.id}')">⬆ Promote</button>` : ''}
+        <button class="btn btn-sm btn-danger" onclick="deleteObs('${o.id}')">Del</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderObsMarkers() {
+  if (!obsLayerGrp) return;
+  obsLayerGrp.clearLayers();
+  allObservations.forEach(o => {
+    if (o.lat == null || o.lng == null) return;
+    const status = o.status || 'new';
+    const color  = { new:'#2d8bff', reviewed:'#22c55e', promoted:'#00c2a8', dismissed:'#555' }[status] || '#2d8bff';
+    const catLabel = OBS_CAT_LABELS[o.category] || (o.category || 'Observation');
+    const m = L.circleMarker([o.lat, o.lng], {
+      radius: 7, color: 'white', weight: 2, fillColor: color, fillOpacity: 0.9,
+    });
+    m.bindPopup(`<div style="padding:10px;font-family:var(--font);color:var(--text);max-width:240px">
+      <div style="font-weight:600;font-size:12px;color:${color};margin-bottom:4px">${catLabel}</div>
+      <div style="font-size:11px;line-height:1.5;margin-bottom:6px">${(o.description||'').slice(0,140)}</div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:8px">${o.created_at ? new Date(o.created_at).toLocaleString() : ''}</div>
+      <span class="badge b-${status}" style="margin-bottom:8px;display:inline-block">${status}</span>
+      <div style="display:flex;gap:5px;margin-top:6px">
+        <button class="btn btn-sm" onclick="openObsModal('${o.id}')">🔍 Review</button>
+        ${status==='new'||status==='reviewed' ? `<button class="btn btn-sm" style="color:var(--accent);border-color:var(--accent)" onclick="openObsModal('${o.id}')">⬆ Promote</button>` : ''}
+      </div>
+    </div>`, { closeButton: true, maxWidth: 260 });
+    obsLayerGrp.addLayer(m);
+  });
+}
+
+function flyToObs(lat, lng, id) {
+  const o = allObservations.find(x => x.id === id);
+  const label = o ? (OBS_CAT_LABELS[o.category] || o.category || 'Report') : 'Report';
+  toggleStar(lat, lng, 'obs-'+id, label);
+  adminMap.flyTo([lat, lng], 19);
+  // Auto-show obs layer if off
+  if (!layerOn.obs) toggleMapLayer('obs');
+}
+
+function openObsModal(id) {
+  const o = allObservations.find(x => x.id === id);
+  if (!o) return;
+  document.getElementById('obs-modal-id').value   = o.id;
+  document.getElementById('obs-modal-cat').textContent  = OBS_CAT_LABELS[o.category] || o.category || '—';
+  document.getElementById('obs-modal-date').textContent = o.created_at ? new Date(o.created_at).toLocaleString() : '—';
+  document.getElementById('obs-modal-loc').textContent  = (o.lat != null && o.lng != null)
+    ? `${parseFloat(o.lat).toFixed(6)}, ${parseFloat(o.lng).toFixed(6)}`
+    : 'No location provided';
+  document.getElementById('obs-modal-desc').textContent = o.description || '—';
+  document.getElementById('obs-modal-contact').textContent = o.submitter_email || '(no contact info)';
+  document.getElementById('obs-modal-notes').value = o.notes || '';
+  document.getElementById('obs-modal-title').textContent =
+    `Review: ${OBS_CAT_LABELS[o.category] || o.category || 'Public Report'}`;
+  document.getElementById('obs-modal').style.display = 'flex';
+}
+
+async function saveObsNotes() {
+  const id    = document.getElementById('obs-modal-id').value;
+  const notes = document.getElementById('obs-modal-notes').value.trim();
+  const { error } = await sb.from('public_comments').update({ notes: notes || null }).eq('id', id);
+  if (error) { showToast('Error: '+error.message, 'err'); return; }
+  showToast('Notes saved', 'ok');
+  await loadObservations();
+}
+
+async function saveObsReview(newStatus) {
+  const id    = document.getElementById('obs-modal-id').value;
+  const notes = document.getElementById('obs-modal-notes').value.trim();
+  const patch = { status: newStatus, reviewed_by: currentUser.id };
+  if (notes) patch.notes = notes;
+  const { error } = await sb.from('public_comments').update(patch).eq('id', id);
+  if (error) { showToast('Error: '+error.message, 'err'); return; }
+  const label = { reviewed:'✅ Marked as reviewed', dismissed:'— Dismissed' }[newStatus] || 'Updated';
+  showToast(label, 'ok');
+  document.getElementById('obs-modal').style.display = 'none';
+  await loadObservations();
+}
+
+async function quickMarkObs(id, newStatus) {
+  const { error } = await sb.from('public_comments')
+    .update({ status: newStatus, reviewed_by: currentUser.id }).eq('id', id);
+  if (error) { showToast('Error: '+error.message, 'err'); return; }
+  showToast('✅ Marked reviewed', 'ok');
+  await loadObservations();
+}
+
+async function promoteObsToAnnotation() {
+  const id = document.getElementById('obs-modal-id').value;
+  const o  = allObservations.find(x => x.id === id);
+  if (!o) return;
+
+  if (!o.lat || !o.lng) {
+    showToast('Cannot promote — report has no location', 'err');
+    return;
+  }
+
+  const notes = document.getElementById('obs-modal-notes').value.trim();
+
+  // Map obs category to annotation category value
+  const catMap = {
+    graffiti:'vandalism', illegal_dumping:'trash', pothole:'lighting',
+    sidewalk:'lighting',  encampment:'encampment', hazard:'hazard',
+    abandoned_vehicle:'trash', noise:'observation', lighting:'lighting',
+    other:'observation',
+  };
+  const annCat = catMap[o.category] || 'observation';
+  const catCfg = CATEGORY_LOOKUP[annCat];
+
+  // Build annotation record
+  const newAnn = {
+    label:           OBS_CAT_LABELS[o.category] || o.category || 'Public Report',
+    annotation_type: 'point',
+    category:        annCat,
+    notes:           [o.description, notes ? `Admin: ${notes}` : null].filter(Boolean).join('\n') || null,
+    lat:             o.lat,
+    lng:             o.lng,
+    status:          'draft',
+    is_public:       false,
+    is_sensitive:    false,
+    category_data:   { source: 'public_report', original_category: o.category },
+    created_by:      currentUser.id,
+  };
+
+  const { error: annErr } = await sb.from('map_annotations').insert(newAnn);
+  if (annErr) { showToast('Error creating annotation: '+annErr.message, 'err'); return; }
+
+  // Mark original report as promoted
+  await sb.from('public_comments').update({
+    status: 'promoted', reviewed_by: currentUser.id,
+    notes: notes || 'Promoted to map_annotations'
+  }).eq('id', id);
+
+  showToast('⬆ Report promoted to Annotations as Draft', 'ok');
+  document.getElementById('obs-modal').style.display = 'none';
+  await Promise.all([loadAnnotations(), loadObservations()]);
+  showTab('annotations');
+}
+
+async function deleteObs(id) {
+  if (!confirm('Delete this public report? Cannot be undone.')) return;
+  const { error } = await sb.from('public_comments').delete().eq('id', id);
+  if (error) { showToast('Error: '+error.message, 'err'); return; }
+  showToast('Deleted', 'ok');
+  await loadObservations();
+}
+
+function exportObsCSV() {
+  const headers = ['id','created_at','lat','lng','category','description','submitter_email','status','reviewed_by','notes'];
+  const csv = toCSV(allObservations, headers);
+  downloadCSV(`jefferson_park_public_reports_${today()}.csv`, csv);
+  showToast(`Exported ${allObservations.length} public reports`, 'ok');
 }
 
 // ══════════════════════════════════════════════════════

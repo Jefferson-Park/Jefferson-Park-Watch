@@ -2858,11 +2858,16 @@ async function pubReportGeocodeAddress(val) {
     const parcel = await queryAssessorParcel(streetOnly);
     if (parcel) {
       const label = parcel.matchAddr || streetOnly;
+      // Use Assessor label for display but Nominatim for pin accuracy (parcel centroid drifts)
+      // Fetch Nominatim in background — if it finds a house-number match use its coords, else fall back to parcel
       sug.innerHTML = `<div style="padding:7px 10px;font-size:11px;cursor:pointer;border-bottom:1px solid var(--border)"
-        onmousedown="pubReportSelectAddress('${parcel.lat}','${parcel.lng}','${label.replace(/'/g,'&#39;')}')"
+        id="pub-sug-assessor"
         onmouseover="this.style.background='var(--panel2)'" onmouseout="this.style.background=''">
         <span style="color:var(--accent);font-size:10px">&#x2713; Address confirmed &nbsp;</span>${label}
       </div>`;
+      sug.style.display = 'block';
+      // Wire up with accurate coords once Nominatim resolves
+      _pubReportNominatimPin(query, label, parcel.lat, parcel.lng);
       _pubReportNominatim(query, sug, true);
       return;
     }
@@ -2870,6 +2875,38 @@ async function pubReportGeocodeAddress(val) {
     _pubReportNominatim(query, sug, false);
   } catch(e) {
     sug.innerHTML = `<div style="padding:8px 10px;font-size:11px;color:var(--danger)">Search failed - try dropping a pin</div>`;
+  }
+}
+
+// Resolves accurate street-level pin coords for an assessor-confirmed address
+// Falls back to parcel centroid if Nominatim finds no house-number match
+async function _pubReportNominatimPin(query, label, fallbackLat, fallbackLng) {
+  const hasCity = /,/.test(query.trim());
+  let street = query.trim(), city = '', state = '', country = 'US';
+  if (!hasCity) {
+    const cityState = GEOCODE_CITY.split(',');
+    city  = cityState[0]?.trim() || '';
+    state = cityState[1]?.trim() || '';
+  } else {
+    const parts = query.trim().split(',').map(s => s.trim());
+    street = parts[0];
+    const rest = parts.slice(1).join(' ');
+    const stateMatch = rest.match(/\b([A-Z]{2})\b/);
+    state = stateMatch ? stateMatch[1] : GEOCODE_CITY.split(',')[1]?.trim() || '';
+    city  = rest.replace(/\b[A-Z]{2}\b/, '').replace(/\d{5}/, '').trim().replace(/,$/, '').trim();
+  }
+  let pinLat = fallbackLat, pinLng = fallbackLng;
+  try {
+    const params = new URLSearchParams({ street, city, state, country, format: 'json', limit: '3', addressdetails: '1', zoom: '19' });
+    const res  = await fetch('https://nominatim.openstreetmap.org/search?' + params, { headers: { 'Accept-Language': 'en' } });
+    const data = await res.json();
+    const best = data.find(r => r.address?.house_number) || null;
+    if (best) { pinLat = parseFloat(best.lat); pinLng = parseFloat(best.lon); }
+  } catch(e) { /* use parcel fallback */ }
+  // Wire the confirmed row to the resolved coords
+  const row = document.getElementById('pub-sug-assessor');
+  if (row) {
+    row.onmousedown = () => pubReportSelectAddress(pinLat, pinLng, label);
   }
 }
 
@@ -2926,13 +2963,20 @@ function pubReportSelectAddress(lat, lng, label) {
 
 async function pubReportReverseGeocode(lat, lng) {
   try {
-    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=17&addressdetails=1`, {
-      headers: { 'Accept-Language': 'en', 'User-Agent': 'JeffersonParkMap/1.0' }
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, {
+      headers: { 'Accept-Language': 'en' }
     });
     const data = await res.json();
-    if (data?.display_name) {
-      pubReportAddress = data.display_name.split(',').slice(0,3).join(',');
-      document.getElementById('pub-address').value = pubReportAddress;
+    if (data?.address) {
+      const a = data.address;
+      let label = '';
+      if (a.house_number && a.road) label = `${a.house_number} ${a.road}`;
+      else if (a.road)              label = a.road;
+      else                          label = data.display_name.split(',')[0].trim();
+      if (a.neighbourhood || a.suburb) label += `, ${a.neighbourhood || a.suburb}`;
+      else if (a.city || a.town)       label += `, ${a.city || a.town}`;
+      pubReportAddress = label;
+      document.getElementById('pub-address').value = label;
       updatePubLocStatus();
     }
   } catch(e) { /* silent — coords already set */ }

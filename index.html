@@ -2889,7 +2889,7 @@ async function pubReportGeocodeAddress(val) {
   try {
     // Stage 1: LA County Assessor — identical flow to runAddressSearch / top search bar
     const streetOnly = query.replace(/,.*$/, '').trim();
-    const parcel = await queryAssessorParcel(streetOnly, signal);
+    const parcel = await queryAssessorParcel(streetOnly);
     if (signal.aborted) return; // a newer call took over — discard this result
     if (parcel) {
       const label = parcel.matchAddr || streetOnly;
@@ -3830,7 +3830,7 @@ const JP_VIEWBOX = '-118.355,34.038,-118.295,33.988';
 const ASSESSOR_FIND_URL =
   'https://public.gis.lacounty.gov/public/rest/services/LACounty_Cache/LACounty_Parcel/MapServer/find';
 
-async function queryAssessorParcel(streetAddr, callerSignal) {
+async function queryAssessorParcel(streetAddr) {
   const clean = streetAddr.replace(/\*+/g, '').replace(/\s+/g, ' ').trim().toUpperCase();
 
   // Extract house number
@@ -3861,16 +3861,9 @@ async function queryAssessorParcel(streetAddr, callerSignal) {
       outSR:          '4326',
       f:              'json',
     });
-    // Combine caller abort signal with a per-request 8s timeout.
-    // Use manual AbortController instead of AbortSignal.any() — not in Safari <17.4.
-    const combined = new AbortController();
-    const timer = setTimeout(() => combined.abort(), 8000);
-    if (callerSignal) {
-      if (callerSignal.aborted) { clearTimeout(timer); combined.abort(); }
-      else callerSignal.addEventListener('abort', () => combined.abort(), { once: true });
-    }
-    const res = await fetch(ASSESSOR_FIND_URL + '?' + params, { signal: combined.signal });
-    clearTimeout(timer);
+    const res = await fetch(ASSESSOR_FIND_URL + '?' + params, {
+      signal: AbortSignal.timeout(8000),
+    });
     if (!res.ok) { console.warn('Assessor /find HTTP', res.status); return null; }
     const data = await res.json();
     if (data.error) { console.warn('Assessor /find error:', data.error.message); return null; }

@@ -2968,6 +2968,21 @@ function pubReportSelectAddress(lat, lng, label) {
 }
 
 async function pubReportReverseGeocode(lat, lng) {
+  // Stage 1: LA County Assessor /identify — authoritative parcel address
+  try {
+    const latlng = L.latLng(lat, lng);
+    const info = await identifyParcelAt(latlng);
+    if (info && info.shortAddr) {
+      const label = info.attrs.SitusFullAddress ||
+        [info.shortAddr, info.city].filter(Boolean).join(', ');
+      pubReportAddress = label;
+      document.getElementById('pub-address').value = label;
+      updatePubLocStatus();
+      return; // assessor gave us a precise parcel address — done
+    }
+  } catch(e) { /* fall through to Nominatim */ }
+
+  // Stage 2: Nominatim fallback (open land, parks, intersections the assessor won't have)
   try {
     const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, {
       headers: { 'Accept-Language': 'en' }
@@ -2985,7 +3000,7 @@ async function pubReportReverseGeocode(lat, lng) {
       document.getElementById('pub-address').value = label;
       updatePubLocStatus();
     }
-  } catch(e) { /* silent — coords already set */ }
+  } catch(e) { /* silent — coords already set, address display is best-effort */ }
 }
 
 function pubReportUseCurrentLocation() {

@@ -3861,12 +3861,16 @@ async function queryAssessorParcel(streetAddr, callerSignal) {
       outSR:          '4326',
       f:              'json',
     });
-    // Combine caller abort signal with a per-request 8s timeout
-    const timeoutSignal = AbortSignal.timeout(8000);
-    const signal = callerSignal
-      ? AbortSignal.any([callerSignal, timeoutSignal])
-      : timeoutSignal;
-    const res = await fetch(ASSESSOR_FIND_URL + '?' + params, { signal });
+    // Combine caller abort signal with a per-request 8s timeout.
+    // Use manual AbortController instead of AbortSignal.any() — not in Safari <17.4.
+    const combined = new AbortController();
+    const timer = setTimeout(() => combined.abort(), 8000);
+    if (callerSignal) {
+      if (callerSignal.aborted) { clearTimeout(timer); combined.abort(); }
+      else callerSignal.addEventListener('abort', () => combined.abort(), { once: true });
+    }
+    const res = await fetch(ASSESSOR_FIND_URL + '?' + params, { signal: combined.signal });
+    clearTimeout(timer);
     if (!res.ok) { console.warn('Assessor /find HTTP', res.status); return null; }
     const data = await res.json();
     if (data.error) { console.warn('Assessor /find error:', data.error.message); return null; }

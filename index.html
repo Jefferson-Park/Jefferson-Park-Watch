@@ -2814,6 +2814,7 @@ let pubReportAddress = null;
 let pubReportMarker = null;  // red preview pin while choosing
 let pubReportDropMode = false;
 let pubReportAddrTimer = null;
+let pubReportGeoAbort = null; // AbortController — cancels in-flight geocode requests
 const pubObservationMarkers = []; // persisted red drop pins
 
 function openPublicReport() {
@@ -2854,6 +2855,9 @@ function updatePubLocStatus() {
 // Debounce address input — geocode after user pauses typing
 function pubReportAddressInput(val) {
   clearTimeout(pubReportAddrTimer);
+  // Fix C: clear previously confirmed coords when user starts retyping
+  pubReportLat = pubReportLng = pubReportAddress = null;
+  updatePubLocStatus();
   const sug = document.getElementById('pub-address-suggestions');
   if (!val || val.length < 4) { sug.style.display = 'none'; return; }
   // Position fixed dropdown below the input
@@ -2868,6 +2872,12 @@ function pubReportAddressInput(val) {
 async function pubReportGeocodeAddress(val) {
   const query = val || document.getElementById('pub-address').value.trim();
   if (!query || query.length < 4) return;
+
+  // Fix A: cancel any previous in-flight request before starting a new one
+  if (pubReportGeoAbort) pubReportGeoAbort.abort();
+  pubReportGeoAbort = new AbortController();
+  const signal = pubReportGeoAbort.signal;
+
   const sug = document.getElementById('pub-address-suggestions');
   const inp = document.getElementById('pub-address');
   const rect = inp.getBoundingClientRect();
@@ -2879,37 +2889,45 @@ async function pubReportGeocodeAddress(val) {
   try {
     // Stage 1: LA County Assessor — identical flow to runAddressSearch / top search bar
     const streetOnly = query.replace(/,.*$/, '').trim();
-    const parcel = await queryAssessorParcel(streetOnly);
+    const parcel = await queryAssessorParcel(streetOnly, signal);
+    if (signal.aborted) return; // a newer call took over — discard this result
     if (parcel) {
       const label = parcel.matchAddr || streetOnly;
-      // Wire click handler immediately with parcel coords — no async race.
-      // Parcel centroid is the same accuracy the top search bar uses on assessor hit.
+      // Fix B: auto-confirm immediately on assessor hit — no click required.
+      // Coords are locked in now; the dropdown row is just for user visibility.
+      pubReportSelectAddress(parcel.lat, parcel.lng, label);
+      // Rebuild the dropdown so the user can see what was confirmed (and pick Nominatim if they prefer).
+      sug.innerHTML = '';
       const assessorRow = document.createElement('div');
       assessorRow.style.cssText = 'padding:7px 10px;font-size:11px;cursor:pointer;border-bottom:1px solid var(--border)';
       assessorRow.innerHTML = `<span style="color:var(--accent);font-size:10px">&#x2713; Address confirmed &nbsp;</span>${label}`;
       assessorRow.addEventListener('mouseover', () => assessorRow.style.background = 'var(--panel2)');
       assessorRow.addEventListener('mouseout',  () => assessorRow.style.background = '');
       assessorRow.addEventListener('mousedown', () => pubReportSelectAddress(parcel.lat, parcel.lng, label));
-      sug.innerHTML = '';
       sug.appendChild(assessorRow);
       sug.style.display = 'block';
       // Append Nominatim suggestions below (uses original user query, same as search bar)
-      _pubReportNominatim(query, sug, true);
+      _pubReportNominatim(query, sug, true, signal);
       return;
     }
     // Stage 2: Nominatim fallback — same structured params as top search bar
-    _pubReportNominatim(query, sug, false);
+    _pubReportNominatim(query, sug, false, signal);
   } catch(e) {
+    if (e.name === 'AbortError') return; // cancelled — ignore
     sug.innerHTML = `<div style="padding:8px 10px;font-size:11px;color:var(--danger)">Search failed - try dropping a pin</div>`;
   }
 }
 
 // Fetches Nominatim suggestion rows and appends/replaces the dropdown.
 // Uses _buildNominatimParams — same structured params as the top search bar.
-async function _pubReportNominatim(query, sug, append) {
+async function _pubReportNominatim(query, sug, append, signal) {
   try {
     const params = _buildNominatimParams(query, 4);
-    const res  = await fetch('https://nominatim.openstreetmap.org/search?' + params, { headers: { 'Accept-Language': 'en' } });
+    const res  = await fetch('https://nominatim.openstreetmap.org/search?' + params, {
+      headers: { 'Accept-Language': 'en' },
+      signal,
+    });
+    if (signal && signal.aborted) return;
     const data = await res.json();
     if (!data.length) {
       if (!append) sug.innerHTML = `<div style="padding:8px 10px;font-size:11px;color:var(--muted)">No results - try a nearby cross-street or drop a pin</div>`;
@@ -2931,7 +2949,10 @@ async function _pubReportNominatim(query, sug, append) {
       row.addEventListener('mousedown', () => pubReportSelectAddress(r.lat, r.lon, label));
       sug.appendChild(row);
     });
-  } catch(e) { /* silent if assessor result already shown */ }
+  } catch(e) {
+    if (e.name === 'AbortError') return; // cancelled by new keystroke — ignore
+    /* otherwise silent if assessor result already shown */
+  }
 }
 
 function pubReportSelectAddress(lat, lng, label) {
@@ -3809,7 +3830,7 @@ const JP_VIEWBOX = '-118.355,34.038,-118.295,33.988';
 const ASSESSOR_FIND_URL =
   'https://public.gis.lacounty.gov/public/rest/services/LACounty_Cache/LACounty_Parcel/MapServer/find';
 
-async function queryAssessorParcel(streetAddr) {
+async function queryAssessorParcel(streetAddr, callerSignal) {
   const clean = streetAddr.replace(/\*+/g, '').replace(/\s+/g, ' ').trim().toUpperCase();
 
   // Extract house number
@@ -3840,9 +3861,12 @@ async function queryAssessorParcel(streetAddr) {
       outSR:          '4326',
       f:              'json',
     });
-    const res = await fetch(ASSESSOR_FIND_URL + '?' + params, {
-      signal: AbortSignal.timeout(8000),
-    });
+    // Combine caller abort signal with a per-request 8s timeout
+    const timeoutSignal = AbortSignal.timeout(8000);
+    const signal = callerSignal
+      ? AbortSignal.any([callerSignal, timeoutSignal])
+      : timeoutSignal;
+    const res = await fetch(ASSESSOR_FIND_URL + '?' + params, { signal });
     if (!res.ok) { console.warn('Assessor /find HTTP', res.status); return null; }
     const data = await res.json();
     if (data.error) { console.warn('Assessor /find error:', data.error.message); return null; }

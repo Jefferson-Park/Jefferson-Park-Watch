@@ -1131,11 +1131,11 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
       <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">
         <div class="mf" style="margin:0">
           <label style="font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Name (optional)</label>
-          <input type="text" id="pub-name" placeholder="Your name" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:12px;font-family:var(--font);outline:none;margin-top:4px">
+          <input type="search" id="pub-name" placeholder="Your name" autocomplete="off" name="pub-name-nofill" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:12px;font-family:var(--font);outline:none;margin-top:4px">
         </div>
         <div class="mf" style="margin:0">
           <label style="font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Email (private — only visible to admin)</label>
-          <input type="email" id="pub-email" placeholder="you@example.com" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:12px;font-family:var(--font);outline:none;margin-top:4px">
+          <input type="email" id="pub-email" placeholder="you@example.com" autocomplete="off" name="pub-email-nofill" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:12px;font-family:var(--font);outline:none;margin-top:4px">
         </div>
       </div>
     </details>
@@ -2877,21 +2877,23 @@ async function pubReportGeocodeAddress(val) {
   sug.innerHTML = `<div style="padding:8px 10px;font-size:11px;color:var(--muted)">Searching...</div>`;
   sug.style.display = 'block';
   try {
-    // Stage 1: LA County Assessor (parcel label) — same flow as top search bar
+    // Stage 1: LA County Assessor — identical flow to runAddressSearch / top search bar
     const streetOnly = query.replace(/,.*$/, '').trim();
     const parcel = await queryAssessorParcel(streetOnly);
     if (parcel) {
       const label = parcel.matchAddr || streetOnly;
-      // Show confirmed row immediately using parcel centroid as initial coords;
-      // _pubReportNominatimPin will patch to a house-number hit if Nominatim finds one.
-      sug.innerHTML = `<div style="padding:7px 10px;font-size:11px;cursor:pointer;border-bottom:1px solid var(--border)"
-        id="pub-sug-assessor"
-        onmouseover="this.style.background='var(--panel2)'" onmouseout="this.style.background=''">
-        <span style="color:var(--accent);font-size:10px">&#x2713; Address confirmed &nbsp;</span>${label}
-      </div>`;
+      // Wire click handler immediately with parcel coords — no async race.
+      // Parcel centroid is the same accuracy the top search bar uses on assessor hit.
+      const assessorRow = document.createElement('div');
+      assessorRow.style.cssText = 'padding:7px 10px;font-size:11px;cursor:pointer;border-bottom:1px solid var(--border)';
+      assessorRow.innerHTML = `<span style="color:var(--accent);font-size:10px">&#x2713; Address confirmed &nbsp;</span>${label}`;
+      assessorRow.addEventListener('mouseover', () => assessorRow.style.background = 'var(--panel2)');
+      assessorRow.addEventListener('mouseout',  () => assessorRow.style.background = '');
+      assessorRow.addEventListener('mousedown', () => pubReportSelectAddress(parcel.lat, parcel.lng, label));
+      sug.innerHTML = '';
+      sug.appendChild(assessorRow);
       sug.style.display = 'block';
-      // Resolve best pin coords in background, then append additional Nominatim rows
-      _pubReportNominatimPin(query, label, parcel.lat, parcel.lng);
+      // Append Nominatim suggestions below (uses original user query, same as search bar)
       _pubReportNominatim(query, sug, true);
       return;
     }
@@ -2902,27 +2904,8 @@ async function pubReportGeocodeAddress(val) {
   }
 }
 
-// Resolves accurate street-level pin coords for an assessor-confirmed address.
-// Uses _buildNominatimParams — the exact same helper as the top search bar.
-// Falls back to parcel centroid if Nominatim finds no house_number match.
-async function _pubReportNominatimPin(query, label, fallbackLat, fallbackLng) {
-  let pinLat = fallbackLat, pinLng = fallbackLng;
-  try {
-    const params = _buildNominatimParams(query, 3);
-    const res  = await fetch('https://nominatim.openstreetmap.org/search?' + params, { headers: { 'Accept-Language': 'en' } });
-    const data = await res.json();
-    const best = data.find(r => r.address?.house_number) || null;
-    if (best) { pinLat = parseFloat(best.lat); pinLng = parseFloat(best.lon); }
-  } catch(e) { /* use parcel fallback */ }
-  // Patch the confirmed row to the resolved coords
-  const row = document.getElementById('pub-sug-assessor');
-  if (row) {
-    row.onmousedown = () => pubReportSelectAddress(pinLat, pinLng, label);
-  }
-}
-
 // Fetches Nominatim suggestion rows and appends/replaces the dropdown.
-// Uses _buildNominatimParams — the exact same helper as the top search bar.
+// Uses _buildNominatimParams — same structured params as the top search bar.
 async function _pubReportNominatim(query, sug, append) {
   try {
     const params = _buildNominatimParams(query, 4);
@@ -2932,7 +2915,7 @@ async function _pubReportNominatim(query, sug, append) {
       if (!append) sug.innerHTML = `<div style="padding:8px 10px;font-size:11px;color:var(--muted)">No results - try a nearby cross-street or drop a pin</div>`;
       return;
     }
-    const rows = data.map(r => {
+    data.forEach(r => {
       const a = r.address || {};
       let label = '';
       if (a.house_number && a.road) label = `${a.house_number} ${a.road}`;
@@ -2940,11 +2923,14 @@ async function _pubReportNominatim(query, sug, append) {
       else                          label = r.display_name.split(',').slice(0,2).join(',').trim();
       if (a.neighbourhood || a.suburb) label += `, ${a.neighbourhood || a.suburb}`;
       else if (a.city || a.town)       label += `, ${a.city || a.town}`;
-      return `<div style="padding:7px 10px;font-size:11px;cursor:pointer;border-bottom:1px solid var(--border)"
-        onmousedown="pubReportSelectAddress('${r.lat}','${r.lon}','${label.replace(/'/g,'&#39;')}')"
-        onmouseover="this.style.background='var(--panel2)'" onmouseout="this.style.background=''">${label}</div>`;
-    }).join('');
-    if (append) { sug.innerHTML += rows; } else { sug.innerHTML = rows; }
+      const row = document.createElement('div');
+      row.style.cssText = 'padding:7px 10px;font-size:11px;cursor:pointer;border-bottom:1px solid var(--border)';
+      row.textContent = label;
+      row.addEventListener('mouseover', () => row.style.background = 'var(--panel2)');
+      row.addEventListener('mouseout',  () => row.style.background = '');
+      row.addEventListener('mousedown', () => pubReportSelectAddress(r.lat, r.lon, label));
+      sug.appendChild(row);
+    });
   } catch(e) { /* silent if assessor result already shown */ }
 }
 

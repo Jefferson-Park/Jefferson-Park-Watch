@@ -743,7 +743,7 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
             <span class="tog-count" id="ct-cat-trail">0</span>
             <div class="tog-sw" id="sw-cat-trail"></div>
           </div>
-          <!-- LA GeoHub 2022 Urban Trees — live ArcGIS FeatureService layer -->
+          <!-- LA GeoHub 2022 Urban Trees — live esri-leaflet FeatureLayer -->
           <div style="border-top:1px solid var(--border);margin:6px 0 4px;"></div>
           <div class="sec-label" style="margin-top:2px">City Data (Live)</div>
           <div class="tog-row" onclick="toggleUrbanTrees()">
@@ -4523,117 +4523,75 @@ async function doResetPassword() {
 }
 
 // ══════════════════════════════════════════════════════════════════
-// 2022 URBAN TREES — LA GeoHub ArcGIS FeatureServer
+// 2022 URBAN TREES — LA GeoHub via esri-leaflet FeatureLayer
 // ══════════════════════════════════════════════════════════════════
-// Source: Cal Poly UFEI via CAL FIRE / US Forest Service
-// Layer:  https://services.arcgis.com/RmCCgQtiZLDCtblq/ArcGIS/rest/services/2022_Urban_Trees/FeatureServer/0
-// Strategy: query bounding-box on demand — the layer has ~millions of points
-//   across all of LA County so we only fetch what's visible at zoom ≥ 15.
-//   At lower zoom levels we show a prompt to zoom in instead.
+// Uses L.esri.featureLayer which handles ArcGIS JSON format, CORS,
+// and grid-based on-demand querying natively — no raw fetch needed.
+// Source: Cal Poly UFEI, funded by CAL FIRE / US Forest Service
+// Service: services.arcgis.com/RmCCgQtiZLDCtblq/.../2022_Urban_Trees/FeatureServer/0
 
-let urbanTreesLayer  = null;   // current L.geoJSON layer on the map
+let urbanTreesLayer   = null;
 let urbanTreesVisible = false;
-let urbanTreesFetching = false;
-const URBAN_TREES_URL = 'https://services.arcgis.com/RmCCgQtiZLDCtblq/ArcGIS/rest/services/2022_Urban_Trees/FeatureServer/0/query';
-const URBAN_TREES_MIN_ZOOM = 15;
-const URBAN_TREES_MAX_FETCH = 2000; // API hard cap for this service
+const URBAN_TREES_MIN_ZOOM = 14;
 
 function toggleUrbanTrees() {
   urbanTreesVisible = !urbanTreesVisible;
   document.getElementById('sw-urban-trees').classList.toggle('on', urbanTreesVisible);
+
   if (urbanTreesVisible) {
-    loadUrbanTrees();
-    map.on('moveend', onUrbanTreesMapMove);
+    if (map.getZoom() < URBAN_TREES_MIN_ZOOM) {
+      setUrbanTreesStatus('⟳ Zoom in to zoom 14+ to load trees');
+      // Still create the layer — it'll auto-load when user zooms in
+    }
+    if (!urbanTreesLayer) {
+      setUrbanTreesStatus('⟳ Connecting to LA GeoHub…');
+      urbanTreesLayer = L.esri.featureLayer({
+        url: 'https://services.arcgis.com/RmCCgQtiZLDCtblq/ArcGIS/rest/services/2022_Urban_Trees/FeatureServer/0',
+        pointToLayer: function(_feature, latlng) {
+          return L.circleMarker(latlng, {
+            radius:      4,
+            color:       '#22c55e',
+            weight:      1.2,
+            fillColor:   '#22c55e',
+            fillOpacity: 0.6,
+          });
+        },
+        onEachFeature: function(feature, layer) {
+          const conf = feature.properties && feature.properties.confidence;
+          layer.bindPopup(
+            '<div style="padding:10px;font-family:var(--font);color:var(--text);min-width:160px">' +
+            '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">' +
+            '<span style="font-size:18px">🌲</span>' +
+            '<div><div style="font-weight:600;font-size:12px;color:#22c55e">Urban Tree</div>' +
+            '<div style="font-size:10px;font-family:var(--mono);color:var(--muted)">LA GeoHub 2022</div></div></div>' +
+            (conf != null ? '<div style="font-size:11px">Detection confidence: <b>' + Math.round(conf * 100) + '%</b></div>' : '') +
+            '<div style="font-size:10px;color:var(--muted);margin-top:6px;line-height:1.5">' +
+            'Source: Cal Poly UFEI · NAIP 2020 imagery<br>Detected via convolutional neural network</div></div>',
+            { closeButton: true, autoClose: false, maxWidth: 240 }
+          );
+        },
+      });
+
+      urbanTreesLayer.on('loading', function() {
+        setUrbanTreesStatus('⟳ Loading trees…');
+      });
+      urbanTreesLayer.on('load', function() {
+        // Count visible features
+        let n = 0;
+        urbanTreesLayer.eachFeature(function() { n++; });
+        setUrbanTreesStatus('✓ ' + n.toLocaleString() + ' trees in view');
+      });
+      urbanTreesLayer.on('requesterror', function(e) {
+        setUrbanTreesStatus('⚠ Could not load — ' + (e.error && e.error.message ? e.error.message : 'network error'));
+        console.warn('[UrbanTrees] request error:', e);
+      });
+    }
+    urbanTreesLayer.addTo(map);
   } else {
-    map.off('moveend', onUrbanTreesMapMove);
-    if (urbanTreesLayer) { map.removeLayer(urbanTreesLayer); urbanTreesLayer = null; }
+    if (urbanTreesLayer) {
+      map.removeLayer(urbanTreesLayer);
+    }
     setUrbanTreesStatus('');
-  }
-}
-
-function onUrbanTreesMapMove() {
-  if (urbanTreesVisible) loadUrbanTrees();
-}
-
-async function loadUrbanTrees() {
-  if (!urbanTreesVisible) return;
-  if (urbanTreesFetching) return;
-
-  const zoom = map.getZoom();
-  if (zoom < URBAN_TREES_MIN_ZOOM) {
-    if (urbanTreesLayer) { map.removeLayer(urbanTreesLayer); urbanTreesLayer = null; }
-    setUrbanTreesStatus('⟳ Zoom in to zoom 15+ to load trees');
-    return;
-  }
-
-  urbanTreesFetching = true;
-  setUrbanTreesStatus('⟳ Loading…');
-
-  try {
-    const b = map.getBounds();
-    const envelope = `${b.getWest()},${b.getSouth()},${b.getEast()},${b.getNorth()}`;
-
-    const params = new URLSearchParams({
-      geometry:         envelope,
-      geometryType:     'esriGeometryEnvelope',
-      inSR:             '4326',
-      outSR:            '4326',
-      spatialRel:       'esriSpatialRelIntersects',
-      outFields:        'OBJECTID,confidence',
-      resultRecordCount: URBAN_TREES_MAX_FETCH,
-      f:                'geojson',
-    });
-
-    const res = await fetch(URBAN_TREES_URL + '?' + params, { signal: AbortSignal.timeout(12000) });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const geojson = await res.json();
-
-    if (geojson.error) throw new Error(geojson.error.message || 'ArcGIS error');
-
-    const count = geojson.features?.length || 0;
-
-    // Remove old layer, add new
-    if (urbanTreesLayer) map.removeLayer(urbanTreesLayer);
-
-    urbanTreesLayer = L.geoJSON(geojson, {
-      pointToLayer: (_feature, latlng) => L.circleMarker(latlng, {
-        radius:      4,
-        color:       '#22c55e',
-        weight:      1,
-        fillColor:   '#22c55e',
-        fillOpacity: 0.55,
-        pane:        'markerPane',
-      }),
-      onEachFeature: (feature, layer) => {
-        const conf = feature.properties?.confidence;
-        layer.bindPopup(`
-          <div style="padding:10px;font-family:var(--font);color:var(--text);min-width:160px">
-            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
-              <span style="font-size:18px">🌲</span>
-              <div>
-                <div style="font-weight:600;font-size:12px;color:#22c55e">Urban Tree</div>
-                <div style="font-size:10px;font-family:var(--mono);color:var(--muted)">LA GeoHub 2022</div>
-              </div>
-            </div>
-            ${conf != null ? `<div style="font-size:11px">Detection confidence: <b>${Math.round(conf * 100)}%</b></div>` : ''}
-            <div style="font-size:10px;color:var(--muted);margin-top:6px;line-height:1.5">
-              Source: Cal Poly UFEI via NAIP 2020 imagery<br>
-              Detected by convolutional neural network
-            </div>
-          </div>`, { closeButton: true, autoClose: false, maxWidth: 240 }
-        );
-      },
-    });
-
-    if (urbanTreesVisible) urbanTreesLayer.addTo(map);
-
-    const cappedNote = count >= URBAN_TREES_MAX_FETCH ? ` (capped — zoom in for detail)` : '';
-    setUrbanTreesStatus(`✓ ${count.toLocaleString()} trees${cappedNote}`);
-  } catch(err) {
-    setUrbanTreesStatus('⚠ ' + (err.name === 'TimeoutError' ? 'Request timed out' : err.message));
-    console.warn('[UrbanTrees] load error:', err);
-  } finally {
-    urbanTreesFetching = false;
   }
 }
 

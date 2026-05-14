@@ -7,22 +7,21 @@
 
 <!-- Leaflet core -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-  <script src="https://unpkg.com/esri-leaflet@3.0.12/dist/esri-leaflet.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 
-<!-- Marker clustering — gives us numbered cluster bubbles -->
+<!-- Marker clustering -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
 
 <!-- Leaflet Draw — polygon/line/point tools -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css">
-<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+<script defer src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
 
 <!-- Supabase -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<!-- Google Fonts -->
+<!-- Google Fonts — display=swap prevents invisible text while font loads -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -149,7 +148,7 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
 .bm-btn.active { background:var(--panel2); color:var(--text); }
 
 /* toggle rows */
-.tog-row { display:flex; align-items:center; gap:8px; padding:5px 4px; border-radius:6px; cursor:pointer; transition:background .15s; }
+.tog-row { display:flex; align-items:center; gap:8px; padding:10px 4px; border-radius:6px; cursor:pointer; transition:background .15s; min-height:44px; }
 .tog-row:hover { background:var(--panel2); }
 
 /* collapsible layer groups */
@@ -743,15 +742,6 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
             <span class="tog-count" id="ct-cat-trail">0</span>
             <div class="tog-sw" id="sw-cat-trail"></div>
           </div>
-          <!-- LA GeoHub 2022 Urban Trees — live esri-leaflet FeatureLayer -->
-          <div style="border-top:1px solid var(--border);margin:6px 0 4px;"></div>
-          <div class="sec-label" style="margin-top:2px">City Data (Live)</div>
-          <div class="tog-row" onclick="toggleUrbanTrees()">
-            <div class="tog-icon" style="background:rgba(34,197,94,.15)"><span style="font-size:14px">🌲</span></div>
-            <span class="tog-label">2022 Urban Trees <span style="font-size:9px;font-family:var(--mono);color:var(--muted);vertical-align:middle">LA GeoHub</span></span>
-            <div class="tog-sw" id="sw-urban-trees"></div>
-          </div>
-          <div id="urban-trees-status" style="font-size:10px;font-family:var(--mono);color:var(--muted);padding:2px 4px 4px;display:none"></div>
         </div>
       </div>
 
@@ -1567,7 +1557,6 @@ async function doLogin() {
   try { await sb.rpc('set_my_email', { p_email: currentUser.email }); }
   catch(e) { console.warn('set_my_email failed:', e); }
   await loadRole();
-  console.log('Login complete, role:', userRole, 'user:', currentUser.email);
   launch();
 }
 
@@ -1581,15 +1570,12 @@ async function viewPublic() {
 
 async function loadRole() {
   if (!currentUser) { userRole = 'public'; return; }
-  console.log('Loading role for:', currentUser.email);
 
   // Try get_my_role RPC first
   try {
     const { data, error } = await sb.rpc('get_my_role');
-    console.log('get_my_role result:', data, error);
     if (!error && data) {
       userRole = data;
-      console.log('Role set via RPC:', userRole);
       return;
     }
   } catch(e) { console.warn('RPC failed:', e); }
@@ -1598,13 +1584,11 @@ async function loadRole() {
   try {
     const { data, error } = await sb.from('profiles')
       .select('role').eq('id', currentUser.id).single();
-    console.log('profiles query result:', data, error);
     userRole = data?.role || 'field_officer';
   } catch(e) {
     console.warn('Profile query failed:', e);
     userRole = 'field_officer';
   }
-  console.log('Final role:', userRole);
 }
 
 async function doLogout() { await sb.auth.signOut(); location.reload(); }
@@ -1733,7 +1717,6 @@ function initMap() {
       const isFOorPM = ['field_officer','admin','project_manager'].includes(userRole);
       parcelBtn.style.display = isFOorPM ? 'block' : 'none';
     }
-    console.log('✅ Parcel tile layer ready (LACounty_Parcel)');
   })();
 
   map = L.map('map', {
@@ -1808,7 +1791,6 @@ function initMap() {
         document.getElementById('ann-step2').style.display = 'none';
         openModal('ann-modal');
       });
-      console.log('✅ Draw tools loaded');
     } catch(err) {
       console.warn('Draw tools unavailable:', err.message);
       // Hide draw section in sidebar if library failed
@@ -1890,7 +1872,6 @@ function onParcelMapMove() {
 // Called by setBasemap('parcel') — attach map-level mouse listeners
 function loadParcelVectorLayer() {
   // No bulk fetch — listeners are attached directly to the map
-  console.log('[parcel] identify mode active — hover/click enabled');
 }
 
 // Shared identify call: returns parcel attrs at a lat/lng point
@@ -2082,7 +2063,6 @@ document.addEventListener('click', (e) => {
 // LOAD DATA
 // ══════════════════════════════════════════════════════════════════
 async function loadCrimes() {
-  console.log('loadCrimes called, userRole:', userRole);
   const { data, error } = await sb.rpc('get_crimes', {
     p_exclude_closed: !showClosed,
     p_date_from: null,
@@ -2094,8 +2074,6 @@ async function loadCrimes() {
     return;
   }
   crimesData = (data || []).filter(c => c.lng && c.lat);
-  console.log('Crimes loaded:', crimesData.length, 'records');
-  if (crimesData.length === 0) console.warn('No crimes returned — check RLS policies');
   renderCrimes();
 }
 
@@ -2103,7 +2081,6 @@ async function loadBoundaries() {
   const { data, error } = await sb.rpc('get_boundaries');
   if (error) { console.error('Boundaries error:', error); return; }
   boundariesData = data || [];
-  console.log('Boundaries loaded:', boundariesData.length);
   renderBoundaries();
 }
 
@@ -2234,8 +2211,6 @@ async function loadPublicAnnotations() {
       if (['field_officer','project_manager','admin'].includes(userRole) && a.created_by === currentUser?.id) return true;
       return false;
     });
-
-    console.log('Annotations loaded:', annotationsData.length, '| categories:', [...new Set(annotationsData.map(a=>a.category||'none'))]);
     renderCategoryAnnotations();
     renderPublicAnnotations(); // legacy observation layer
   } catch(e) {
@@ -2498,8 +2473,6 @@ async function loadPublicPhotos() {
     }).filter(Boolean);
 
     renderPhotoPin(photosWithLoc);
-    console.log('Attachments indexed — annotations:', Object.keys(attachByAnn).length,
-      '| crimes:', Object.keys(attachByCrime).length);
 
     // Re-render annotation layers so popups pick up the newly loaded attachments
     renderCategoryAnnotations();
@@ -2626,7 +2599,6 @@ function renderPhotoPin(photos) {
   if (layerVisible.photos) {
     if (!map.hasLayer(photoLayerGroup)) photoLayerGroup.addTo(map);
   }
-  console.log('Photo pins rendered:', photos.length);
 }
 
 function togglePhotoPins() {
@@ -2639,21 +2611,20 @@ function togglePhotoPins() {
 // ══════════════════════════════════════════════════════════════════
 // RENDER CRIMES
 // ══════════════════════════════════════════════════════════════════
-function makeCrimeIcon(type) {
+// Pre-build one divIcon per crime type — reused on every renderCrimes()
+// instead of constructing new objects per marker per render.
+const CRIME_ICON_CACHE = {};
+function getCrimeIcon(type) {
+  if (CRIME_ICON_CACHE[type]) return CRIME_ICON_CACHE[type];
   const color = CRIMES[type]?.color || '#888';
-  return L.divIcon({
-    html: `<div style="
-      width:20px;height:20px;
-      background:${color};
-      border:2.5px solid rgba(255,255,255,0.9);
-      border-radius:50%;
-      box-shadow:0 0 0 3px ${color}44;
-    "></div>`,
+  CRIME_ICON_CACHE[type] = L.divIcon({
+    html: `<div style="width:20px;height:20px;background:${color};border:2.5px solid rgba(255,255,255,0.9);border-radius:50%;box-shadow:0 0 0 3px ${color}44"></div>`,
     className: '',
     iconSize: [20, 20],
     iconAnchor: [10, 10],
     popupAnchor: [0, -12],
   });
+  return CRIME_ICON_CACHE[type];
 }
 
 function renderCrimes() {
@@ -2676,7 +2647,7 @@ function renderCrimes() {
   });
 
   filtered.forEach(c => {
-    const marker = L.marker([c.lat, c.lng], { icon: makeCrimeIcon(c.crime_type) });
+    const marker = L.marker([c.lat, c.lng], { icon: getCrimeIcon(c.crime_type) });
     marker.bindPopup(() => buildPopupHTML(c), { maxWidth: 300, minWidth: 260, closeButton: true, autoClose: false, closeOnClick: false });
     marker.on('popupopen', () => {
       // Bind save button after popup renders
@@ -3900,18 +3871,14 @@ async function queryAssessorParcel(streetAddr) {
 
     // Pass 2: search SitusFullAddress (longer combined field including city)
     if (!result) {
-      console.log('[assessor] SitusAddress miss — trying SitusFullAddress');
       result = await doFind('SitusFullAddress');
     }
 
     if (!result) {
-      console.log('[assessor] no match for:', searchText);
       return null;
     }
 
     const attrs = result.attributes || {};
-    console.log('[assessor] hit:', attrs.SitusFullAddress || attrs.SitusAddress,
-      '| geom:', result.geometryType, Object.keys(result.geometry || {}));
 
     // Centroid from polygon rings — outSR=4326 so rings are [lng, lat]
     let lat = null, lng = null;
@@ -3930,7 +3897,6 @@ async function queryAssessorParcel(streetAddr) {
     // If outSR=4326 was ignored and coords came back in Web Mercator (EPSG:3857),
     // the values will be large numbers (x ~±20M, y ~±20M). Convert to WGS84.
     if (Math.abs(lng) > 180 || Math.abs(lat) > 90) {
-      console.log('[assessor] converting Web Mercator → WGS84');
       lng = lng / 20037508.34 * 180;
       lat = Math.atan(Math.exp(lat / 20037508.34 * Math.PI)) * 360 / Math.PI - 90;
     }
@@ -3982,11 +3948,9 @@ function geocodeAddr() {
     // ── Stage 1: LA County Assessor parcel query ──────────────────
     // Strips city/state suffix before querying (assessor only stores street portion)
     const streetOnly = addr.replace(/,.*$/, '').trim();
-    console.log('[geocode] querying assessor for:', streetOnly);
     const parcel = await queryAssessorParcel(streetOnly);
 
     if (parcel) {
-      console.log('[geocode] ASSESSOR HIT → lat:', parcel.lat, 'lng:', parcel.lng, 'addr:', parcel.matchAddr);
       geocodeLat = parcel.lat;
       geocodeLng = parcel.lng;
       document.getElementById('geocode-status').textContent =
@@ -3999,7 +3963,6 @@ function geocodeAddr() {
     }
 
     // ── Stage 2: Nominatim fallback (cross streets, landmarks, blocks) ──
-    console.log('[geocode] assessor miss — falling back to Nominatim');
     const clean = addr.replace(/\*+/g, '50').trim();
     const hasCity = /,/.test(clean);
     let street = clean, city = '', state = '', country = 'US';
@@ -4520,86 +4483,6 @@ async function doResetPassword() {
     err.textContent = '✓ Password updated! Signing you in…';
     setTimeout(() => location.replace(location.pathname), 1500);
   }
-}
-
-// ══════════════════════════════════════════════════════════════════
-// 2022 URBAN TREES — LA GeoHub via esri-leaflet FeatureLayer
-// ══════════════════════════════════════════════════════════════════
-// Uses L.esri.featureLayer which handles ArcGIS JSON format, CORS,
-// and grid-based on-demand querying natively — no raw fetch needed.
-// Source: Cal Poly UFEI, funded by CAL FIRE / US Forest Service
-// Service: services.arcgis.com/RmCCgQtiZLDCtblq/.../2022_Urban_Trees/FeatureServer/0
-
-let urbanTreesLayer   = null;
-let urbanTreesVisible = false;
-const URBAN_TREES_MIN_ZOOM = 14;
-
-function toggleUrbanTrees() {
-  urbanTreesVisible = !urbanTreesVisible;
-  document.getElementById('sw-urban-trees').classList.toggle('on', urbanTreesVisible);
-
-  if (urbanTreesVisible) {
-    if (map.getZoom() < URBAN_TREES_MIN_ZOOM) {
-      setUrbanTreesStatus('⟳ Zoom in to zoom 14+ to load trees');
-      // Still create the layer — it'll auto-load when user zooms in
-    }
-    if (!urbanTreesLayer) {
-      setUrbanTreesStatus('⟳ Connecting to LA GeoHub…');
-      urbanTreesLayer = L.esri.featureLayer({
-        url: 'https://services.arcgis.com/RmCCgQtiZLDCtblq/ArcGIS/rest/services/2022_Urban_Trees/FeatureServer/0',
-        pointToLayer: function(_feature, latlng) {
-          return L.circleMarker(latlng, {
-            radius:      4,
-            color:       '#22c55e',
-            weight:      1.2,
-            fillColor:   '#22c55e',
-            fillOpacity: 0.6,
-          });
-        },
-        onEachFeature: function(feature, layer) {
-          const conf = feature.properties && feature.properties.confidence;
-          layer.bindPopup(
-            '<div style="padding:10px;font-family:var(--font);color:var(--text);min-width:160px">' +
-            '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">' +
-            '<span style="font-size:18px">🌲</span>' +
-            '<div><div style="font-weight:600;font-size:12px;color:#22c55e">Urban Tree</div>' +
-            '<div style="font-size:10px;font-family:var(--mono);color:var(--muted)">LA GeoHub 2022</div></div></div>' +
-            (conf != null ? '<div style="font-size:11px">Detection confidence: <b>' + Math.round(conf * 100) + '%</b></div>' : '') +
-            '<div style="font-size:10px;color:var(--muted);margin-top:6px;line-height:1.5">' +
-            'Source: Cal Poly UFEI · NAIP 2020 imagery<br>Detected via convolutional neural network</div></div>',
-            { closeButton: true, autoClose: false, maxWidth: 240 }
-          );
-        },
-      });
-
-      urbanTreesLayer.on('loading', function() {
-        setUrbanTreesStatus('⟳ Loading trees…');
-      });
-      urbanTreesLayer.on('load', function() {
-        // Count visible features
-        let n = 0;
-        urbanTreesLayer.eachFeature(function() { n++; });
-        setUrbanTreesStatus('✓ ' + n.toLocaleString() + ' trees in view');
-      });
-      urbanTreesLayer.on('requesterror', function(e) {
-        setUrbanTreesStatus('⚠ Could not load — ' + (e.error && e.error.message ? e.error.message : 'network error'));
-        console.warn('[UrbanTrees] request error:', e);
-      });
-    }
-    urbanTreesLayer.addTo(map);
-  } else {
-    if (urbanTreesLayer) {
-      map.removeLayer(urbanTreesLayer);
-    }
-    setUrbanTreesStatus('');
-  }
-}
-
-function setUrbanTreesStatus(msg) {
-  const el = document.getElementById('urban-trees-status');
-  if (!el) return;
-  el.textContent = msg;
-  el.style.display = msg ? 'block' : 'none';
 }
 
 // ══════════════════════════════════════════════════════════════════

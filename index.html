@@ -3328,7 +3328,7 @@ async function submitPublicReport() {
             upsert: false,
           });
         if (upErr) {
-          console.warn('[pub report photo] upload failed:', upErr.message);
+          console.error('[pub report photo] upload failed:', upErr.message, upErr.statusCode, upErr.error);
           showToast('Photo upload failed — submitting report without photo', 'err');
         } else {
           uploadedPhotoPath = storagePath;
@@ -3352,11 +3352,18 @@ async function submitPublicReport() {
     });
 
     if (error) {
-      console.error('public_comments insert failed:', error.message);
-      if (error.message?.toLowerCase().includes('row-level security') || error.message?.includes('policy')) {
+      // Log full error object so the raw Supabase message is always visible in console
+      console.error('public_comments insert failed:', error.message, error.code, error.details, error.hint);
+      const msg_ = error.message || '';
+      const isRLS = msg_.toLowerCase().includes('row-level security')
+                 || msg_.toLowerCase().includes('violates')
+                 || msg_.toLowerCase().includes('policy')
+                 || error.code === '42501';
+      if (isRLS) {
         throw new Error('Submission blocked by database policy — please contact the site admin.');
       }
-      throw new Error(error.message);
+      // Surface the real error to the user rather than hiding it
+      throw new Error(msg_ || 'Unknown error — check browser console for details');
     }
 
     // Success — drop persistent green pin on map

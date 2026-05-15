@@ -1627,13 +1627,21 @@ function flyToAnn(id) {
 }
 
 async function togglePublic(id, current) {
-  const nv = !current;
+  // current arrives as a string "true"/"false" from onclick interpolation — coerce explicitly
+  const nv = !(current === true || current === 'true');
   const {data, error} = await sb.from('map_annotations').update({is_public: nv}).eq('id',id).select('id,is_public');
-  if(error){ showToast('Error: '+error.message,'err'); return; }
-  if(!data||data.length===0){
-    showToast('Update blocked by RLS — see console','err');
-    console.error('RLS blocked UPDATE on map_annotations. Run in Supabase SQL editor:\nCREATE POLICY "Admin update annotations" ON map_annotations FOR UPDATE TO authenticated USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = \'admin\')) WITH CHECK (true);');
-    return;
+  if (error) { showToast('Error: '+error.message,'err'); return; }
+  // Empty data can mean RLS blocked the update OR the row simply wasn't matched.
+  // Re-fetch to confirm the actual stored value before showing an error.
+  if (!data || data.length === 0) {
+    const {data:check} = await sb.from('map_annotations').select('id,is_public').eq('id',id).single();
+    if (check?.is_public === nv) {
+      // Update succeeded even though .select() returned nothing (Supabase RLS on SELECT)
+    } else {
+      showToast('Update blocked by RLS — see console','err');
+      console.error('RLS blocked UPDATE on map_annotations. Run in Supabase SQL editor:\nCREATE POLICY "Admin update annotations" ON map_annotations FOR UPDATE TO authenticated USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = \'admin\'::user_role)) WITH CHECK (true);');
+      return;
+    }
   }
   showToast(nv ? '🌐 Public — will appear on field map' : '🔒 Made private','ok');
   await reloadAnnStable();
@@ -1952,8 +1960,8 @@ async function openPDFCard(path) {
 }
 
 async function togglePhotoPublic(id, current) {
-  const newVal = !current;
-  console.log('Toggling photo', id, 'to is_public:', newVal);
+  // current arrives as string "true"/"false" from onclick interpolation — coerce explicitly
+  const newVal = !(current === true || current === 'true');
 
   const { data, error } = await sb
     .from('photos')
@@ -1961,16 +1969,14 @@ async function togglePhotoPublic(id, current) {
     .eq('id', id)
     .select('id, is_public');
 
-  console.log('Update result:', data, error);
-
   if (error) {
     showToast('Error: '+error.message,'err');
-    console.error('Photo update failed — check RLS policy on photos table');
+    console.error('Photo update failed — check RLS policy on photos table:', error.message);
     return;
   }
   if (!data || data.length === 0) {
     showToast('Update failed — check RLS permissions','err');
-    console.error('Update returned no rows — RLS may be blocking the UPDATE');
+    console.error('Update returned no rows — RLS may be blocking the UPDATE on photos table');
     return;
   }
 
@@ -2117,7 +2123,7 @@ DROP POLICY IF EXISTS "Admin delete crimes" ON crimes;
 CREATE POLICY "Admin delete crimes"
   ON crimes FOR DELETE TO authenticated
   USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
   ));
 
 -- 2. Admin UPDATE crimes
@@ -2125,7 +2131,7 @@ DROP POLICY IF EXISTS "Admin update crimes" ON crimes;
 CREATE POLICY "Admin update crimes"
   ON crimes FOR UPDATE TO authenticated
   USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
   )) WITH CHECK (true);
 
 -- 3. Admin DELETE annotations
@@ -2133,7 +2139,7 @@ DROP POLICY IF EXISTS "Admin delete annotations" ON map_annotations;
 CREATE POLICY "Admin delete annotations"
   ON map_annotations FOR DELETE TO authenticated
   USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
   ));
 
 -- 4. Admin UPDATE annotations (is_public toggle)
@@ -2141,7 +2147,7 @@ DROP POLICY IF EXISTS "Admin update annotations" ON map_annotations;
 CREATE POLICY "Admin update annotations"
   ON map_annotations FOR UPDATE TO authenticated
   USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
   )) WITH CHECK (true);
 
 -- 5. Admin UPDATE photos
@@ -2149,7 +2155,7 @@ DROP POLICY IF EXISTS "Admin update photos" ON photos;
 CREATE POLICY "Admin update photos"
   ON photos FOR UPDATE TO authenticated
   USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
   )) WITH CHECK (true);
 
 -- 6. Admin DELETE photos
@@ -2157,7 +2163,7 @@ DROP POLICY IF EXISTS "Admin delete photos" ON photos;
 CREATE POLICY "Admin delete photos"
   ON photos FOR DELETE TO authenticated
   USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
   ));
 
 -- 7. Public INSERT on public_comments (required for Report Observation to work)
@@ -2171,21 +2177,21 @@ DROP POLICY IF EXISTS "Admin read public_comments" ON public_comments;
 CREATE POLICY "Admin read public_comments"
   ON public_comments FOR SELECT TO authenticated
   USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
   ));
 
 DROP POLICY IF EXISTS "Admin update public_comments" ON public_comments;
 CREATE POLICY "Admin update public_comments"
   ON public_comments FOR UPDATE TO authenticated
   USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
   )) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Admin delete public_comments" ON public_comments;
 CREATE POLICY "Admin delete public_comments"
   ON public_comments FOR DELETE TO authenticated
   USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
   ));
 
 -- 9. Admin INSERT photos (needed when promoting a public report that has a photo)
@@ -2193,7 +2199,7 @@ DROP POLICY IF EXISTS "Admin insert photos" ON photos;
 CREATE POLICY "Admin insert photos"
   ON photos FOR INSERT TO authenticated
   WITH CHECK (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
   ));
 
 -- ── Storage bucket policies (crime-photos bucket) ──────────────────

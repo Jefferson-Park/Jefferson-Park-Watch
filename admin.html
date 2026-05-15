@@ -2645,6 +2645,26 @@ async function promoteObsToAnnotation() {
       is_public:     false,
       is_sensitive:  false,
     }).eq('id', annId);
+
+    // ── Migrate photo from public_comments → photos table ──────────────
+    // public_comments.photo_path is a raw storage path (e.g. "public_reports/abc.jpg").
+    // index.html finds photos exclusively via the `photos` table keyed by annotation_id,
+    // so the photo is invisible on the public map until we create this bridge row.
+    // is_public stays false — admin must explicitly toggle it public after reviewing.
+    if (o.photo_path) {
+      const { error: photoErr } = await sb.from('photos').insert({
+        storage_path:  o.photo_path,
+        annotation_id: annId,
+        crime_id:      null,
+        is_public:     false,
+        caption:       `From public report — ${OBS_CAT_LABELS[o.category] || o.category || 'observation'}`,
+        uploaded_by:   currentUser.id,
+      });
+      if (photoErr) {
+        console.warn('Photo migration failed (non-fatal):', photoErr.message);
+        showToast('⚠️ Report promoted but photo link failed — check console', 'err');
+      }
+    }
   }
 
   // Mark original report as promoted, save admin_category
@@ -2654,9 +2674,10 @@ async function promoteObsToAnnotation() {
     notes: notes || 'Promoted to map_annotations'
   }).eq('id', id);
 
-  showToast('⬆ Report promoted to Annotations as Draft', 'ok');
+  const photoMigrated = annId && o.photo_path;
+  showToast(`⬆ Report promoted to Annotations as Draft${photoMigrated ? ' · 📷 photo linked (private)' : ''}`, 'ok');
   document.getElementById('obs-modal').style.display = 'none';
-  await Promise.all([loadAnnotations(), loadObservations()]);
+  await Promise.all([loadAnnotations(), loadObservations(), loadPhotos()]);
   showTab('annotations');
 }
 

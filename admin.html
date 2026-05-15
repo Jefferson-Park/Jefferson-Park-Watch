@@ -713,8 +713,8 @@ tbody td{padding:7px 10px;vertical-align:middle}
 <div id="rls-modal" style="position:fixed;inset:0;z-index:8000;background:rgba(0,0,0,.8);display:none;align-items:center;justify-content:center">
   <div style="background:var(--panel);border:1px solid var(--amber);border-radius:12px;padding:24px;width:560px;max-width:95vw;max-height:85vh;overflow-y:auto;position:relative">
     <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--amber),var(--accent));border-radius:12px 12px 0 0"></div>
-    <div style="font-size:15px;font-weight:600;margin-bottom:4px;color:var(--amber)">🔧 Fix Admin Permissions (RLS)</div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:16px">Run this SQL in your <a href="https://supabase.com/dashboard/project/sqiioihssmnqatjrednq/sql" target="_blank" style="color:var(--accent)">Supabase SQL Editor ↗</a> to allow admins to delete and update records.</div>
+    <div style="font-size:15px;font-weight:600;margin-bottom:4px;color:var(--amber)">🔧 Fix Admin Permissions (RLS + Storage)</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:16px">Run this SQL in your <a href="https://supabase.com/dashboard/project/sqiioihssmnqatjrednq/sql" target="_blank" style="color:var(--accent)">Supabase SQL Editor ↗</a> to allow admins to delete/update records and to fix photo 400 errors (items 10–12 fix storage bucket access).</div>
     <pre id="rls-sql" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;font-family:var(--mono);font-size:10px;color:var(--text);white-space:pre-wrap;line-height:1.6;margin-bottom:14px;overflow-x:auto"></pre>
     <div style="display:flex;gap:8px">
       <button class="btn btn-accent" onclick="copyRLSSQL()" style="flex:1">📋 Copy SQL</button>
@@ -2186,7 +2186,40 @@ CREATE POLICY "Admin delete public_comments"
   ON public_comments FOR DELETE TO authenticated
   USING (EXISTS (
     SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
-  ));`;
+  ));
+
+-- 9. Admin INSERT photos (needed when promoting a public report that has a photo)
+DROP POLICY IF EXISTS "Admin insert photos" ON photos;
+CREATE POLICY "Admin insert photos"
+  ON photos FOR INSERT TO authenticated
+  WITH CHECK (EXISTS (
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+  ));
+
+-- ── Storage bucket policies (crime-photos bucket) ──────────────────
+-- Run these in the SQL editor too — Storage RLS is separate from table RLS.
+-- Without these, signed URLs for public_reports/ photos return 400.
+-- These mirror what Supabase creates when you add policies via the Dashboard UI.
+
+-- 10. Authenticated users (admins, field officers) can SELECT any object in crime-photos
+CREATE POLICY "Authenticated read crime-photos"
+  ON storage.objects FOR SELECT TO authenticated
+  USING ( bucket_id = 'crime-photos' );
+
+-- 11. Anon users can SELECT objects in crime-photos
+--     (public map viewers need this once a photo is toggled is_public=true)
+CREATE POLICY "Public read crime-photos"
+  ON storage.objects FOR SELECT TO anon
+  USING ( bucket_id = 'crime-photos' );
+
+-- 12. Anon users can INSERT into public_reports/ prefix only
+--     (required for the public Report Observation photo upload)
+CREATE POLICY "Anon upload public_reports"
+  ON storage.objects FOR INSERT TO anon
+  WITH CHECK (
+    bucket_id = 'crime-photos'
+    AND (storage.foldername(name))[1] = 'public_reports'
+  );`;
 
 function showRLSFix() {
   document.getElementById('rls-sql').textContent = RLS_SQL;

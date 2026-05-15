@@ -3284,10 +3284,42 @@ async function submitPublicReport() {
   msg.textContent = 'Submitting…';
 
   try {
-    // Schema: id, created_at, lat, lng, category, description, submitter_email, status, reviewed_by, notes
     // submitter_name has no dedicated column — fold into notes field
     const commentNotes = name ? `Submitted by: ${name}` : null;
-    const { data: insertData, error } = await sb.from('public_comments').insert({
+
+    // Generate a client-side token for the photo path so we never need to
+    // read the inserted row back (avoids needing an anon SELECT policy).
+    const photoToken = (crypto.randomUUID ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2) + Date.now().toString(36));
+
+    // ── Optional photo: upload BEFORE insert so path is included in one write ──
+    // Storage: crime-photos bucket › public_reports/ folder (anon INSERT policy required)
+    // DB: public_comments.photo_path text column (ALTER TABLE … ADD COLUMN IF NOT EXISTS photo_path text)
+    let uploadedPhotoPath = null;
+    if (pubReportPhotoFile) {
+      try {
+        msg.textContent = 'Uploading photo…';
+        const ext  = pubReportPhotoFile.name.split('.').pop().toLowerCase() || 'jpg';
+        const storagePath = `public_reports/${photoToken}.${ext}`;
+        const { error: upErr } = await sb.storage
+          .from('crime-photos')
+          .upload(storagePath, pubReportPhotoFile, {
+            contentType: pubReportPhotoFile.type || 'image/jpeg',
+            upsert: false,
+          });
+        if (upErr) {
+          console.warn('[pub report photo] upload failed:', upErr.message);
+          showToast('Photo upload failed — submitting report without photo', 'err');
+        } else {
+          uploadedPhotoPath = storagePath;
+        }
+      } catch(photoErr) {
+        console.warn('[pub report photo] exception:', photoErr.message);
+      }
+      msg.textContent = 'Submitting…';
+    }
+
+    const { error } = await sb.from('public_comments').insert({
       lat: pubReportLat,
       lng: pubReportLng,
       address: pubReportAddress || null,
@@ -3296,45 +3328,15 @@ async function submitPublicReport() {
       submitter_email: email || null,
       status: 'new',
       notes: commentNotes,
-    }).select('id').single();
+      photo_path: uploadedPhotoPath,
+    });
 
     if (error) {
       console.error('public_comments insert failed:', error.message);
-      // RLS policy error — surface actionable message to the user
       if (error.message?.toLowerCase().includes('row-level security') || error.message?.includes('policy')) {
-        throw new Error('Submission blocked by database policy. An admin needs to run this in Supabase SQL editor:\n\nCREATE POLICY \"anon_insert\" ON public_comments FOR INSERT TO anon WITH CHECK (true);\n\nALTER TABLE public_comments ENABLE ROW LEVEL SECURITY;');
+        throw new Error('Submission blocked by database policy — please contact the site admin.');
       }
       throw new Error(error.message);
-    }
-
-    // ── Optional photo upload ─────────────────────────────────────
-    // Requires: ALTER TABLE public_comments ADD COLUMN IF NOT EXISTS photo_path text;
-    // and storage bucket policy allowing anon uploads to public_reports/*
-    if (pubReportPhotoFile && insertData?.id) {
-      try {
-        msg.textContent = 'Uploading photo…';
-        const ext  = pubReportPhotoFile.name.split('.').pop().toLowerCase() || 'jpg';
-        const path = `public_reports/${insertData.id}/${Date.now()}.${ext}`;
-        const { error: upErr } = await sb.storage
-          .from('crime-photos')
-          .upload(path, pubReportPhotoFile, {
-            contentType: pubReportPhotoFile.type || 'image/jpeg',
-            upsert: false,
-          });
-        if (upErr) {
-          // Non-fatal — report still submitted, just log the photo failure
-          console.warn('[pub report photo] upload failed:', upErr.message);
-          showToast('Report submitted ✓ — photo upload failed: ' + upErr.message, 'err');
-        } else {
-          // Store path back on the comment row (requires photo_path column — see SQL note)
-          await sb.from('public_comments')
-            .update({ photo_path: path })
-            .eq('id', insertData.id);
-        }
-      } catch(photoErr) {
-        console.warn('[pub report photo] exception:', photoErr.message);
-        // Still treat the report as successful
-      }
     }
 
     // Success — drop persistent green pin on map

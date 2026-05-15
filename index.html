@@ -1358,6 +1358,19 @@ function _buildNominatimParams(query, limit) {
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
 
+// ══════════════════════════════════════════════════════════════════
+// XSS SANITIZER — use esc() for all user-data in innerHTML
+// ══════════════════════════════════════════════════════════════════
+function esc(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 let map, currentUser, userRole = 'public', userProfile = null;
 let crimesData = [], boundariesData = [], annotationsData = [];
 let showClosed = false, dateFrom = null, dateTo = null;
@@ -2168,15 +2181,15 @@ function openParcelPopup(mouseEvent, shortAddr, city, zip, ain, attrs) {
 
   el.innerHTML = `
     <div class="parcel-popup-header">
-      <div class="parcel-popup-addr">📋 ${shortAddr || 'Unknown Address'}</div>
-      ${cityLine ? `<div class="parcel-popup-city">${cityLine}</div>` : ''}
+      <div class="parcel-popup-addr">📋 ${esc(shortAddr || 'Unknown Address')}</div>
+      ${cityLine ? `<div class="parcel-popup-city">${esc(cityLine)}</div>` : ''}
       <button class="parcel-popup-close" onclick="closeParcelPopup()">✕</button>
     </div>
     <div class="parcel-popup-body" id="parcel-popup-body">
       <div class="parcel-loading">Loading assessor data…</div>
     </div>
     ${ain ? `<div class="parcel-popup-footer">
-      <a href="https://portal.assessor.lacounty.gov/parceldetail/${ain}" target="_blank" rel="noopener">
+      <a href="https://portal.assessor.lacounty.gov/parceldetail/${esc(ain)}" target="_blank" rel="noopener">
         Full Assessor Record ↗
       </a>
     </div>` : ''}
@@ -2202,7 +2215,7 @@ function renderParcelBody(ain, attrs) {
 
   // Only render rows that have data — no permanent dashes for unavailable fields
   const row = (label, val, cls='') => val
-    ? `<div class="parcel-row"><span class="parcel-label">${label}</span><span class="parcel-value${cls ? ' ' + cls : ''}">${val}</span></div>`
+    ? `<div class="parcel-row"><span class="parcel-label">${esc(label)}</span><span class="parcel-value${cls ? ' ' + cls : ''}">${esc(val)}</span></div>`
     : '';
 
   body.innerHTML =
@@ -2685,16 +2698,16 @@ async function buildAttachmentStrip(containerId, attachments) {
 
     if (isLink) {
       const url = path.replace('link://','');
-      itemEl.innerHTML = `<a href="${url}" target="_blank" rel="noopener"
+      itemEl.innerHTML = `<a href="${esc(url)}" target="_blank" rel="noopener"
         style="display:flex;align-items:center;gap:6px;padding:7px 9px;
           background:var(--panel2);border:1px solid var(--border);border-radius:6px;
           color:var(--accent);font-size:11px;text-decoration:none;word-break:break-all">
-        🔗 <span>${p.caption || url}</span>
+        🔗 <span>${esc(p.caption || url)}</span>
       </a>`;
     } else if (isPDF) {
       const url = await getStorageUrl(path);
       if (url) {
-        itemEl.innerHTML = `<a href="${url}" target="_blank" rel="noopener"
+        itemEl.innerHTML = `<a href="${esc(url)}" target="_blank" rel="noopener"
           style="display:flex;align-items:center;gap:8px;padding:7px 9px;
             background:var(--panel2);border:1px solid var(--border);border-radius:6px;
             color:var(--text);text-decoration:none;font-size:11px">
@@ -2702,7 +2715,7 @@ async function buildAttachmentStrip(containerId, attachments) {
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
             <polyline points="14 2 14 8 20 8"/>
           </svg>
-          <span>${p.caption || 'Open PDF'}</span>
+          <span>${esc(p.caption || 'Open PDF')}</span>
         </a>`;
       }
     } else {
@@ -4754,13 +4767,13 @@ async function openSLO() {
   const { data } = await sb.from('boundaries').select('id,name,properties').eq('boundary_type','slo').order('name');
   document.getElementById('slo-list').innerHTML = (data||[]).map(b => `
     <div style="border-bottom:1px solid var(--border);padding:12px 0">
-      <div style="font-size:11px;font-weight:600;font-family:var(--mono);color:var(--accent);margin-bottom:8px">RD ${b.properties?.rd} — ${b.name}</div>
+      <div style="font-size:11px;font-weight:600;font-family:var(--mono);color:var(--accent);margin-bottom:8px">RD ${esc(b.properties?.rd)} — ${esc(b.name)}</div>
       <div class="mf-grid">
-        <div class="mf"><label>SLO Name</label><input type="text" id="sn-${b.id}" value="${b.properties?.slo_name||''}"></div>
-        <div class="mf"><label>Cell</label><input type="text" id="sc-${b.id}" value="${b.properties?.cell||''}"></div>
-        <div class="mf" style="grid-column:1/-1"><label>Email</label><input type="text" id="se-${b.id}" value="${b.properties?.email||''}"></div>
+        <div class="mf"><label>SLO Name</label><input type="text" id="sn-${esc(b.id)}" value="${esc(b.properties?.slo_name||'')}"></div>
+        <div class="mf"><label>Cell</label><input type="text" id="sc-${esc(b.id)}" value="${esc(b.properties?.cell||'')}"></div>
+        <div class="mf" style="grid-column:1/-1"><label>Email</label><input type="text" id="se-${esc(b.id)}" value="${esc(b.properties?.email||'')}"></div>
       </div>
-      <button onclick="saveSLO('${b.id}')" style="background:var(--accent);color:#000;border:none;border-radius:6px;padding:6px 14px;font-size:11px;font-weight:600;cursor:pointer;margin-top:4px">Save</button>
+      <button onclick="saveSLO('${esc(b.id)}')" style="background:var(--accent);color:#000;border:none;border-radius:6px;padding:6px 14px;font-size:11px;font-weight:600;cursor:pointer;margin-top:4px">Save</button>
     </div>`).join('');
 }
 

@@ -597,6 +597,17 @@ tbody td{padding:7px 10px;vertical-align:middle}
         <label>Description (from public)</label>
         <div id="obs-modal-desc" style="padding:8px 9px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:12px;line-height:1.5;min-height:60px"></div>
       </div>
+      <!-- Photo attachment from public report -->
+      <div class="em-f" style="grid-column:1/-1" id="obs-modal-photo-row" style="display:none">
+        <label>📷 Attached Photo</label>
+        <div id="obs-modal-photo-wrap" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;min-height:48px;display:flex;align-items:center;gap:10px">
+          <span id="obs-modal-photo-loading" style="font-size:11px;color:var(--muted)">Loading photo…</span>
+          <img id="obs-modal-photo-img" src="" alt="Report photo"
+            style="display:none;max-height:160px;max-width:100%;border-radius:5px;cursor:pointer;border:1px solid var(--border)"
+            onclick="openLB(this)" title="Click to enlarge">
+          <span id="obs-modal-photo-err" style="display:none;font-size:11px;color:var(--danger)"></span>
+        </div>
+      </div>
       <div class="em-f" style="grid-column:1/-1">
         <label>Contact (private — not shared)</label>
         <div id="obs-modal-contact" style="padding:7px 9px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:var(--mono);color:var(--muted)"></div>
@@ -725,6 +736,19 @@ const SUPABASE_ANON = 'sb_publishable_3s5kREPGF10ahyWGMT9tBA_v9FUqbit';
 
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
+
+// ══════════════════════════════════════════════════════
+// XSS SANITIZER — use esc() for all user-data in innerHTML
+// ══════════════════════════════════════════════════════
+function esc(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 // ══════════════════════════════════════════════════════
 // STATE
@@ -1348,22 +1372,22 @@ function renderCrimesTable() {
     return;
   }
   tbody.innerHTML=slice.map(c=>`
-    <tr id="row-${c.id}" onclick="flyTo(${c.lat||0},${c.lng||0},'${c.id}')" style="cursor:pointer" title="Click to star on map">
-      <td class="tc-type" style="color:${COLORS[c.crime_type]||'#888'}">${c.crime_type}</td>
-      <td><span class="badge b-${c.status}">${c.status?.replace('_',' ')||'—'}</span></td>
-      <td class="tc-addr" title="${c.address||''}">${c.address||'—'}</td>
-      <td class="tc-mono">${c.incident_date||'—'}</td>
-      <td class="tc-mono">${c.incident_time||'—'}</td>
-      <td class="tc-desc" title="${c.description||''}">${c.description||'—'}</td>
-      <td class="tc-desc" title="${c.notes||''}">${c.notes||'—'}</td>
-      <td style="font-size:10px;color:var(--muted);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${c.updated_by||''}">${c.updated_by?(profileMap[c.updated_by]||('…'+c.updated_by.slice(-6))):'—'}</td>
+    <tr id="row-${esc(c.id)}" onclick="flyTo(${c.lat||0},${c.lng||0},'${esc(c.id)}')" style="cursor:pointer" title="Click to star on map">
+      <td class="tc-type" style="color:${COLORS[c.crime_type]||'#888'}">${esc(c.crime_type)}</td>
+      <td><span class="badge b-${esc(c.status)}">${esc(c.status?.replace('_',' '))||'—'}</span></td>
+      <td class="tc-addr" title="${esc(c.address||'')}">${esc(c.address)||'—'}</td>
+      <td class="tc-mono">${esc(c.incident_date)||'—'}</td>
+      <td class="tc-mono">${esc(c.incident_time)||'—'}</td>
+      <td class="tc-desc" title="${esc(c.description||'')}">${esc(c.description)||'—'}</td>
+      <td class="tc-desc" title="${esc(c.notes||'')}">${esc(c.notes)||'—'}</td>
+      <td style="font-size:10px;color:var(--muted);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(c.updated_by||'')}">${c.updated_by?(esc(profileMap[c.updated_by]||('…'+c.updated_by.slice(-6)))):'—'}</td>
       <td class="tc-mono">${c.lat?c.lat.toFixed(6):'—'}</td>
       <td class="tc-mono">${c.lng?c.lng.toFixed(6):'—'}</td>
       <td class="tc-mono">${c.created_at?new Date(c.created_at).toLocaleDateString():'—'}</td>
       <td>
         <div class="tc-actions">
-          <button class="btn btn-sm" onclick="event.stopPropagation();openEdit('${c.id}')">Edit</button>
-          <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteCrime('${c.id}')">Del</button>
+          <button class="btn btn-sm" onclick="event.stopPropagation();openEdit('${esc(c.id)}')">Edit</button>
+          <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteCrime('${esc(c.id)}')">Del</button>
         </div>
       </td>
     </tr>`).join('');
@@ -1520,44 +1544,45 @@ function renderAnnotationsTable(annotations) {
     const catData  = a.category_data || {};
     const catFields= cat?.fields || [];
     const detailChips = catFields
-      .map(f => catData[f.id] ? `<span style="display:inline-block;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:9px;margin:1px;white-space:nowrap"><span style="color:var(--muted)">${f.label}:</span> ${catData[f.id]}</span>` : '')
+      .map(f => catData[f.id] ? `<span style="display:inline-block;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:9px;margin:1px;white-space:nowrap"><span style="color:var(--muted)">${esc(f.label)}:</span> ${esc(catData[f.id])}</span>` : '')
       .filter(Boolean).join('');
 
     const author = a.created_by ? (profileMap[a.created_by] || ('…'+a.created_by.slice(-6))) : '—';
+    const aid = esc(a.id);
 
-    return `<tr id="annrow-${a.id}" onclick="flyToAnn('${a.id}')" style="cursor:pointer" title="Click to zoom on map">
-      <td style="font-weight:500;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${a.label||''}">${a.label||'—'}</td>
+    return `<tr id="annrow-${aid}" onclick="flyToAnn('${aid}')" style="cursor:pointer" title="Click to zoom on map">
+      <td style="font-weight:500;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(a.label||'')}">${esc(a.label)||'—'}</td>
       <td style="white-space:nowrap">
         <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:600;background:${catColor}18;color:${catColor};border:1px solid ${catColor}44">
-          ${catLabel}
+          ${esc(catLabel)}
         </span>
       </td>
-      <td><span class="badge b-${a.annotation_type||'point'}">${a.annotation_type||'—'}</span></td>
+      <td><span class="badge b-${esc(a.annotation_type||'point')}">${esc(a.annotation_type||'—')}</span></td>
       <td style="max-width:200px">${detailChips || '<span style="color:var(--muted);font-size:10px">—</span>'}</td>
-      <td class="tc-desc" title="${a.notes||''}">${a.notes||'—'}</td>
+      <td class="tc-desc" title="${esc(a.notes||'')}">${esc(a.notes)||'—'}</td>
       <td class="tc-mono">${a.created_at ? new Date(a.created_at).toLocaleDateString() : '—'}</td>
-      <td style="font-size:10px;color:var(--muted);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${author}">${author}</td>
+      <td style="font-size:10px;color:var(--muted);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(author)}">${esc(author)}</td>
       <td style="white-space:nowrap">
         <span style="display:inline-block;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:600;background:${statusCfg.bg};color:${statusCfg.color}">
-          ${statusCfg.label}
+          ${esc(statusCfg.label)}
         </span>
       </td>
       <td>
-        <div class="sw ${a.is_public?'on':''}" onclick="event.stopPropagation();togglePublic('${a.id}',${a.is_public})" title="${a.is_public?'Public — click to make private':'Private — click to make public'}"></div>
+        <div class="sw ${a.is_public?'on':''}" onclick="event.stopPropagation();togglePublic('${aid}',${a.is_public})" title="${a.is_public?'Public — click to make private':'Private — click to make public'}"></div>
       </td>
       <td>
         <div class="tc-actions">
           ${status === 'draft' ? `
             <button class="btn btn-sm" style="background:rgba(0,194,168,.15);color:var(--accent);border-color:var(--accent)"
-              onclick="event.stopPropagation();approveAnn('${a.id}')" title="Approve — move to approved status">✓ Approve</button>
+              onclick="event.stopPropagation();approveAnn('${aid}')" title="Approve — move to approved status">✓ Approve</button>
             <button class="btn btn-sm" style="background:rgba(231,76,60,.1);color:#e74c3c;border-color:#e74c3c44"
-              onclick="event.stopPropagation();rejectAnn('${a.id}')" title="Reject">✕</button>
+              onclick="event.stopPropagation();rejectAnn('${aid}')" title="Reject">✕</button>
           ` : status === 'approved' ? `
             <button class="btn btn-sm" style="background:rgba(46,204,113,.15);color:#2ecc71;border-color:#2ecc7144"
-              onclick="event.stopPropagation();publishAnn('${a.id}')" title="Publish — make public on field map">🌐 Publish</button>
+              onclick="event.stopPropagation();publishAnn('${aid}')" title="Publish — make public on field map">🌐 Publish</button>
           ` : ''}
-          <button class="btn btn-sm" onclick="event.stopPropagation();openEditAnn('${a.id}')">Edit</button>
-          <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteAnn('${a.id}')">Del</button>
+          <button class="btn btn-sm" onclick="event.stopPropagation();openEditAnn('${aid}')">Edit</button>
+          <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteAnn('${aid}')">Del</button>
         </div>
       </td>
     </tr>`;
@@ -1659,7 +1684,7 @@ async function loadEditAnnAttachments(annId) {
   const cntBadge= document.getElementById('edit-ann-att-count');
 
   if (error) {
-    list.innerHTML = `<div style="font-size:11px;color:var(--danger)">Error loading: ${error.message}</div>`;
+    list.innerHTML = `<div style="font-size:11px;color:var(--danger)">Error loading: ${esc(error.message)}</div>`;
     section.style.display = 'block';
     return;
   }
@@ -1691,9 +1716,9 @@ async function loadEditAnnAttachments(annId) {
       return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;display:flex;align-items:center;gap:8px">
         <span style="font-size:18px;flex-shrink:0">${typeIcon}</span>
         <div style="flex:1;min-width:0">
-          <a href="${url}" target="_blank" style="color:var(--accent);font-size:11px;font-weight:500;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block" title="${url}">${url.replace(/^https?:\/\//,'').slice(0,50)}</a>
-          ${caption ? `<div style="font-size:10px;color:var(--muted)">${caption}</div>` : ''}
-          <div style="font-size:9px;color:var(--muted);margin-top:2px">${dateStr} · ${author} · ${pubLabel}</div>
+          <a href="${esc(url)}" target="_blank" rel="noopener" style="color:var(--accent);font-size:11px;font-weight:500;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block" title="${esc(url)}">${esc(url.replace(/^https?:\/\//,'').slice(0,50))}</a>
+          ${caption ? `<div style="font-size:10px;color:var(--muted)">${esc(caption)}</div>` : ''}
+          <div style="font-size:9px;color:var(--muted);margin-top:2px">${esc(dateStr)} · ${esc(author)} · ${pubLabel}</div>
         </div>
       </div>`;
     }
@@ -1701,21 +1726,21 @@ async function loadEditAnnAttachments(annId) {
       return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;display:flex;align-items:center;gap:8px">
         <span style="font-size:18px;flex-shrink:0">${typeIcon}</span>
         <div style="flex:1;min-width:0">
-          <div style="font-size:11px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${path.split('/').pop()}</div>
-          ${caption ? `<div style="font-size:10px;color:var(--muted)">${caption}</div>` : ''}
-          <div style="font-size:9px;color:var(--muted);margin-top:2px">${dateStr} · ${author} · ${pubLabel}</div>
+          <div style="font-size:11px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(path.split('/').pop())}</div>
+          ${caption ? `<div style="font-size:10px;color:var(--muted)">${esc(caption)}</div>` : ''}
+          <div style="font-size:9px;color:var(--muted);margin-top:2px">${esc(dateStr)} · ${esc(author)} · ${pubLabel}</div>
         </div>
-        <button class="btn btn-sm" style="flex-shrink:0" onclick="openPDFCard('${path}')">View</button>
+        <button class="btn btn-sm" style="flex-shrink:0" onclick="openPDFCard('${esc(path)}')">View</button>
       </div>`;
     }
     // Image — placeholder, URL loaded async
-    return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px;display:flex;align-items:center;gap:8px" id="att-row-${p.id}">
-      <img data-att-path="${path}" src="" alt=""
+    return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px;display:flex;align-items:center;gap:8px" id="att-row-${esc(p.id)}">
+      <img data-att-path="${esc(path)}" src="" alt=""
         style="width:64px;height:48px;object-fit:cover;border-radius:4px;flex-shrink:0;background:var(--panel2);cursor:pointer;opacity:0;transition:opacity .3s"
         onload="this.style.opacity=1" onclick="openLB(this)">
       <div style="flex:1;min-width:0">
-        <div style="font-size:11px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${caption || path.split('/').pop().slice(0,30)}</div>
-        <div style="font-size:9px;color:var(--muted);margin-top:2px">${dateStr} · ${author} · ${pubLabel}</div>
+        <div style="font-size:11px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(caption || path.split('/').pop().slice(0,30))}</div>
+        <div style="font-size:9px;color:var(--muted);margin-top:2px">${esc(dateStr)} · ${esc(author)} · ${pubLabel}</div>
       </div>
     </div>`;
   }).join('');
@@ -2396,26 +2421,29 @@ function renderObsGrid() {
       reviewed:  `<span class="badge b-reviewed">✅ Reviewed</span>`,
       promoted:  `<span class="badge b-promoted">🌐 Promoted</span>`,
       dismissed: `<span class="badge b-dismissed">— Dismissed</span>`,
-    }[status] || `<span class="badge">${status}</span>`;
+    }[status] || `<span class="badge">${esc(status)}</span>`;
+    const sid = esc(o.id);
+    const noteSnippet = o.notes ? esc(o.notes.slice(0,60)) + (o.notes.length>60?'…':'') : '';
 
-    return `<div class="obs-card status-${status}" id="obscard-${o.id}">
+    return `<div class="obs-card status-${esc(status)}" id="obscard-${sid}">
       <div class="obs-header">
-        <span class="obs-cat">${catLabel}</span>
+        <span class="obs-cat">${esc(catLabel)}</span>
         ${statusBadge}
-        <span class="obs-date">${dateStr}</span>
+        <span class="obs-date">${esc(dateStr)}</span>
       </div>
-      <div class="obs-desc">${o.description || '—'}</div>
+      <div class="obs-desc">${esc(o.description) || '—'}</div>
       <div class="obs-meta">
         ${hasLoc ? `<span>📍 ${parseFloat(o.lat).toFixed(5)}, ${parseFloat(o.lng).toFixed(5)}</span>` : '<span style="color:var(--danger)">No location</span>'}
-        ${o.submitter_email ? `<span>✉️ ${o.submitter_email}</span>` : ''}
-        ${o.notes ? `<span>📝 ${o.notes.slice(0,60)}${o.notes.length>60?'…':''}</span>` : ''}
+        ${o.submitter_email ? `<span>✉️ ${esc(o.submitter_email)}</span>` : ''}
+        ${noteSnippet ? `<span>📝 ${noteSnippet}</span>` : ''}
+        ${o.photo_path ? `<span>📷 Photo attached</span>` : ''}
       </div>
       <div class="obs-actions">
-        ${hasLoc ? `<button class="btn btn-sm" onclick="flyToObs(${o.lat},${o.lng},'${o.id}')">⭐ Map</button>` : ''}
-        <button class="btn btn-sm" onclick="openObsModal('${o.id}')">🔍 Review</button>
-        ${status === 'new' ? `<button class="btn btn-sm" style="color:var(--green);border-color:var(--green)" onclick="quickMarkObs('${o.id}','reviewed')">✓ Mark Reviewed</button>` : ''}
-        ${(status === 'new' || status === 'reviewed') ? `<button class="btn btn-sm" style="color:var(--accent);border-color:var(--accent)" onclick="openObsModal('${o.id}')">⬆ Promote</button>` : ''}
-        <button class="btn btn-sm btn-danger" onclick="deleteObs('${o.id}')">Del</button>
+        ${hasLoc ? `<button class="btn btn-sm" onclick="flyToObs(${parseFloat(o.lat)},${parseFloat(o.lng)},'${sid}')">⭐ Map</button>` : ''}
+        <button class="btn btn-sm" onclick="openObsModal('${sid}')">🔍 Review</button>
+        ${status === 'new' ? `<button class="btn btn-sm" style="color:var(--green);border-color:var(--green)" onclick="quickMarkObs('${sid}','reviewed')">✓ Mark Reviewed</button>` : ''}
+        ${(status === 'new' || status === 'reviewed') ? `<button class="btn btn-sm" style="color:var(--accent);border-color:var(--accent)" onclick="openObsModal('${sid}')">⬆ Promote</button>` : ''}
+        <button class="btn btn-sm btn-danger" onclick="deleteObs('${sid}')">Del</button>
       </div>
     </div>`;
   }).join('');
@@ -2433,13 +2461,13 @@ function renderObsMarkers() {
       radius: 7, color: 'white', weight: 2, fillColor: color, fillOpacity: 0.9,
     });
     m.bindPopup(`<div style="padding:10px;font-family:var(--font);color:var(--text);max-width:240px">
-      <div style="font-weight:600;font-size:12px;color:${color};margin-bottom:4px">${catLabel}</div>
-      <div style="font-size:11px;line-height:1.5;margin-bottom:6px">${(o.description||'').slice(0,140)}</div>
-      <div style="font-size:10px;color:var(--muted);margin-bottom:8px">${o.created_at ? new Date(o.created_at).toLocaleString() : ''}</div>
-      <span class="badge b-${status}" style="margin-bottom:8px;display:inline-block">${status}</span>
+      <div style="font-weight:600;font-size:12px;color:${color};margin-bottom:4px">${esc(catLabel)}</div>
+      <div style="font-size:11px;line-height:1.5;margin-bottom:6px">${esc((o.description||'').slice(0,140))}</div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:8px">${o.created_at ? esc(new Date(o.created_at).toLocaleString()) : ''}</div>
+      <span class="badge b-${esc(status)}" style="margin-bottom:8px;display:inline-block">${esc(status)}</span>
       <div style="display:flex;gap:5px;margin-top:6px">
-        <button class="btn btn-sm" onclick="openObsModal('${o.id}')">🔍 Review</button>
-        ${status==='new'||status==='reviewed' ? `<button class="btn btn-sm" style="color:var(--accent);border-color:var(--accent)" onclick="openObsModal('${o.id}')">⬆ Promote</button>` : ''}
+        <button class="btn btn-sm" onclick="openObsModal('${esc(o.id)}')">🔍 Review</button>
+        ${status==='new'||status==='reviewed' ? `<button class="btn btn-sm" style="color:var(--accent);border-color:var(--accent)" onclick="openObsModal('${esc(o.id)}')">⬆ Promote</button>` : ''}
       </div>
     </div>`, { closeButton: true, maxWidth: 260 });
     obsLayerGrp.addLayer(m);
@@ -2472,6 +2500,31 @@ function openObsModal(id) {
   document.getElementById('obs-modal-notes').value = o.notes || '';
   document.getElementById('obs-modal-title').textContent =
     `Review: ${OBS_CAT_LABELS[o.category] || o.category || 'Public Report'}`;
+
+  // ── Photo attachment ──────────────────────────────────────────────
+  const photoRow     = document.getElementById('obs-modal-photo-row');
+  const photoLoading = document.getElementById('obs-modal-photo-loading');
+  const photoImg     = document.getElementById('obs-modal-photo-img');
+  const photoErr     = document.getElementById('obs-modal-photo-err');
+  if (o.photo_path) {
+    photoRow.style.display = '';
+    photoLoading.style.display = '';
+    photoImg.style.display = 'none';
+    photoErr.style.display = 'none';
+    photoImg.src = '';
+    sb.storage.from('crime-photos').createSignedUrl(o.photo_path, 3600).then(({ data, error: sErr }) => {
+      photoLoading.style.display = 'none';
+      if (sErr || !data?.signedUrl) {
+        photoErr.textContent = 'Could not load photo: ' + (sErr?.message || 'unknown error');
+        photoErr.style.display = '';
+      } else {
+        photoImg.src = data.signedUrl;
+        photoImg.style.display = 'block';
+      }
+    });
+  } else {
+    photoRow.style.display = 'none';
+  }
 
   // Populate annotation category dropdown
   const catSelect = document.getElementById('obs-modal-ann-cat');

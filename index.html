@@ -460,7 +460,8 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
       </div>
       <div>
         <div class="login-title">Jefferson Park</div>
-        <div class="login-sub">LAPD SW · UNNC</div>
+        <div class="login-sub">Jefferson Park Watch</div>
+        <div class="login-sub" style="font-size:10px;opacity:.8">LAPD SW · UNNC</div>
       </div>
     </div>
     <div class="login-heading">Sign in</div>
@@ -492,7 +493,8 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
         </div>
         <div>
           <div class="sb-logo-text">Neighborhood Improvement Map</div>
-          <div class="sb-logo-sub">Jefferson Park · UNNC</div>
+          <div class="sb-logo-sub">Jefferson Park Watch</div>
+          <div class="sb-logo-sub" style="font-size:9px;opacity:.7">LAPD SW · UNNC</div>
         </div>
       </div>
     </div>
@@ -1084,7 +1086,11 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
 <!-- ═══════ CSV BATCH UPDATE MODAL ═══════ -->
 <div class="modal-overlay" id="pdf-modal">
   <div class="modal-box" style="width:660px">
-    <div class="modal-title">CSV Batch Update — SLO Officer Reassignment</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <div class="modal-title" style="margin:0">CSV Batch Update — SLO Officer Reassignment</div>
+      <button onclick="closeModal('pdf-modal');resetCSV()" title="Close"
+        style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 2px;line-height:1">✕</button>
+    </div>
 
     <!-- Instructions -->
     <div style="background:rgba(0,194,168,.07);border:1px solid rgba(0,194,168,.25);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:12px;line-height:1.7">
@@ -1251,7 +1257,8 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
   </div>
 </div>
 
-<!-- ═══════ END PUBLIC REPORT MODAL ═══════ -->
+<!-- ═══════ SLO MODAL ═══════ -->
+<div class="modal-overlay" id="slo-modal">
   <div class="modal-box" style="width:540px">
     <div class="modal-title">SLO Officer Management</div>
     <div id="slo-list" style="max-height:400px;overflow-y:auto"></div>
@@ -3420,8 +3427,8 @@ function updateStats(filtered) {
     if (!counts[t]) { const el = document.getElementById('ct-' + t.replace(/\W/g,'_')); if (el) el.textContent = 0; }
   });
 
-  // Update the Safety & Crime group header badge — show total loaded crimes
-  updateGroupCount('safety', crimesData.length);
+  // Update the Safety & Crime group header badge — show currently visible crimes
+  updateGroupCount('safety', filtered.length);
 }
 
 // ══════════════════════════════════════════════════════════════════

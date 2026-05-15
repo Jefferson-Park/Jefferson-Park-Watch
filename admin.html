@@ -1839,7 +1839,13 @@ async function renderPhotos(photos) {
     const linkedLabel = crime
       ? (crime.crime_type+(crime.address?' — '+crime.address.slice(0,28):''))
       : ann ? (ann.label||ann.annotation_type||'Annotation') : 'Unlinked';
-    const linkedTag = crimeId?'🔴 Crime':annId?'🟦 Annotation':'—';
+    // Show annotation category/type instead of generic 'Annotation'
+    const annTypeLabel = ann
+      ? (ann.category || ann.annotation_type || 'Annotation')
+          .replace(/_/g,' ')
+          .replace(/\b\w/g, c => c.toUpperCase())
+      : 'Annotation';
+    const linkedTag = crimeId ? '🔴 Crime' : annId ? ('🟦 ' + annTypeLabel) : '—';
     const typeIcon  = isLink?'🔗':isPDF?'📄':'📷';
     const caption   = p.caption||'';
     const safeLabel = linkedLabel.replace(/'/g,"\\'").replace(/"/g,'\\"').slice(0,40);

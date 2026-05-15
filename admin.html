@@ -598,7 +598,7 @@ tbody td{padding:7px 10px;vertical-align:middle}
         <div id="obs-modal-desc" style="padding:8px 9px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:12px;line-height:1.5;min-height:60px"></div>
       </div>
       <!-- Photo attachment from public report -->
-      <div class="em-f" style="grid-column:1/-1" id="obs-modal-photo-row" style="display:none">
+      <div class="em-f" id="obs-modal-photo-row" style="grid-column:1/-1;display:none">
         <label>📷 Attached Photo</label>
         <div id="obs-modal-photo-wrap" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;min-height:48px;display:flex;align-items:center;gap:10px">
           <span id="obs-modal-photo-loading" style="font-size:11px;color:var(--muted)">Loading photo…</span>
@@ -776,6 +776,7 @@ const CRIMES_LIST = ['Aggravated Assault','Battery','Robbery','Homicide',
   'GTA','Attempt GTA','TFMV','BFMV','BTFV'];
 
 // ── Category map (mirrors index.html) ────────────────────────────
+// ⚠️ KEEP IN SYNC WITH index.html — any category changes must be made in BOTH files
 const CATEGORY_MAP = {
   'Traffic Safety & Crime': [
     { label:'Crime Incident',        value:'__crime__',          icon:'🚨', color:'#e8453c', fields:[] },
@@ -1054,6 +1055,7 @@ async function loadAnnotations() {
   }
 
   // Merge category, category_data, status — added after RPC was written
+  // TODO: merge into single query once get_annotations_geojson RPC is updated to return these columns
   try {
     const {data:catRows} = await sb.from('map_annotations')
       .select('id,category,category_data,status,is_sensitive,is_public,created_by');
@@ -1356,7 +1358,11 @@ function sortAnn(col) {
 
 function sortTable(col) {
   if(sortCol===col) sortDir*=-1; else{sortCol=col;sortDir=1;}
-  document.querySelectorAll('thead th').forEach(th=>th.classList.remove('sorted'));
+  // Update header arrow indicators — mirrors sortAnn() pattern
+  document.querySelectorAll('#tab-crimes thead th').forEach(th => {
+    const thCol = th.getAttribute('onclick')?.match(/sortTable\('(\w+)'\)/)?.[1];
+    if (thCol) th.textContent = th.textContent.replace(/ [↑↓↕]$/,'') + (thCol === sortCol ? (sortDir > 0 ? ' ↑' : ' ↓') : ' ↕');
+  });
   filteredCrimes.sort((a,b)=>{const va=a[col]||'',vb=b[col]||'';return va<vb?-sortDir:va>vb?sortDir:0;});
   renderCrimesTable();
 }
@@ -1925,15 +1931,15 @@ async function renderPhotos(photos) {
     </div>`;
   }).join('');
 
-  // Load signed URLs for images only
-  for(const p of photos){
-    const path=p.storage_path||'';
-    if(path.startsWith('link://')||path.toLowerCase().endsWith('.pdf')) continue;
-    const imgEl=document.querySelector(`img[data-path="${path}"]`);
-    if(!imgEl) continue;
-    const {data}=await sb.storage.from('crime-photos').createSignedUrl(path,3600);
-    if(data?.signedUrl) imgEl.src=data.signedUrl;
-  }
+  // Load signed URLs for images in parallel
+  await Promise.all(photos.map(async p => {
+    const path = p.storage_path || '';
+    if (path.startsWith('link://') || path.toLowerCase().endsWith('.pdf')) return;
+    const imgEl = document.querySelector(`img[data-path="${path}"]`);
+    if (!imgEl) return;
+    const {data} = await sb.storage.from('crime-photos').createSignedUrl(path, 3600);
+    if (data?.signedUrl) imgEl.src = data.signedUrl;
+  }));
 }
 
 function openLB(img){document.getElementById('lb-img').src=img.src;document.getElementById('lightbox').classList.add('open');}
@@ -1969,16 +1975,16 @@ async function togglePhotoPublic(id, current) {
   }
 
   showToast(newVal ? '🌐 Photo is now public' : '🔒 Photo made private','ok');
-  await Promise.all([loadCrimes(), loadAnnotations()]);
   await loadPhotos();
 }
 
 async function deletePhoto(id,path){
   if(!confirm('Delete this photo?')) return;
-  await sb.storage.from('crime-photos').remove([path]);
-  await sb.from('photos').delete().eq('id',id);
+  const {error:storageErr} = await sb.storage.from('crime-photos').remove([path]);
+  if (storageErr) console.warn('Storage delete error (file may already be gone):', storageErr.message);
+  const {error:dbErr} = await sb.from('photos').delete().eq('id',id);
+  if (dbErr) { showToast('Error deleting photo: '+dbErr.message, 'err'); return; }
   showToast('Photo deleted','ok');
-  await Promise.all([loadCrimes(), loadAnnotations()]);
   await loadPhotos();
 }
 
@@ -2074,6 +2080,21 @@ function setupResize() {
     document.body.style.cursor='';
     document.body.style.userSelect='';
   });
+
+  // Touch support for mobile admin use
+  handle.addEventListener('touchstart',e=>{
+    dragging=true;startY=e.touches[0].clientY;
+    startH=mapSec.getBoundingClientRect().height;
+    e.preventDefault();
+  },{passive:false});
+  document.addEventListener('touchmove',e=>{
+    if(!dragging) return;
+    const newH=Math.max(200,Math.min(window.innerHeight-200,startH+(e.touches[0].clientY-startY)));
+    document.documentElement.style.setProperty('--map-h',newH+'px');
+    adminMap.invalidateSize();
+    e.preventDefault();
+  },{passive:false});
+  document.addEventListener('touchend',()=>{dragging=false;});
 }
 
 // ══════════════════════════════════════════════════════
@@ -2649,9 +2670,11 @@ async function deleteObs(id) {
 
 function exportObsCSV() {
   const headers = ['id','created_at','lat','lng','category','description','submitter_email','status','reviewed_by','notes'];
-  const csv = toCSV(allObservations, headers);
-  downloadCSV(`jefferson_park_public_reports_${today()}.csv`, csv);
-  showToast(`Exported ${allObservations.length} public reports`, 'ok');
+  const rows = filteredObservations.length ? filteredObservations : allObservations;
+  const csv = toCSV(rows, headers);
+  const suffix = filteredObservations.length < allObservations.length ? '_filtered' : '';
+  downloadCSV(`jefferson_park_public_reports${suffix}_${today()}.csv`, csv);
+  showToast(`Exported ${rows.length}${rows.length < allObservations.length ? ' of '+allObservations.length : ''} public reports`, 'ok');
 }
 
 // ══════════════════════════════════════════════════════

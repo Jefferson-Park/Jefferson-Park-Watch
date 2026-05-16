@@ -3502,20 +3502,38 @@ function toggleCrime(type, row) {
 // STATS
 // ══════════════════════════════════════════════════════════════════
 function updateStats(filtered) {
+  // filtered = crimes passing toggle + date + status filters (what's on the map)
+  // For sidebar counts we want: crimes passing date + status only, ignoring toggle state.
+  // This way the public viewer sees accurate counts before turning any toggle on.
+  const dateStatusFiltered = crimesData.filter(c => {
+    if (!showClosed && c.status === 'closed') return false;
+    if (dateFrom || dateTo) {
+      if (!c.incident_date) return false;
+      try {
+        const parts = c.incident_date.replace(/\//g,'-').split('-');
+        let yr = parseInt(parts[2]); if (yr < 100) yr += 2000;
+        const d = new Date(yr, parseInt(parts[0])-1, parseInt(parts[1]));
+        if (dateFrom && d < new Date(dateFrom)) return false;
+        if (dateTo   && d > new Date(dateTo))   return false;
+      } catch(e) {}
+    }
+    return true;
+  });
+
   const counts = {};
-  filtered.forEach(c => { counts[c.crime_type] = (counts[c.crime_type]||0) + 1; });
+  dateStatusFiltered.forEach(c => { counts[c.crime_type] = (counts[c.crime_type]||0) + 1; });
 
   // Update per-type counts in sidebar toggles
   Object.entries(counts).forEach(([t,n]) => {
     const el = document.getElementById('ct-' + t.replace(/\W/g,'_'));
     if (el) el.textContent = n;
   });
-  // Reset zeros for types not in filtered set
+  // Reset zeros for types not in the date-filtered set
   Object.keys(CRIMES).forEach(t => {
     if (!counts[t]) { const el = document.getElementById('ct-' + t.replace(/\W/g,'_')); if (el) el.textContent = 0; }
   });
 
-  // Update the Safety & Crime group header badge — show currently visible crimes
+  // Group header badge shows what's actually on the map (respects toggles)
   updateGroupCount('safety', filtered.length);
 }
 

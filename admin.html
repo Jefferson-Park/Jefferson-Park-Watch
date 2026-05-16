@@ -908,6 +908,7 @@ async function launch() {
 // MAP
 // ══════════════════════════════════════════════════════
 function initMap() {
+  if (adminMap) return; // already initialized — skip
   tileStreet = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',
     {attribution:'© OpenStreetMap',maxZoom:19});
   tileSat = L.tileLayer(

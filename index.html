@@ -1397,10 +1397,12 @@ const PARCEL_TILE_URL = 'https://cache.gis.lacounty.gov/cache/rest/services/LACo
 // the Nominatim /search endpoint.  Used by the top search bar AND the
 // public-report geocoder so both produce identical queries.
 function _buildNominatimParams(query, limit) {
-  const hasCity = /,/.test(query.trim());
-  let street = query.trim(), city = '', state = '', country = 'US';
+  // Normalise ASCII fraction forms so Nominatim receives "1234½" not "1234 1/2"
+  const query_ = query.replace(/\b1\/2\b/g, '½').replace(/\b1\/4\b/g, '¼').replace(/\b3\/4\b/g, '¾');
+  const hasCity = /,/.test(query_.trim());
+  let street = query_.trim(), city = '', state = '', country = 'US';
   if (hasCity) {
-    const parts = query.trim().split(',').map(s => s.trim());
+    const parts = query_.trim().split(',').map(s => s.trim());
     street = parts[0];
     const rest = parts.slice(1).join(' ');
     const stateMatch = rest.match(/\b([A-Z]{2})\b/);
@@ -1412,6 +1414,12 @@ function _buildNominatimParams(query, limit) {
     state = cityState[1]?.trim() || '';
   }
   return new URLSearchParams({ street, city, state, country, format: 'json', limit: String(limit), addressdetails: '1', zoom: '19' });
+}
+// ── LA County bounds check ────────────────────────────
+// Used to detect when Nominatim drifts to another city.
+// Returns true when coords are within LA County.
+function _isInLACounty(lat, lng) {
+  return lat >= 33.5 && lat <= 34.9 && lng >= -118.95 && lng <= -117.6;
 }
 // ──────────────────────────────────────────────────────
 
@@ -3198,11 +3206,18 @@ async function _pubReportNominatim(query, sug, append, signal) {
     });
     if (signal && signal.aborted) return;
     const data = await res.json();
-    if (!data.length) {
-      if (!append) sug.innerHTML = `<div style="padding:8px 10px;font-size:11px;color:var(--muted)">No results - try a nearby cross-street or drop a pin</div>`;
+    // Filter to LA County only — Nominatim can drift to another city on ambiguous streets.
+    const inCounty = data.filter(r => _isInLACounty(parseFloat(r.lat), parseFloat(r.lon)));
+    if (!inCounty.length) {
+      if (!append) {
+        const hint = data.length
+          ? `<div style="padding:8px 10px;font-size:11px;color:var(--muted)">Results found outside LA — add a city to narrow your search (e.g. "1234 Main St, Los Angeles")</div>`
+          : `<div style="padding:8px 10px;font-size:11px;color:var(--muted)">No results — try a nearby cross-street or add a city (e.g. "1234 Main St, Los Angeles")</div>`;
+        sug.innerHTML = hint;
+      }
       return;
     }
-    data.forEach(r => {
+    inCounty.forEach(r => {
       const a = r.address || {};
       let label = '';
       if (a.house_number && a.road) label = `${a.house_number} ${a.road}`;
@@ -3618,27 +3633,13 @@ async function runAddressSearch(q, autoFly) {
         ${parcel.apn ? `<span style="color:var(--muted);font-size:10px;margin-left:6px">APN ${parcel.apn}</span>` : ''}
       </div>`;
 
-      // Also fetch Nominatim for additional results
-      const hasCity = /,/.test(q.trim());
-      let street = q.trim(), city = '', state = '', country = 'US';
-      if (hasCity) {
-        const parts = q.trim().split(',').map(s => s.trim());
-        street = parts[0];
-        const rest = parts.slice(1).join(' ');
-        const stateMatch = rest.match(/\b([A-Z]{2})\b/);
-        state = stateMatch ? stateMatch[1] : GEOCODE_CITY.split(',')[1]?.trim() || '';
-        city  = rest.replace(/\b[A-Z]{2}\b/, '').replace(/\d{5}/, '').trim().replace(/,$/, '').trim();
-      } else {
-        const cityState = GEOCODE_CITY.split(',');
-        city  = cityState[0]?.trim() || '';
-        state = cityState[1]?.trim() || '';
-      }
+      // Also fetch Nominatim for additional results — uses shared helper for fraction + city/state
       let nominatimRows = '';
       try {
-        const params = new URLSearchParams({ street, city, state, country, format:'json', limit:'4', addressdetails:'1', zoom:'19' });
+        const params = _buildNominatimParams(q, 4);
         const res  = await fetch('https://nominatim.openstreetmap.org/search?' + params, { headers:{ 'Accept-Language':'en' } });
         const data = await res.json();
-        nominatimRows = data.map(r => {
+        nominatimRows = data.filter(r => _isInLACounty(parseFloat(r.lat), parseFloat(r.lon))).map(r => {
           const a = r.address || {};
           let label = '';
           if (a.house_number && a.road) label = `${a.house_number} ${a.road}`;
@@ -3646,7 +3647,7 @@ async function runAddressSearch(q, autoFly) {
           else                          label = r.display_name.split(',')[0].trim();
           if (a.neighbourhood || a.suburb) label += ` — ${a.neighbourhood || a.suburb}`;
           else if (a.city || a.town)       label += `, ${a.city || a.town}`;
-          return `<div class="s-result" onclick="flyTo(${r.lon},${r.lat},'${r.display_name.replace(/'/g,"\\'")}')">` + label + `</div>`;
+          return `<div class="s-result" onclick="flyTo(${r.lon},${r.lat},'${r.display_name.replace(/'/g,"\'")}')">` + label + `</div>`;
         }).join('');
       } catch(_) {}
 
@@ -3656,38 +3657,28 @@ async function runAddressSearch(q, autoFly) {
     }
 
     // ── Stage 2: Nominatim (assessor missed — cross streets, landmarks, blocks) ───
-    const hasCity = /,/.test(q.trim());
-    let street = q.trim(), city = '', state = '', country = 'US';
-    if (hasCity) {
-      const parts = q.trim().split(',').map(s => s.trim());
-      street = parts[0];
-      const rest = parts.slice(1).join(' ');
-      const stateMatch = rest.match(/\b([A-Z]{2})\b/);
-      state = stateMatch ? stateMatch[1] : GEOCODE_CITY.split(',')[1]?.trim() || '';
-      city  = rest.replace(/\b[A-Z]{2}\b/, '').replace(/\d{5}/, '').trim().replace(/,$/, '').trim();
-    } else {
-      const cityState = GEOCODE_CITY.split(',');
-      city  = cityState[0]?.trim() || '';
-      state = cityState[1]?.trim() || '';
-    }
-    const params = new URLSearchParams({
-      street, city, state, country,
-      format: 'json', limit: '5', addressdetails: '1', zoom: '19',
-    });
+    // Uses shared _buildNominatimParams — handles fraction normalisation + city/state parsing.
+    const params = _buildNominatimParams(q, 5);
     const url = 'https://nominatim.openstreetmap.org/search?' + params.toString();
     const res  = await fetch(url, { headers: { 'Accept-Language': 'en' } });
     const data = await res.json();
-    if (!data.length) {
+    // Filter to LA County — prevents the map flying to another city on ambiguous streets.
+    const inCounty = data.filter(r => _isInLACounty(parseFloat(r.lat), parseFloat(r.lon)));
+    if (!inCounty.length) {
       box.style.display = 'none';
-      if (autoFly) showToast('Address not found — try a cross-street or landmark', 'err');
+      const outCity = data[0]?.address?.city || data[0]?.address?.town || 'another city';
+      const hint = data.length
+        ? `Results found in ${outCity} — add a city to your search (e.g. "1234 Main St, Los Angeles")`
+        : 'Address not found — try a cross-street or add a city (e.g. "1234 Main St, Los Angeles")';
+      if (autoFly) showToast(hint, 'err');
       return;
     }
     if (autoFly) {
       box.style.display = 'none';
-      flyTo(data[0].lon, data[0].lat, data[0].display_name);
+      flyTo(inCounty[0].lon, inCounty[0].lat, inCounty[0].display_name);
       return;
     }
-    box.innerHTML = data.map(r => {
+    box.innerHTML = inCounty.map(r => {
       const a = r.address || {};
       let label = '';
       if (a.house_number && a.road) label = `${a.house_number} ${a.road}`;
@@ -3695,7 +3686,7 @@ async function runAddressSearch(q, autoFly) {
       else                          label = r.display_name.split(',')[0].trim();
       if (a.neighbourhood || a.suburb) label += ` — ${a.neighbourhood || a.suburb}`;
       else if (a.city || a.town)       label += `, ${a.city || a.town}`;
-      return `<div class="s-result" onclick="flyTo(${r.lon},${r.lat},'${r.display_name.replace(/'/g,"\\'")}')">` + label + `</div>`;
+      return `<div class="s-result" onclick="flyTo(${r.lon},${r.lat},'${r.display_name.replace(/'/g,"\'")}')">` + label + `</div>`;
     }).join('');
     box.style.display = 'block';
   } catch(err) {
@@ -4247,7 +4238,16 @@ const ASSESSOR_FIND_URL =
   'https://public.gis.lacounty.gov/public/rest/services/LACounty_Cache/LACounty_Parcel/MapServer/find';
 
 async function queryAssessorParcel(streetAddr) {
-  const clean = streetAddr.replace(/\*+/g, '').replace(/\s+/g, ' ').trim().toUpperCase();
+  // Normalise ASCII fraction forms before regex matching so "1234 1/2 MAIN ST" becomes
+  // "1234½ MAIN ST" — matching how the LA County Assessor stores these addresses.
+  const clean = streetAddr
+    .replace(/\*+/g, '')
+    .replace(/\b1\/2\b/g, '½')
+    .replace(/\b1\/4\b/g, '¼')
+    .replace(/\b3\/4\b/g, '¾')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toUpperCase();
 
   // Extract house number
   const numMatch = clean.match(/^(\d+\s*[½¼¾]?)/);
@@ -4384,49 +4384,43 @@ function geocodeAddr() {
     }
 
     // ── Stage 2: Nominatim fallback (cross streets, landmarks, blocks) ──
-    const clean = addr.replace(/\*+/g, '50').trim();
-    const hasCity = /,/.test(clean);
-    let street = clean, city = '', state = '', country = 'US';
-    if (hasCity) {
-      const parts = clean.split(',').map(s => s.trim());
-      street = parts[0];
-      const rest = parts.slice(1).join(' ');
-      const stateMatch = rest.match(/\b([A-Z]{2})\b/);
-      state = stateMatch ? stateMatch[1] : GEOCODE_CITY.split(',')[1]?.trim() || '';
-      city  = rest.replace(/\b[A-Z]{2}\b/, '').replace(/\d{5}/, '').trim().replace(/,$/, '').trim();
-    } else {
-      const cityState = GEOCODE_CITY.split(',');
-      city  = cityState[0]?.trim() || '';
-      state = cityState[1]?.trim() || '';
-    }
+    // Uses shared _buildNominatimParams — handles fraction normalisation + city/state parsing.
+    // Replace LAPD wildcards (**) with 50 so "22** CRENSHAW" → "2250 CRENSHAW".
+    const nominatimQuery = addr.replace(/\*+/g, '50').trim();
     try {
-      const params = new URLSearchParams({
-        street, city, state, country,
-        format: 'json', limit: '3', addressdetails: '1', zoom: '19',
-      });
+      const params = _buildNominatimParams(nominatimQuery, 3);
       const res  = await fetch('https://nominatim.openstreetmap.org/search?' + params, {
         headers: { 'Accept-Language': 'en' },
       });
       const data = await res.json();
       const best = data.find(r => r.address?.house_number) || data[0];
       if (best) {
-        geocodeLng = parseFloat(best.lon);
-        geocodeLat = parseFloat(best.lat);
+        const bLat = parseFloat(best.lat), bLng = parseFloat(best.lon);
         const a = best.address || {};
         let addrLabel = '';
         if (a.house_number && a.road) addrLabel = `${a.house_number} ${a.road}`;
         else if (a.road)              addrLabel = a.road;
         else                          addrLabel = best.display_name.split(',').slice(0,2).join(',').trim();
-        if (a.city || a.town || a.suburb) addrLabel += `, ${a.city || a.town || a.suburb}`;
-        document.getElementById('geocode-status').textContent =
-          '✓ ' + addrLabel + ' (street-level) — drag pin to adjust';
-        document.getElementById('add-coords').textContent =
-          geocodeLat.toFixed(6) + ', ' + geocodeLng.toFixed(6);
-        _placeGeocodePin(geocodeLat, geocodeLng);
+        const resultCity = a.city || a.town || a.suburb || '';
+        if (resultCity) addrLabel += `, ${resultCity}`;
+        if (!_isInLACounty(bLat, bLng)) {
+          // Result drifted outside LA County — clear coords and prompt for city
+          geocodeLng = geocodeLat = null;
+          document.getElementById('geocode-status').textContent =
+            `⚠ Match found in ${resultCity || 'another city'} — add a city to your search (e.g. "1234 Main St, Los Angeles")`;
+        } else {
+          geocodeLng = bLng;
+          geocodeLat = bLat;
+          document.getElementById('geocode-status').textContent =
+            '✓ ' + addrLabel + ' (street-level) — drag pin to adjust';
+          document.getElementById('add-coords').textContent =
+            geocodeLat.toFixed(6) + ', ' + geocodeLng.toFixed(6);
+          _placeGeocodePin(geocodeLat, geocodeLng);
+        }
       } else {
         geocodeLng = geocodeLat = null;
         document.getElementById('geocode-status').textContent =
-          '⚠ Address not found — try a cross-street or use the pin drop';
+          '⚠ Address not found — try a cross-street or add a city (e.g. "1234 Main St, Los Angeles")';
       }
     } catch(e) {
       document.getElementById('geocode-status').textContent = '⚠ Geocoding failed';
@@ -4772,8 +4766,16 @@ function resetCrimeBatch() {
 // addresses strip down to a bare house number (e.g. "22") which never matches
 // a real parcel, so the call always fails and wastes 8 s per row.
 async function geocodeAddressForBatch(address, zip) {
-  // Normalise: replace LAPD wildcard ** with 00 → "22** CRENSHAW BL" → "2200 CRENSHAW BL"
-  const streetRaw = address.replace(/,.*$/, '').replace(/\*+/g, '00').replace(/\s+/g, ' ').trim();
+  // Normalise: replace LAPD wildcard ** with 00, and ASCII fractions with Unicode equivalents.
+  // "22** CRENSHAW BL" → "2200 CRENSHAW BL"; "1234 1/2 MAIN ST" → "1234½ MAIN ST"
+  const streetRaw = address
+    .replace(/,.*$/, '')
+    .replace(/\*+/g, '00')
+    .replace(/\b1\/2\b/g, '½')
+    .replace(/\b1\/4\b/g, '¼')
+    .replace(/\b3\/4\b/g, '¾')
+    .replace(/\s+/g, ' ')
+    .trim();
   const cityState = GEOCODE_CITY.split(',');
   const city      = cityState[0]?.trim() || '';
   const state     = cityState[1]?.trim() || 'CA';
@@ -4804,25 +4806,13 @@ async function geocodeAddressForBatch(address, zip) {
     }
   } catch(e) { /* fall through to Nominatim */ }
 
-  // ── Stage 2: Nominatim at street level (zoom 16) ──────────────────────────
-  const clean   = address.replace(/\*+/g, '00').trim();
-  const hasCity = /,/.test(clean);
-  let street2 = clean, city2 = '', state2 = '', country = 'US';
-  if (hasCity) {
-    const parts = clean.split(',').map(s => s.trim());
-    street2 = parts[0];
-    const rest = parts.slice(1).join(' ');
-    const sm = rest.match(/\b([A-Z]{2})\b/);
-    state2 = sm ? sm[1] : state;
-    city2  = rest.replace(/\b[A-Z]{2}\b/, '').replace(/\d{5}/, '').trim().replace(/,$/, '').trim();
-  } else {
-    city2  = city;
-    state2 = state;
-  }
-  const params2 = new URLSearchParams({
-    street: street2, city: city2, state: state2, country,
-    format: 'json', limit: '3', addressdetails: '1', zoom: '16',
-  });
+  //  // ── Stage 2: Nominatim at street level (zoom 16) ──────────────────────────
+  // Uses _buildNominatimParams for fraction normalisation + city/state parsing.
+  // Batch uses zoom=16 (intentionally coarser than address-bar zoom=19;
+  // LAPD block addresses land in the right block without needing house precision).
+  const nominatimQuery2 = address.replace(/\*+/g, '00').trim();
+  const params2 = _buildNominatimParams(nominatimQuery2, 3);
+  params2.set('zoom', '16');
   if (zip) params2.set('postalcode', String(zip).trim());
   try {
     const res  = await fetch('https://nominatim.openstreetmap.org/search?' + params2, {

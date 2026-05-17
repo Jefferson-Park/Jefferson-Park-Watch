@@ -1153,7 +1153,7 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
       <strong style="color:var(--accent)">Required CSV columns:</strong>
       <code style="display:block;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:6px 10px;margin:6px 0;font-family:var(--mono);font-size:11px;color:var(--text)">crime_type,address,zip,incident_date,incident_time,description
 GTA,12th Ave and 30th St,90018,1/8/26,11:00:00 PM,Suspect took vehicle without permission.</code>
-      Addresses are fuzzy-geocoded using the same two-stage locator as <em>Add Record</em> (Assessor parcel → Nominatim street). The <code>zip</code> field is used as a geocoding hint when the street alone is ambiguous. Rows that fail geocoding are flagged and skipped — no bad coordinates are inserted.
+      Addresses are geocoded using the <strong>US Census TIGER/Line</strong> geocoder (primary) with Nominatim as fallback. LAPD block addresses like <code>22** CRENSHAW BL</code> are handled automatically. Duplicate rows (same type + address + date already in the database) are flagged and pre-rejected — use the <strong>Include</strong> button to override. Use <strong>Reject</strong> to exclude any READY row before uploading.
     </div>
 
     <!-- Drop zone -->
@@ -1183,7 +1183,7 @@ GTA,12th Ave and 30th St,90018,1/8/26,11:00:00 PM,Suspect took vehicle without p
       <div style="font-size:11px;color:var(--muted);margin-bottom:6px" id="cb-info"></div>
       <div style="overflow-x:auto;max-height:280px;overflow-y:auto">
         <table class="pdf-table">
-          <thead><tr><th>Status</th><th>Type</th><th>Address</th><th>Date</th><th>Coords</th></tr></thead>
+          <thead><tr><th>Status</th><th>Type</th><th>Address</th><th>Date</th><th>Coords</th><th>Action</th></tr></thead>
           <tbody id="cb-tbody"></tbody>
         </table>
       </div>
@@ -1970,6 +1970,8 @@ function initMap() {
   clusterGroup = L.markerClusterGroup({
     maxClusterRadius: 40,
     showCoverageOnHover: false,
+    spiderfyOnMaxZoom: true,      // spread overlapping pins at max zoom
+    disableClusteringAtZoom: 18,  // individual markers at street level
     iconCreateFunction: function(cluster) {
       const count = cluster.getChildCount();
       const size = count < 10 ? 36 : count < 50 ? 44 : 52;
@@ -2305,8 +2307,8 @@ document.addEventListener('click', (e) => {
 async function loadCrimes() {
   const { data, error } = await sb.rpc('get_crimes', {
     p_exclude_closed: !showClosed,
-    p_date_from: null,
-    p_date_to: null,
+    p_date_from: dateFrom || null,
+    p_date_to:   dateTo   || null,
   });
   if (error) {
     console.error('Crimes RPC error:', error);
@@ -2873,6 +2875,23 @@ function getCrimeIcon(type) {
   return CRIME_ICON_CACHE[type];
 }
 
+// ── Deterministic jitter ─────────────────────────────────────────
+// Applies a small, stable offset to each crime marker so block-level
+// addresses (e.g. "22** CRENSHAW BL") that share identical coordinates
+// don't stack into an unreachable pile.  The offset is seeded from the
+// record's DB id so the same pin always lands in the same spot across
+// reloads — no jitter drift on refresh.  ±0.0002° ≈ ±20 m.
+function crimeJitter(id) {
+  let h = 0;
+  const s = String(id);
+  for (let i = 0; i < s.length; i++) {
+    h = Math.imul(31, h) + s.charCodeAt(i) | 0;
+  }
+  const dlat = ((h         & 0xFFFF) / 0xFFFF - 0.5) * 0.0004;
+  const dlng = (((h >>> 16) & 0xFFFF) / 0xFFFF - 0.5) * 0.0004;
+  return { dlat, dlng };
+}
+
 function renderCrimes() {
   clusterGroup.clearLayers();
 
@@ -2893,7 +2912,8 @@ function renderCrimes() {
   });
 
   filtered.forEach(c => {
-    const marker = L.marker([c.lat, c.lng], { icon: getCrimeIcon(c.crime_type) });
+    const { dlat, dlng } = crimeJitter(c.id);
+    const marker = L.marker([c.lat + dlat, c.lng + dlng], { icon: getCrimeIcon(c.crime_type) });
     marker.bindPopup(() => buildPopupHTML(c), { maxWidth: 300, minWidth: 260, closeButton: true, autoClose: false, closeOnClick: false });
     marker.on('popupopen', () => {
       // Bind save button after popup renders
@@ -3543,13 +3563,13 @@ function updateStats(filtered) {
 function applyDate() {
   dateFrom = document.getElementById('df-from').value || null;
   dateTo   = document.getElementById('df-to').value   || null;
-  renderCrimes();
+  loadCrimes(); // reload from DB with server-side date filter
 }
 function clearDate() {
   dateFrom = dateTo = null;
   document.getElementById('df-from').value = '';
   document.getElementById('df-to').value   = '';
-  renderCrimes();
+  loadCrimes(); // reload full dataset
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -4693,43 +4713,72 @@ function resetCrimeBatch() {
   document.getElementById('cb-file').value = '';
 }
 
-// ── Two-stage geocoder (same logic as geocodeAddr / submitCrime) ──────────────
-// Returns { lat, lng, label, method } or null on failure.
+// ── Crime batch geocoder ──────────────────────────────────────────────────────
+// Stage 1: US Census Bureau geocoder (TIGER/Line interpolation).
+//   - No API key required.  Handles block addresses like "2200 CRENSHAW BL"
+//     because it matches address ranges per block face, not individual points.
+//   - LAPD wildcards (22**) are replaced with 00 → block base number (2200).
+// Stage 2: Nominatim at zoom 16 (street-level) as fallback for intersections
+//   and addresses the Census geocoder misses.
+//
+// NOTE: Assessor parcel stage is intentionally omitted.  Block-level crime
+// addresses strip down to a bare house number (e.g. "22") which never matches
+// a real parcel, so the call always fails and wastes 8 s per row.
 async function geocodeAddressForBatch(address, zip) {
-  // Stage 1: LA County Assessor parcel
-  const streetOnly = address.replace(/,.*$/, '').replace(/\*+/g, '').trim();
-  const parcel = await queryAssessorParcel(streetOnly);
-  if (parcel) {
-    return { lat: parcel.lat, lng: parcel.lng, label: parcel.matchAddr, method: 'assessor' };
-  }
+  // Normalise: replace LAPD wildcard ** with 00 → "22** CRENSHAW BL" → "2200 CRENSHAW BL"
+  const streetRaw = address.replace(/,.*$/, '').replace(/\*+/g, '00').replace(/\s+/g, ' ').trim();
+  const cityState = GEOCODE_CITY.split(',');
+  const city      = cityState[0]?.trim() || '';
+  const state     = cityState[1]?.trim() || 'CA';
 
-  // Stage 2: Nominatim — replace fuzzy globs, append zip/city hint
-  const clean = address.replace(/\*+/g, '50').trim();
+  // ── Stage 1: US Census Geocoder ───────────────────────────────────────────
+  try {
+    const p = new URLSearchParams({
+      street:    streetRaw,
+      city,
+      state,
+      benchmark: 'Public_AR_Current',
+      format:    'json',
+    });
+    if (zip) p.set('zip', String(zip).trim());
+    const res  = await fetch(
+      'https://geocoding.geo.census.gov/geocoder/locations/address?' + p,
+      { signal: AbortSignal.timeout(9000) }
+    );
+    const data = await res.json();
+    const match = data?.result?.addressMatches?.[0];
+    if (match) {
+      return {
+        lat:    match.coordinates.y,
+        lng:    match.coordinates.x,
+        label:  match.matchedAddress,
+        method: 'census',
+      };
+    }
+  } catch(e) { /* fall through to Nominatim */ }
+
+  // ── Stage 2: Nominatim at street level (zoom 16) ──────────────────────────
+  const clean   = address.replace(/\*+/g, '00').trim();
   const hasCity = /,/.test(clean);
-  let street = clean, city = '', state = '', country = 'US';
-
+  let street2 = clean, city2 = '', state2 = '', country = 'US';
   if (hasCity) {
     const parts = clean.split(',').map(s => s.trim());
-    street = parts[0];
+    street2 = parts[0];
     const rest = parts.slice(1).join(' ');
-    const stateMatch = rest.match(/\b([A-Z]{2})\b/);
-    state = stateMatch ? stateMatch[1] : GEOCODE_CITY.split(',')[1]?.trim() || '';
-    city  = rest.replace(/\b[A-Z]{2}\b/, '').replace(/\d{5}/, '').trim().replace(/,$/, '').trim();
+    const sm = rest.match(/\b([A-Z]{2})\b/);
+    state2 = sm ? sm[1] : state;
+    city2  = rest.replace(/\b[A-Z]{2}\b/, '').replace(/\d{5}/, '').trim().replace(/,$/, '').trim();
   } else {
-    const cityState = GEOCODE_CITY.split(',');
-    city  = cityState[0]?.trim() || '';
-    state = cityState[1]?.trim() || '';
+    city2  = city;
+    state2 = state;
   }
-
-  // Add zip as postalcode hint if provided
-  const params = new URLSearchParams({
-    street, city, state, country,
-    format: 'json', limit: '3', addressdetails: '1', zoom: '18',
+  const params2 = new URLSearchParams({
+    street: street2, city: city2, state: state2, country,
+    format: 'json', limit: '3', addressdetails: '1', zoom: '16',
   });
-  if (zip) params.set('postalcode', String(zip).trim());
-
+  if (zip) params2.set('postalcode', String(zip).trim());
   try {
-    const res  = await fetch('https://nominatim.openstreetmap.org/search?' + params, {
+    const res  = await fetch('https://nominatim.openstreetmap.org/search?' + params2, {
       headers: { 'Accept-Language': 'en', 'User-Agent': 'NeighborhoodApp/1.0' },
     });
     const data = await res.json();
@@ -4744,12 +4793,53 @@ async function geocodeAddressForBatch(address, zip) {
     }
   } catch(e) { /* fall through */ }
 
-  return null; // geocode failed
+  return null; // both stages failed
+}
+
+// ── Batch preview helpers ─────────────────────────────────────────────────────
+// Called after any per-row toggle to keep the summary line and button in sync.
+function updateCBInfo() {
+  const total    = crimeBatchRecords.length;
+  const willSend = crimeBatchRecords.filter(r => r._geocode && !r._rejected).length;
+  const rejected = crimeBatchRecords.filter(r => r._geocode &&  r._rejected).length;
+  const skipped  = crimeBatchRecords.filter(r => !r._geocode).length;
+  const dupCount = crimeBatchRecords.filter(r => r._dup).length;
+  let info = `${total} rows \u00b7 <strong>${willSend} will upload</strong> \u00b7 ${rejected} rejected \u00b7 ${skipped} skipped (geocode failed)`;
+  if (dupCount) info += ` \u00b7 ${dupCount} duplicate${dupCount > 1 ? 's' : ''} detected`;
+  document.getElementById('cb-info').innerHTML = info;
+  document.getElementById('cb-import-btn').disabled = willSend === 0;
+}
+
+// Toggle a single row between included and rejected.
+function toggleCBRow(i) {
+  const r = crimeBatchRecords[i];
+  if (!r._geocode) return; // SKIP rows are not toggleable
+  r._rejected = !r._rejected;
+  // Patch only the two cells that change — avoids a full table redraw
+  const tr = document.getElementById('cb-row-' + i);
+  if (tr) {
+    tr.cells[0].innerHTML = _cbStatusCell(r);
+    tr.cells[5].innerHTML = _cbActionCell(r, i);
+    tr.style.opacity      = r._rejected ? '0.45' : '1';
+  }
+  updateCBInfo();
+}
+
+function _cbStatusCell(r) {
+  if (!r._geocode)            return '<span class="tag tag-err">SKIP</span>';
+  if (r._dup && r._rejected)  return '<span class="tag tag-dup">DUP</span>';
+  if (r._rejected)            return '<span class="tag tag-dup">REJECT</span>';
+  return '<span class="tag tag-new">READY</span>';
+}
+function _cbActionCell(r, i) {
+  if (!r._geocode) return '<span style="color:var(--muted);font-size:10px">\u2014</span>';
+  if (r._rejected) return `<button onclick="toggleCBRow(${i})" style="font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid var(--accent);background:none;color:var(--accent);cursor:pointer">Include</button>`;
+  return `<button onclick="toggleCBRow(${i})" style="font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid var(--danger);background:none;color:var(--danger);cursor:pointer">Reject</button>`;
 }
 
 async function processCrimeBatchFile(file) {
   const status = document.getElementById('cb-status');
-  status.textContent = '⏳ Parsing CSV…';
+  status.textContent = '\u23f3 Parsing CSV\u2026';
   status.style.color = 'var(--muted)';
   document.getElementById('cb-preview').style.display = 'none';
   crimeBatchRecords = [];
@@ -4758,7 +4848,7 @@ async function processCrimeBatchFile(file) {
   const lines = text.split(/\r?\n/).filter(l => l.trim());
 
   if (lines.length < 2) {
-    status.textContent = '❌ CSV must have a header row and at least one data row.';
+    status.textContent = '\u274c CSV must have a header row and at least one data row.';
     status.style.color = 'var(--danger)';
     return;
   }
@@ -4767,7 +4857,7 @@ async function processCrimeBatchFile(file) {
   const required = ['crime_type', 'address'];
   const missing  = required.filter(r => !headers.includes(r));
   if (missing.length) {
-    status.textContent = `❌ Missing required columns: ${missing.join(', ')}`;
+    status.textContent = `\u274c Missing required columns: ${missing.join(', ')}`;
     status.style.color = 'var(--danger)';
     return;
   }
@@ -4786,19 +4876,19 @@ async function processCrimeBatchFile(file) {
     const incident_time = idx('incident_time') >= 0 ? (cols[idx('incident_time')] || '').trim() : '';
     const description   = idx('description')   >= 0 ? (cols[idx('description')]   || '').trim() : '';
 
-    if (!crime_type || !address) continue; // skip blank rows silently
+    if (!crime_type || !address) continue;
 
     parsed.push({ crime_type, address, zip, incident_date, incident_time, description,
-                  _geocode: null, _error: null });
+                  _geocode: null, _error: null, _dup: false, _rejected: false });
   }
 
   if (!parsed.length) {
-    status.textContent = '❌ No valid data rows found.';
+    status.textContent = '\u274c No valid data rows found.';
     status.style.color = 'var(--danger)';
     return;
   }
 
-  // ── Geocode all rows sequentially (rate-limit friendly) ──────────────────
+  // ── Geocode all rows sequentially ────────────────────────────────────────
   document.getElementById('cb-progress-wrap').style.display = 'block';
   const progBar   = document.getElementById('cb-progress-bar');
   const progLabel = document.getElementById('cb-progress-label');
@@ -4806,46 +4896,59 @@ async function processCrimeBatchFile(file) {
 
   for (let i = 0; i < parsed.length; i++) {
     const r = parsed[i];
-    progLabel.textContent = `Geocoding ${i + 1} / ${parsed.length}…`;
+    progLabel.textContent = `Geocoding ${i + 1} / ${parsed.length}\u2026`;
     progBar.style.width = `${Math.round(((i + 1) / parsed.length) * 100)}%`;
 
     const geo = await geocodeAddressForBatch(r.address, r.zip);
     if (geo) {
       r._geocode = geo;
     } else {
-      r._error = 'Address not found — will be skipped';
+      r._error = 'Address not found \u2014 will be skipped';
     }
-    // Small delay between Nominatim requests to respect rate limit
-    if (i < parsed.length - 1) await new Promise(res => setTimeout(res, 350));
+    // 400 ms between rows: polite for Nominatim fallback; Census has no strict rate limit
+    if (i < parsed.length - 1) await new Promise(res => setTimeout(res, 400));
   }
 
   document.getElementById('cb-progress-wrap').style.display = 'none';
+
+  // ── Duplicate detection against already-loaded crime records ─────────────
+  // Fingerprint: crime_type + address + incident_date (case-insensitive).
+  // Duplicates are pre-rejected; admin can override with the Include button.
+  const existingFP = new Set(
+    crimesData.map(c =>
+      `${(c.crime_type||'').toLowerCase()}|${(c.address||'').toLowerCase()}|${c.incident_date||''}`
+    )
+  );
+  parsed.forEach(r => {
+    const fp = `${r.crime_type.toLowerCase()}|${r.address.toLowerCase()}|${r.incident_date||''}`;
+    if (existingFP.has(fp)) {
+      r._dup      = true;
+      r._rejected = true; // default-exclude — admin clicks Include to override
+    }
+  });
+
   crimeBatchRecords = parsed;
 
-  const okCount   = parsed.filter(r => r._geocode).length;
-  const skipCount = parsed.filter(r => !r._geocode).length;
-
-  document.getElementById('cb-info').textContent =
-    `${parsed.length} rows parsed · ${okCount} ready to upload · ${skipCount} will be skipped (geocode failed)`;
-
-  document.getElementById('cb-tbody').innerHTML = parsed.map(r => `
-    <tr>
-      <td>${r._geocode
-        ? '<span class="tag tag-new">READY</span>'
-        : '<span class="tag tag-err">SKIP</span>'}</td>
+  // ── Render preview table ──────────────────────────────────────────────────
+  document.getElementById('cb-tbody').innerHTML = parsed.map((r, i) => `
+    <tr id="cb-row-${i}" style="opacity:${r._rejected ? '0.45' : '1'}">
+      <td>${_cbStatusCell(r)}</td>
       <td style="font-family:var(--mono);font-weight:600;color:var(--accent);font-size:11px">${escHtml(r.crime_type)}</td>
       <td style="font-size:11px">${escHtml(r.address)}${r.zip ? ' <span style="color:var(--muted)">'+r.zip+'</span>' : ''}
-        ${r._geocode ? '<br><span style="color:var(--muted);font-size:10px">'+escHtml(r._geocode.label)+' ('+r._geocode.method+')</span>' : ''}
-        ${r._error   ? '<br><span style="color:var(--danger);font-size:10px">'+escHtml(r._error)+'</span>' : ''}</td>
-      <td style="font-size:11px;font-family:var(--mono)">${escHtml(r.incident_date || '—')}</td>
+        ${r._geocode ? '<br><span style="color:var(--muted);font-size:10px">'+escHtml(r._geocode.label)+' <em>('+r._geocode.method+')</em></span>' : ''}
+        ${r._error   ? '<br><span style="color:var(--danger);font-size:10px">'+escHtml(r._error)+'</span>' : ''}
+        ${r._dup     ? '<br><span style="color:var(--danger);font-size:10px">\u26a0 matches existing record</span>' : ''}</td>
+      <td style="font-size:11px;font-family:var(--mono)">${escHtml(r.incident_date || '\u2014')}</td>
       <td style="font-size:10px;font-family:var(--mono)">${r._geocode
         ? r._geocode.lat.toFixed(5)+', '+r._geocode.lng.toFixed(5)
-        : '<span style="color:var(--muted)">—</span>'}</td>
+        : '<span style="color:var(--muted)">\u2014</span>'}</td>
+      <td>${_cbActionCell(r, i)}</td>
     </tr>`).join('');
 
   document.getElementById('cb-preview').style.display = 'block';
-  document.getElementById('cb-import-btn').disabled = okCount === 0;
-  if (okCount === 0) showToast('No rows could be geocoded — check your addresses', 'err');
+  updateCBInfo();
+  if (crimeBatchRecords.filter(r => r._geocode && !r._rejected).length === 0)
+    showToast('No rows ready to upload \u2014 check addresses or un-reject rows', 'err');
 }
 
 // Simple HTML escaper used in table rendering
@@ -4854,16 +4957,16 @@ function escHtml(s) {
 }
 
 async function importCrimeBatch() {
-  const toInsert = crimeBatchRecords.filter(r => r._geocode);
-  if (!toInsert.length) { showToast('No geocoded records to upload', 'err'); return; }
+  const toInsert = crimeBatchRecords.filter(r => r._geocode && !r._rejected);
+  if (!toInsert.length) { showToast('No records queued for upload', 'err'); return; }
 
   const btn = document.getElementById('cb-import-btn');
   btn.disabled = true;
-  btn.textContent = 'Uploading…';
+  btn.textContent = 'Uploading\u2026';
 
   let ok = 0, fail = 0;
   for (const r of toInsert) {
-    // Normalise date: M/D/YY or M/D/YYYY → MM/DD/YYYY
+    // Normalise date: M/D/YY or M/D/YYYY \u2192 MM/DD/YYYY
     let fmtDate = null;
     if (r.incident_date) {
       const parts = r.incident_date.split('/');
@@ -4893,8 +4996,8 @@ async function importCrimeBatch() {
 
   showToast(
     ok > 0
-      ? `✓ Uploaded ${ok} crime record${ok>1?'s':''}${fail?' · '+fail+' failed':''}`
-      : `All ${fail} inserts failed — check RLS permissions`,
+      ? `\u2713 Uploaded ${ok} crime record${ok>1?'s':''}${fail?' \u00b7 '+fail+' failed':''}`
+      : `All ${fail} inserts failed \u2014 check RLS permissions`,
     ok > 0 ? 'ok' : 'err'
   );
 
@@ -4902,12 +5005,11 @@ async function importCrimeBatch() {
   btn.textContent = 'Upload Crimes';
 
   if (ok > 0) {
-    await loadCrimes(); // refresh crime layer
+    await loadCrimes();
     closeModal('crime-batch-modal');
     resetCrimeBatch();
   }
 }
-
 function openPDF() { openModal('pdf-modal'); }
 
 function onCSVDrop(e) {

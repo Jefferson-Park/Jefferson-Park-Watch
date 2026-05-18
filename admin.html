@@ -370,13 +370,21 @@ tbody td{padding:7px 10px;vertical-align:middle}
       <button class="maptb-btn" onclick="fitAllData()">⊙ Fit All</button>
       <button class="maptb-btn" onclick="clearAllStars()" style="color:#fbbf24">★ Clear Stars</button>
     </div>
-    <!-- Move Pin confirm bar (Bug 4) -->
+    <!-- Move Pin confirm bar — Annotations (existing) -->
     <div id="admin-move-pin-bar" style="display:none;position:absolute;bottom:12px;left:50%;transform:translateX(-50%);z-index:1001;
       background:var(--panel);border:1px solid var(--accent);border-radius:8px;padding:8px 14px;
       font-size:12px;color:var(--accent);align-items:center;gap:10px;box-shadow:0 4px 16px rgba(0,0,0,.5)">
       <span>🗺 Drag the pin to the correct location</span>
       <button onclick="confirmAdminMovePin()" style="padding:5px 12px;background:var(--accent);color:#000;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font)">Confirm</button>
       <button onclick="cancelAdminMovePin()" style="padding:5px 10px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer;font-family:var(--font)">Cancel</button>
+    </div>
+    <!-- Move Pin confirm bar — Crimes -->
+    <div id="crime-move-pin-bar" style="display:none;position:absolute;bottom:12px;left:50%;transform:translateX(-50%);z-index:1001;
+      background:var(--panel);border:1px solid var(--amber);border-radius:8px;padding:8px 14px;
+      font-size:12px;color:var(--amber);align-items:center;gap:10px;box-shadow:0 4px 16px rgba(0,0,0,.5)">
+      <span>📍 Drag the crime pin to the correct location</span>
+      <button onclick="confirmCrimeMovePin()" style="padding:5px 12px;background:var(--amber);color:#000;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font)">Confirm</button>
+      <button onclick="cancelCrimeMovePin()" style="padding:5px 10px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer;font-family:var(--font)">Cancel</button>
     </div>
   </div>
 
@@ -698,6 +706,10 @@ tbody td{padding:7px 10px;vertical-align:middle}
     </div>
     <div class="em-footer">
       <button class="btn" onclick="closeEdit()">Cancel</button>
+      <button class="btn" id="crime-move-pin-btn" onclick="startCrimeMovePin()"
+        style="color:var(--amber);border-color:var(--amber)" title="Drag the pin to reposition this crime on the map">
+        📍 Move Pin
+      </button>
       <button class="btn btn-accent" onclick="saveEdit()">Save Changes</button>
     </div>
   </div>
@@ -1301,6 +1313,65 @@ function cancelAdminMovePin() {
   adminMovePinId = null;
   const bar = document.getElementById('admin-move-pin-bar');
   if (bar) bar.style.display = 'none';
+}
+
+// ══════════════════════════════════════════════════════
+// CRIME MOVE PIN — drag to reposition a crime record
+// ══════════════════════════════════════════════════════
+let crimeMovePinMarker = null, crimeMovePinId = null;
+
+function startCrimeMovePin() {
+  const id = document.getElementById('edit-id').value;
+  if (!id) return;
+  const c = allCrimes.find(x => x.id === id);
+  if (!c) { showToast('Crime not found', 'err'); return; }
+  crimeMovePinId = id;
+
+  // Close modal so the map is fully visible
+  closeEdit();
+
+  if (crimeMovePinMarker) { adminMap.removeLayer(crimeMovePinMarker); crimeMovePinMarker = null; }
+
+  const startLat = c.lat || adminMap.getCenter().lat;
+  const startLng = c.lng || adminMap.getCenter().lng;
+  const color = COLORS[c.crime_type] || '#e8453c';
+
+  crimeMovePinMarker = L.marker([startLat, startLng], {
+    draggable: true,
+    icon: L.divIcon({
+      html: `<div style="display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 2px 8px rgba(0,0,0,.7))">
+        <div style="width:22px;height:22px;background:${color};border:3px solid white;border-radius:50%;
+          box-shadow:0 0 0 5px ${color}55;cursor:grab"></div>
+        <div style="font-size:9px;color:white;background:${color};padding:1px 6px;border-radius:3px;
+          margin-top:2px;white-space:nowrap">${esc(c.crime_type)}</div>
+      </div>`,
+      className: '', iconSize: [90, 38], iconAnchor: [45, 18],
+    }),
+    zIndexOffset: 3000,
+  }).addTo(adminMap);
+
+  // Show crimes layer if currently hidden
+  if (!layerOn.crimes) toggleMapLayer('crimes');
+  adminMap.flyTo([startLat, startLng], Math.max(adminMap.getZoom(), 19));
+  document.getElementById('crime-move-pin-bar').style.display = 'flex';
+  showToast('Drag the pin to the correct spot, then click Confirm', 'ok');
+}
+
+async function confirmCrimeMovePin() {
+  if (!crimeMovePinMarker || !crimeMovePinId) { cancelCrimeMovePin(); return; }
+  const { lat, lng } = crimeMovePinMarker.getLatLng();
+  const { error } = await sb.from('crimes')
+    .update({ lat, lng, updated_by: currentUser.id })
+    .eq('id', crimeMovePinId);
+  if (error) { showToast('Error moving pin: ' + error.message, 'err'); }
+  else { showToast('📍 Crime location updated ✓', 'ok'); await loadCrimes(); }
+  cancelCrimeMovePin();
+}
+
+function cancelCrimeMovePin() {
+  if (crimeMovePinMarker) { adminMap.removeLayer(crimeMovePinMarker); crimeMovePinMarker = null; }
+  crimeMovePinId = null;
+  document.getElementById('crime-move-pin-bar').style.display = 'none';
 }
 
 // ══════════════════════════════════════════════════════

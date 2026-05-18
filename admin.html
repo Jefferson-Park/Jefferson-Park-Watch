@@ -1360,9 +1360,9 @@ function startCrimeMovePin() {
 async function confirmCrimeMovePin() {
   if (!crimeMovePinMarker || !crimeMovePinId) { cancelCrimeMovePin(); return; }
   const { lat, lng } = crimeMovePinMarker.getLatLng();
-  const { error } = await sb.from('crimes')
-    .update({ lat, lng, updated_by: currentUser.id })
-    .eq('id', crimeMovePinId);
+  const { error } = await sb.rpc('update_crime_location', {
+    p_crime_id: crimeMovePinId, p_lat: lat, p_lng: lng
+  });
   if (error) { showToast('Error moving pin: ' + error.message, 'err'); }
   else { showToast('📍 Crime location updated ✓', 'ok'); await loadCrimes(); }
   cancelCrimeMovePin();

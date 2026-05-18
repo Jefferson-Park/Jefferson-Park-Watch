@@ -10,19 +10,38 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+/* ══════════════════════════════════════════════════════════════════
+   NEIGHBORHOOD THEME — Match this to index.html :root for consistent branding.
+   ══════════════════════════════════════════════════════════════════ */
 :root{
-  --bg:#0f1117;--panel:#1a1d27;--panel2:#22263a;--border:#2e3350;
-  --accent:#00c2a8;--blue:#2d8bff;--text:#e8eaf0;--muted:#7b82a0;
-  --danger:#ff4444;--amber:#f0a500;--red:#e8453c;--green:#22c55e;
+  /* ── Primary brand */
+  --accent:#5B7A47;   /* Sage green */
+  --blue:#2B6CB0;     /* Informational */
+  --amber:#C4780A;    /* Warning / traffic */
+  --danger:#B93020;   /* Errors */
+  --red:#B93020;
+  --green:#2D7A3A;    /* Success */
+
+  /* ── Surfaces — light warm theme */
+  --bg:#F4F1EB;       /* Page background */
+  --panel:#FFFFFF;    /* Cards, sidebar */
+  --panel2:#EDE9E0;   /* Secondary surface */
+  --border:#D8D3C7;   /* Dividers, borders */
+
+  /* ── Typography */
+  --text:#2C2825;     /* Primary text */
+  --muted:#7A6E62;    /* Secondary labels */
+
+  /* ── Fonts & layout */
   --font:'DM Sans',system-ui,sans-serif;--mono:'DM Mono',monospace;
   --nav:48px;--map-h:55vh;--panel-h:calc(100vh - var(--nav) - var(--map-h));
 }
-html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:var(--font);color:var(--text);font-size:13px}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:var(--font);color:var(--text);font-size:14px}
 
 /* ── Login ── */
-#login{position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#0a0d16,#0f1525);display:flex;align-items:center;justify-content:center}
+#login{position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center}
 .li-box{width:340px;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:36px;position:relative;overflow:hidden}
-.li-box::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--blue))}
+.li-box::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:var(--accent)}
 .li-title{font-size:20px;font-weight:600;margin-bottom:4px}
 .li-sub{font-size:12px;color:var(--muted);margin-bottom:22px}
 .li-f{margin-bottom:14px}
@@ -39,7 +58,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 /* ── Nav ── */
 #nav{height:var(--nav);background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:0;flex-shrink:0;z-index:1000}
 .brand{display:flex;align-items:center;gap:8px;margin-right:20px}
-.brand-icon{width:30px;height:30px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.brand-icon{width:30px;height:30px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff}
 .brand-name{font-size:13px;font-weight:600}
 .brand-sub{font-size:9px;color:var(--muted);font-family:var(--mono)}
 .nav-tabs{display:flex;height:100%}
@@ -98,9 +117,9 @@ table{width:100%;border-collapse:collapse;font-size:11px}
 thead th{position:sticky;top:0;text-align:left;padding:8px 10px;font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;background:var(--panel2);border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none;z-index:2}
 thead th:hover{color:var(--text)}
 thead th.sorted{color:var(--accent)}
-tbody tr{border-bottom:1px solid rgba(46,51,80,.3);transition:background .1s}
-tbody tr:hover{background:rgba(34,38,58,.7)}
-tbody tr.highlighted{background:rgba(0,194,168,.08)!important;outline:1px solid rgba(0,194,168,.3)}
+tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
+tbody tr:hover{background:rgba(237,233,224,.9)}
+tbody tr.highlighted{background:rgba(91,122,71,.08)!important;outline:1px solid rgba(91,122,71,.3)}
 tbody td{padding:7px 10px;vertical-align:middle}
 .tc-type{font-weight:500;white-space:nowrap}
 .tc-addr{color:var(--muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -112,20 +131,20 @@ tbody td{padding:7px 10px;vertical-align:middle}
 .b-in_progress{background:rgba(240,165,0,.15);color:var(--amber)}
 .b-closed{background:rgba(123,130,160,.15);color:var(--muted)}
 .b-manual{background:rgba(45,139,255,.12);color:var(--blue)}
-.b-pdf_import{background:rgba(0,194,168,.12);color:var(--accent)}
+.b-pdf_import{background:rgba(91,122,71,.12);color:var(--accent)}
 .b-public{background:rgba(34,197,94,.12);color:var(--green)}
 .b-private{background:rgba(123,130,160,.12);color:var(--muted)}
-.b-polygon{background:rgba(0,194,168,.12);color:var(--accent)}
+.b-polygon{background:rgba(91,122,71,.12);color:var(--accent)}
 .b-line{background:rgba(240,165,0,.12);color:var(--amber)}
 .b-point{background:rgba(45,139,255,.12);color:var(--blue)}
 .b-new{background:rgba(45,139,255,.15);color:var(--blue)}
 .b-reviewed{background:rgba(34,197,94,.15);color:var(--green)}
-.b-promoted{background:rgba(0,194,168,.15);color:var(--accent)}
+.b-promoted{background:rgba(91,122,71,.15);color:var(--accent)}
 .b-dismissed{background:rgba(123,130,160,.15);color:var(--muted)}
 
 /* ── Parcel hover label ── */
 .parcel-hover-label {
-  background: rgba(15,17,23,.92) !important;
+  background: rgba(244,241,235,.97) !important;
   border: 1px solid var(--accent) !important;
   color: var(--accent) !important;
   font-family: var(--mono) !important;
@@ -170,7 +189,7 @@ tbody td{padding:7px 10px;vertical-align:middle}
 .parcel-popup-body { padding: 10px 14px 12px; }
 .parcel-row {
   display: flex; justify-content: space-between; align-items: flex-start;
-  padding: 4px 0; border-bottom: 1px solid rgba(46,51,80,.4); gap: 8px;
+  padding: 4px 0; border-bottom: 1px solid var(--border); gap: 8px;
   font-size: 11px;
 }
 .parcel-row:last-child { border-bottom: none; }
@@ -259,7 +278,7 @@ tbody td{padding:7px 10px;vertical-align:middle}
 #edit-modal{position:fixed;inset:0;z-index:5000;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center}
 #edit-modal.open{display:flex}
 .em{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:22px;width:500px;max-width:95vw;max-height:85vh;overflow-y:auto;position:relative}
-.em::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--blue));border-radius:12px 12px 0 0}
+.em::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:var(--accent);border-radius:12px 12px 0 0}
 .em-title{font-size:14px;font-weight:600;margin-bottom:16px}
 .em-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .em-f{display:flex;flex-direction:column;gap:3px}
@@ -289,11 +308,11 @@ tbody td{padding:7px 10px;vertical-align:middle}
 .leaflet-popup{margin-bottom:30px!important}
 .leaflet-control-zoom a{background:var(--panel)!important;color:var(--text)!important;border-color:var(--border)!important}
 .leaflet-control-zoom a:hover{background:var(--panel2)!important}
-.leaflet-control-attribution{background:rgba(15,17,23,.8)!important;color:var(--muted)!important;font-size:9px!important}
-.marker-cluster-small,.marker-cluster-medium,.marker-cluster-large{background:rgba(0,194,168,.2)!important}
-.marker-cluster-small div,.marker-cluster-medium div,.marker-cluster-large div{background:#00c2a8!important;color:#000!important;font-family:var(--mono)!important;font-weight:600!important;font-size:12px!important}
+.leaflet-control-attribution{background:rgba(244,241,235,.88)!important;color:var(--muted)!important;font-size:9px!important}
+.marker-cluster-small,.marker-cluster-medium,.marker-cluster-large{background:rgba(91,122,71,.18)!important}
+.marker-cluster-small div,.marker-cluster-medium div,.marker-cluster-large div{background:#5B7A47!important;color:#000!important;font-family:var(--mono)!important;font-weight:600!important;font-size:12px!important}
 .empty-state{text-align:center;padding:40px;color:var(--muted);font-size:12px}
-.ann-tooltip{background:#1a1d27!important;border:1px solid #00ffcc!important;color:#00ffcc!important;font-family:var(--mono)!important;font-size:10px!important;font-weight:600!important;padding:3px 7px!important;border-radius:4px!important;box-shadow:0 2px 8px rgba(0,0,0,.5)!important}
+.ann-tooltip{background:rgba(244,241,235,.97)!important;border:1px solid var(--accent)!important;color:var(--accent)!important;font-family:var(--mono)!important;font-size:10px!important;font-weight:600!important;padding:3px 7px!important;border-radius:4px!important;box-shadow:0 2px 8px rgba(0,0,0,.5)!important}
 .ann-tooltip::before{display:none!important}
 @keyframes pulse-star{from{transform:translate(-50%,-100%) scale(1)}to{transform:translate(-50%,-100%) scale(1.25)}}
 </style>
@@ -798,7 +817,7 @@ const CATEGORY_MAP = {
       fields:[{id:'infra_type',label:'Type'},{id:'severity',label:'Severity'},{id:'report_no',label:'Report #'}] },
   ],
   'Business & Econ Dev': [
-    { label:'Business Directory',    value:'business',           icon:'🏪', color:'#00c2a8',
+    { label:'Business Directory',    value:'business',           icon:'🏪', color:'#5B7A47',
       fields:[{id:'biz_name',label:'Name'},{id:'biz_type',label:'Type'},{id:'status',label:'Status'},{id:'phone',label:'Phone'}] },
     { label:'Mix Use / Construction',value:'mix_use_residential',icon:'🏗', color:'#9b59b6',
       fields:[{id:'project_name',label:'Project'},{id:'stage',label:'Stage'},{id:'units',label:'Units/SqFt'}] },
@@ -1191,7 +1210,7 @@ function renderAnnotationMarkers() {
 
       const catCfg    = CATEGORY_LOOKUP[ann.category] || null;
       const isLine    = ann.annotation_type === 'line';
-      const baseColor = catCfg?.color || '#00c2a8';
+      const baseColor = catCfg?.color || '#5B7A47';
       const strokeColor = ann.is_public ? baseColor : '#ffcc00';
       const fillColor   = ann.is_public ? baseColor : '#ffaa00';
 
@@ -1385,7 +1404,7 @@ async function renderBoundaries() {
   data.forEach(b=>{
     if (!b.geometry) return;
     if (b.boundary_type==='slo'){
-      L.geoJSON(b.geometry,{style:{color:'#00c2a8',weight:2,fillColor:'#00c2a8',fillOpacity:0.05}})
+      L.geoJSON(b.geometry,{style:{color:'#5B7A47',weight:2,fillColor:'#5B7A47',fillOpacity:0.05}})
         .bindPopup(`<div style="padding:10px;font-family:var(--font)"><b style="color:var(--accent)">RD ${b.properties?.rd}</b><br><span style="font-size:11px">${b.properties?.slo_name||'—'}</span><br><span style="font-size:11px;color:var(--muted)">${b.properties?.cell||''}</span></div>`)
         .addTo(sloLayerGrp);
     } else if (b.boundary_type==='unnc'){
@@ -1613,7 +1632,7 @@ function renderAnnotationsTable(annotations) {
     const status   = a.status || 'draft';
     const statusCfg = {
       draft:     { label:'Draft',     bg:'rgba(240,165,0,.15)',   color:'#f0a500' },
-      approved:  { label:'Approved',  bg:'rgba(0,194,168,.15)',   color:'var(--accent)' },
+      approved:  { label:'Approved',  bg:'rgba(91,122,71,.15)',   color:'var(--accent)' },
       published: { label:'Published', bg:'rgba(46,204,113,.15)',  color:'#2ecc71' },
       rejected:  { label:'Rejected',  bg:'rgba(231,76,60,.15)',   color:'#e74c3c' },
     }[status] || { label:status, bg:'rgba(255,255,255,.07)', color:'var(--muted)' };
@@ -1651,7 +1670,7 @@ function renderAnnotationsTable(annotations) {
       <td>
         <div class="tc-actions">
           ${status === 'draft' ? `
-            <button class="btn btn-sm" style="background:rgba(0,194,168,.15);color:var(--accent);border-color:var(--accent)"
+            <button class="btn btn-sm" style="background:rgba(91,122,71,.15);color:var(--accent);border-color:var(--accent)"
               onclick="event.stopPropagation();approveAnn('${aid}')" title="Approve — move to approved status">✓ Approve</button>
             <button class="btn btn-sm" style="background:rgba(231,76,60,.1);color:#e74c3c;border-color:#e74c3c44"
               onclick="event.stopPropagation();rejectAnn('${aid}')" title="Reject">✕</button>
@@ -2587,7 +2606,7 @@ function renderObsMarkers() {
   allObservations.forEach(o => {
     if (o.lat == null || o.lng == null) return;
     const status = o.status || 'new';
-    const color  = { new:'#2d8bff', reviewed:'#22c55e', promoted:'#00c2a8', dismissed:'#555' }[status] || '#2d8bff';
+    const color  = { new:'#2d8bff', reviewed:'#22c55e', promoted:'#5B7A47', dismissed:'#555' }[status] || '#2d8bff';
     const catLabel = OBS_CAT_LABELS[o.category] || (o.category || 'Observation');
     const m = L.circleMarker([o.lat, o.lng], {
       radius: 7, color: 'white', weight: 2, fillColor: color, fillOpacity: 0.9,

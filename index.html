@@ -288,18 +288,37 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
   :root { --sw:0px; --tb:52px; }
   #sidebar { width:280px; transform:translateX(-280px); --sw:280px; }
   #sidebar.open { transform:translateX(0); }
-  #topbar { left:0 !important; padding-left: 56px !important; }
+  
+  /* 1. Force the topbar to clear the left side and add padding for the button */
+  #topbar { 
+    left:0 !important; 
+    padding-left: 56px !important; 
+  }
+  
   #map { left:0 !important; }
   #bottom-panel { left:0 !important; flex-wrap:wrap; }
-  #sb-toggle { left:4px !important; top:4px !important; border-radius:8px; border:1px solid var(--border); min-width:44px; height:44px; font-size:12px; }
-  body.sb-open #sb-toggle { left:280px !important; }
+  
+  /* 2. Position the hamburger button clearly at top-left */
+  #sb-toggle { 
+    left:8px !important; 
+    top:8px !important; 
+    border-radius:8px; 
+    border:1px solid var(--border); 
+    min-width:40px; 
+    height:40px; 
+    font-size:12px; 
+    z-index: 9999 !important; /* Ensure it stays above topbar */
+  }
+  
+  /* 3. Move the button right when the sidebar opens */
+  body.sb-open #sb-toggle { left:288px !important; }
+
+  /* Popup adjustments */
   .leaflet-popup-content { min-width:200px; max-width:calc(100vw - 40px); }
   .pop-head { padding:10px 34px 8px 10px; }
   .pop-body { padding:8px 10px; }
   .pop-desc { font-size:11px; }
-  /* Keep popup open on mobile */
   .leaflet-popup { margin-bottom:20px; }
-  /* Photo popup image on mobile — constrain height */
   .leaflet-popup-content img { max-height:180px; width:100%; object-fit:cover; }
 }
 

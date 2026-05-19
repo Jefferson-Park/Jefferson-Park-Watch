@@ -288,11 +288,11 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
   :root { --sw:0px; --tb:52px; }
   #sidebar { width:280px; transform:translateX(-280px); --sw:280px; }
   #sidebar.open { transform:translateX(0); }
-  #topbar { left:0 !important; padding-left:52px; }
+  #topbar { left:0 !important; padding-left: 56px !important; }
   #map { left:0 !important; }
   #bottom-panel { left:0 !important; flex-wrap:wrap; }
-  #sb-toggle { left:0; border-radius:8px; border:1px solid var(--border); min-width:44px; height:44px; font-size:12px; }
-  body.sb-open #sb-toggle { left:280px; }
+  #sb-toggle { left:4px !important; top:4px !important; border-radius:8px; border:1px solid var(--border); min-width:44px; height:44px; font-size:12px; }
+  body.sb-open #sb-toggle { left:280px !important; }
   .leaflet-popup-content { min-width:200px; max-width:calc(100vw - 40px); }
   .pop-head { padding:10px 34px 8px 10px; }
   .pop-body { padding:8px 10px; }
@@ -1436,6 +1436,7 @@ const PARCEL_TILE_URL = 'https://cache.gis.lacounty.gov/cache/rest/services/LACo
 // back to GEOCODE_CITY.  Returns a URLSearchParams ready to append to
 // the Nominatim /search endpoint.  Used by the top search bar AND the
 // public-report geocoder so both produce identical queries.
+//add back soft bias.  
 function _buildNominatimParams(query, limit) {
   // Normalise ASCII fraction forms so Nominatim receives "1234½" not "1234 1/2"
   const query_ = query.replace(/\b1\/2\b/g, '½').replace(/\b1\/4\b/g, '¼').replace(/\b3\/4\b/g, '¾');
@@ -1453,7 +1454,17 @@ function _buildNominatimParams(query, limit) {
     city  = cityState[0]?.trim() || '';
     state = cityState[1]?.trim() || '';
   }
-  return new URLSearchParams({ street, city, state, country, format: 'json', limit: String(limit), addressdetails: '1', zoom: '19' });
+  
+  const params = new URLSearchParams({ street, city, state, country, format: 'json', limit: String(limit), addressdetails: '1', zoom: '19' });
+  
+  // Soft bias Nominatim towards the app's bounding box
+  // Prevents San Pedro matching over Jefferson Park while keeping it portable
+  if (typeof JP_VIEWBOX !== 'undefined') {
+    params.set('viewbox', JP_VIEWBOX);
+    params.set('bounded', '0'); // Soft preference, allows matches outside if needed
+  }
+  
+  return params;
 }
 // ── LA County bounds check ────────────────────────────
 // Used to detect when Nominatim drifts to another city.
@@ -4306,13 +4317,14 @@ async function queryAssessorParcel(streetAddr) {
   if (!numMatch) return null;
   const houseNo = numMatch[1].trim();
 
-  // Street name: strip leading directional (stored in separate SitusDirection field)
-  // and trailing suffix so "EDGEHILL DR" and "EDGEHILL" both find "EDGEHILL DR"
-  let streetPart = clean.slice(numMatch[0].length).trim();
+  
+let streetPart = clean.slice(numMatch[0].length).trim();
   // Normalise "S." → "S " so the directional strip matches when user types a period
-  // (e.g. "1818 S. Western" → "S. WESTERN" → "S WESTERN" → strip → "WESTERN").
   streetPart = streetPart.replace(/^(NE|NW|SE|SW|N|S|E|W)\.(\s+)/i, '$1$2');
-  streetPart = streetPart.replace(/^(NE|NW|SE|SW|N|S|E|W)\s+/i, '').trim();
+  
+  // DO NOT STRIP THE DIRECTIONAL! MapServer needs it for exact string matching in SitusAddress.
+  // REMOVE THIS LINE: streetPart = streetPart.replace(/^(NE|NW|SE|SW|N|S|E|W)\s+/i, '').trim();
+
   const streetBase = streetPart
     .replace(/\s+(BLVD|BOULEVARD|AVE|AVENUE|ST|STREET|DR|DRIVE|RD|ROAD|LN|LANE|CT|COURT|PL|PLACE|WAY|PKWY|PARKWAY|TERR|TER|TERRACE|CIR|CIRCLE|EXPY|EXPRESSWAY)\.?\s*$/i, '')
     .trim();

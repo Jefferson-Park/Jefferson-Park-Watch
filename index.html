@@ -288,7 +288,7 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
   :root { --sw:0px; --tb:52px; }
   #sidebar { width:280px; transform:translateX(-280px); --sw:280px; }
   #sidebar.open { transform:translateX(0); }
-  #topbar { left:0 !important; }
+  #topbar { left:0 !important; padding-left:52px; }
   #map { left:0 !important; }
   #bottom-panel { left:0 !important; flex-wrap:wrap; }
   #sb-toggle { left:0; border-radius:8px; border:1px solid var(--border); min-width:44px; height:44px; font-size:12px; }
@@ -3246,18 +3246,24 @@ async function _pubReportNominatim(query, sug, append, signal) {
     });
     if (signal && signal.aborted) return;
     const data = await res.json();
-    // Filter to LA County only — Nominatim can drift to another city on ambiguous streets.
+    // Filter to configured city/county — same guard as top search bar.
     const inCounty = data.filter(r => _isInLACounty(parseFloat(r.lat), parseFloat(r.lon)));
     if (!inCounty.length) {
       if (!append) {
         const hint = data.length
-          ? `<div style="padding:8px 10px;font-size:11px;color:var(--muted)">Results found outside LA — add a city to narrow your search (e.g. "1234 Main St, Los Angeles")</div>`
+          ? `<div style="padding:8px 10px;font-size:11px;color:var(--muted)">Results found outside configured area — add a city to narrow your search (e.g. "1234 Main St, Los Angeles")</div>`
           : `<div style="padding:8px 10px;font-size:11px;color:var(--muted)">No results — try a nearby cross-street or add a city (e.g. "1234 Main St, Los Angeles")</div>`;
         sug.innerHTML = hint;
       }
       return;
     }
-    inCounty.forEach(r => {
+    // Prefer results whose city matches GEOCODE_CITY before showing others.
+    const _prefCity = GEOCODE_CITY.split(',')[0].trim().toLowerCase();
+    const _sorted = [
+      ...inCounty.filter(r => (r.address?.city || '').toLowerCase() === _prefCity),
+      ...inCounty.filter(r => (r.address?.city || '').toLowerCase() !== _prefCity),
+    ];
+    _sorted.forEach(r => {
       const a = r.address || {};
       let label = '';
       if (a.house_number && a.road) label = `${a.house_number} ${a.road}`;
@@ -3702,7 +3708,7 @@ async function runAddressSearch(q, autoFly) {
     const url = 'https://nominatim.openstreetmap.org/search?' + params.toString();
     const res  = await fetch(url, { headers: { 'Accept-Language': 'en' } });
     const data = await res.json();
-    // Filter to LA County — prevents the map flying to another city on ambiguous streets.
+    // Filter to configured city/county — prevents flying to another city on ambiguous streets.
     const inCounty = data.filter(r => _isInLACounty(parseFloat(r.lat), parseFloat(r.lon)));
     if (!inCounty.length) {
       box.style.display = 'none';
@@ -3713,12 +3719,18 @@ async function runAddressSearch(q, autoFly) {
       if (autoFly) showToast(hint, 'err');
       return;
     }
+    // Prefer results whose city matches GEOCODE_CITY (e.g. Los Angeles over Gardena).
+    const _prefCity = GEOCODE_CITY.split(',')[0].trim().toLowerCase();
+    const _sorted = [
+      ...inCounty.filter(r => (r.address?.city || '').toLowerCase() === _prefCity),
+      ...inCounty.filter(r => (r.address?.city || '').toLowerCase() !== _prefCity),
+    ];
     if (autoFly) {
       box.style.display = 'none';
-      flyTo(inCounty[0].lon, inCounty[0].lat, inCounty[0].display_name);
+      flyTo(_sorted[0].lon, _sorted[0].lat, _sorted[0].display_name);
       return;
     }
-    box.innerHTML = inCounty.map(r => {
+    box.innerHTML = _sorted.map(r => {
       const a = r.address || {};
       let label = '';
       if (a.house_number && a.road) label = `${a.house_number} ${a.road}`;
@@ -4297,8 +4309,8 @@ async function queryAssessorParcel(streetAddr) {
   // Street name: strip leading directional (stored in separate SitusDirection field)
   // and trailing suffix so "EDGEHILL DR" and "EDGEHILL" both find "EDGEHILL DR"
   let streetPart = clean.slice(numMatch[0].length).trim();
-  // Normalise "S." → "S" etc. so the directional regex matches even when user
-  // types an abbreviation with a trailing period (e.g. "1818 S. Western").
+  // Normalise "S." → "S " so the directional strip matches when user types a period
+  // (e.g. "1818 S. Western" → "S. WESTERN" → "S WESTERN" → strip → "WESTERN").
   streetPart = streetPart.replace(/^(NE|NW|SE|SW|N|S|E|W)\.(\s+)/i, '$1$2');
   streetPart = streetPart.replace(/^(NE|NW|SE|SW|N|S|E|W)\s+/i, '').trim();
   const streetBase = streetPart
@@ -4436,16 +4448,15 @@ function geocodeAddr() {
         headers: { 'Accept-Language': 'en' },
       });
       const data = await res.json();
-      // ── Filter to LA County FIRST (same as the top search bar) ──────
-      // This prevents locking onto Gardena / Torrance / etc. when
-      // Nominatim returns them ahead of Los Angeles for ambiguous streets.
+      // Filter to configured city/county FIRST — same pattern as the top search bar.
+      // Prevents locking onto a neighbouring city when Nominatim returns it ahead of
+      // the configured city for ambiguous street names (e.g. Western Ave).
       const inCounty = data.filter(r => _isInLACounty(parseFloat(r.lat), parseFloat(r.lon)));
-      const pool = inCounty.length ? inCounty : [];   // never fall back to out-of-county
-      // Among in-county results, prefer ones whose city matches GEOCODE_CITY
-      // (e.g. "Los Angeles" over "Gardena" for "1818 S Western").
-      const preferredCity = GEOCODE_CITY.split(',')[0].trim().toLowerCase();
+      const pool = inCounty.length ? inCounty : [];
+      // Among in-county results prefer those whose city matches GEOCODE_CITY.
+      const _prefCity = GEOCODE_CITY.split(',')[0].trim().toLowerCase();
       const best =
-        pool.find(r => (r.address?.city || '').toLowerCase() === preferredCity && r.address?.house_number) ||
+        pool.find(r => (r.address?.city || '').toLowerCase() === _prefCity && r.address?.house_number) ||
         pool.find(r => r.address?.house_number) ||
         pool[0];
       if (best) {
@@ -4465,19 +4476,11 @@ function geocodeAddr() {
           geocodeLat.toFixed(6) + ', ' + geocodeLng.toFixed(6);
         _placeGeocodePin(geocodeLat, geocodeLng);
       } else {
-        // All Nominatim results were outside LA County
-        const outCity = data[0]?.address?.city || data[0]?.address?.town || 'another city';
-        if (data.length && !inCounty.length) {
-          geocodeLng = geocodeLat = null;
-          document.getElementById('geocode-status').textContent =
-            `⚠ Match found in ${outCity} — add a city to your search (e.g. "1234 Main St, Los Angeles")`;
-          return;
-        }
-      }
-      if (!best) {
         geocodeLng = geocodeLat = null;
-        document.getElementById('geocode-status').textContent =
-          '⚠ Address not found — try a cross-street or add a city (e.g. "1234 Main St, Los Angeles")';
+        const outCity = data[0]?.address?.city || data[0]?.address?.town || 'another city';
+        document.getElementById('geocode-status').textContent = data.length && !inCounty.length
+          ? `⚠ Match found in ${outCity} — add a city to your search (e.g. "1234 Main St, ${GEOCODE_CITY.split(',')[0]}")`
+          : `⚠ Address not found — try a cross-street or add a city (e.g. "1234 Main St, ${GEOCODE_CITY.split(',')[0]}")`;
       }
     } catch(e) {
       document.getElementById('geocode-status').textContent = '⚠ Geocoding failed';
@@ -4876,7 +4879,14 @@ async function geocodeAddressForBatch(address, zip) {
       headers: { 'Accept-Language': 'en', 'User-Agent': 'NeighborhoodApp/1.0' },
     });
     const data = await res.json();
-    const best = data.find(r => r.address?.house_number) || data[0];
+    // Filter to configured city/county — same guard used in all other geocoder pathways.
+    const inCounty = data.filter(r => _isInLACounty(parseFloat(r.lat), parseFloat(r.lon)));
+    const pool = inCounty.length ? inCounty : [];
+    const _prefCity = GEOCODE_CITY.split(',')[0].trim().toLowerCase();
+    const best =
+      pool.find(r => (r.address?.city || '').toLowerCase() === _prefCity && r.address?.house_number) ||
+      pool.find(r => r.address?.house_number) ||
+      pool[0];
     if (best) {
       const a = best.address || {};
       let label = '';

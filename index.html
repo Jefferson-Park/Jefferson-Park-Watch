@@ -29,7 +29,10 @@
 <style>
 /* ── Reset ─────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
+body { 
+  margin-top: 20px; 
+  background-color: #f7f7f7; /* Match your app's background */
+}
 /* ══════════════════════════════════════════════════════════════════
    NEIGHBORHOOD THEME — Edit this block to rebrand for any neighborhood.
    All colors, surfaces, and typography derive from these variables.
@@ -285,33 +288,41 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
 
 /* Mobile responsive */
 @media (max-width: 640px) {
-  :root { --sw:0px; --tb:52px; }
+  :root { --sw:0px; --tb:60px; } /* Increased top bar height to accommodate address bar */
   #sidebar { width:280px; transform:translateX(-280px); --sw:280px; }
   #sidebar.open { transform:translateX(0); }
   
-  /* 1. Force the topbar to clear the left side and add padding for the button */
+  /* Pushes content down on mobile so it doesn't hit the address bar */
   #topbar { 
     left:0 !important; 
     padding-left: 56px !important; 
+    padding-top: 8px !important; 
   }
   
   #map { left:0 !important; }
   #bottom-panel { left:0 !important; flex-wrap:wrap; }
   
-  /* 2. Position the hamburger button clearly at top-left */
+  /* Explicitly position the button to be safe on mobile and desktop */
   #sb-toggle { 
     left:8px !important; 
-    top:8px !important; 
+    top:12px !important; /* Slightly lower to clear browser UI */
+    z-index: 1002 !important; /* Ensure it is always on top */
     border-radius:8px; 
     border:1px solid var(--border); 
     min-width:40px; 
     height:40px; 
     font-size:12px; 
-    z-index: 9999 !important; /* Ensure it stays above topbar */
   }
   
-  /* 3. Move the button right when the sidebar opens */
   body.sb-open #sb-toggle { left:288px !important; }
+  
+  .leaflet-popup-content { min-width:200px; max-width:calc(100vw - 40px); }
+  .pop-head { padding:10px 34px 8px 10px; }
+  .pop-body { padding:8px 10px; }
+  .pop-desc { font-size:11px; }
+  .leaflet-popup { margin-bottom:20px; }
+  .leaflet-popup-content img { max-height:180px; width:100%; object-fit:cover; }
+}
 
   /* Popup adjustments */
   .leaflet-popup-content { min-width:200px; max-width:calc(100vw - 40px); }

@@ -293,26 +293,25 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
   #sidebar.open { transform:translateX(0); }
   
   /* Pushes content down on mobile so it doesn't hit the address bar */
-  #topbar { 
-    left:0 !important; 
-    padding-left: 56px !important; 
-    padding-top: 8px !important; 
-  }
+  #topbar {
+  position: absolute;
+  top: 20px; /* Moves the address bar/search down 20px */
+  left: 0;
+  width: 100%;
+  padding-left: 50px; /* Leaves space for the hamburger */
+  z-index: 1000;
+}
   
   #map { left:0 !important; }
   #bottom-panel { left:0 !important; flex-wrap:wrap; }
   
   /* Explicitly position the button to be safe on mobile and desktop */
-  #sb-toggle { 
-    left:8px !important; 
-    top:12px !important; /* Slightly lower to clear browser UI */
-    z-index: 1002 !important; /* Ensure it is always on top */
-    border-radius:8px; 
-    border:1px solid var(--border); 
-    min-width:40px; 
-    height:40px; 
-    font-size:12px; 
-  }
+  #sb-toggle {
+  position: absolute;
+  top: 20px; /* Matches the topbar offset */
+  left: 5px;
+  z-index: 1001; /* Stays on top of everything */
+}
   
   body.sb-open #sb-toggle { left:288px !important; }
   

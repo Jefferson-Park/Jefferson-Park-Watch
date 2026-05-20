@@ -166,6 +166,46 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
 .sb-scroll { flex:1; overflow-y:auto; padding:10px; }
 .sb-scroll::-webkit-scrollbar { width:3px; }
 .sb-scroll::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+/* ── Sidebar Footer (search + radius) ─────────────────── */
+.sb-foot {
+  flex-shrink:0; border-top:1px solid var(--border);
+  background:var(--panel); padding:10px;
+  display:flex; flex-direction:column; gap:6px;
+}
+.sb-foot-search { position:relative; }
+#sb-search-input {
+  width:100%; background:var(--bg); border:1px solid var(--border);
+  border-radius:8px; padding:8px 10px 8px 30px;
+  color:var(--text); font-size:12px; font-family:var(--font);
+  outline:none; transition:border-color .2s;
+}
+#sb-search-input:focus { border-color:var(--accent); }
+#sb-search-results {
+  display:none; position:absolute; bottom:calc(100% + 4px); left:0; right:0;
+  background:var(--panel); border:1px solid var(--border); border-radius:8px;
+  max-height:220px; overflow-y:auto; z-index:50;
+  box-shadow:0 -4px 16px rgba(0,0,0,.12);
+}
+.sb-sr-item {
+  display:flex; align-items:flex-start; gap:8px;
+  padding:8px 10px; cursor:pointer; transition:background .15s;
+  border-bottom:1px solid var(--border);
+}
+.sb-sr-item:last-child { border-bottom:none; }
+.sb-sr-item:hover { background:var(--panel2); }
+.sb-sr-type { font-size:14px; flex-shrink:0; margin-top:1px; }
+.sb-sr-label { font-size:12px; font-weight:500; color:var(--text); }
+.sb-sr-sub { font-size:10px; color:var(--muted); font-family:var(--mono); margin-top:1px; }
+.sb-sr-empty { padding:10px; font-size:12px; color:var(--muted); text-align:center; }
+#radius-btn {
+  width:100%; display:flex; align-items:center; justify-content:center; gap:6px;
+  background:var(--panel2); border:1px solid var(--border); border-radius:8px;
+  padding:8px 10px; font-size:12px; font-weight:500; font-family:var(--font);
+  color:var(--text); cursor:pointer; transition:all .2s;
+}
+#radius-btn:hover { border-color:var(--accent); color:var(--accent); }
+#radius-btn.active { background:rgba(91,122,71,.12); border-color:var(--accent); color:var(--accent); }
 .sec-label { font-size:10px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.1em; padding:10px 4px 5px; font-family:var(--mono); }
 
 /* stats */
@@ -965,9 +1005,20 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
       </div>
 
     </div>
-  </div>
 
-  <!-- Top Bar -->
+    <!-- Sidebar Footer: Global Search + Radius Filter -->
+    <div class="sb-foot">
+      <div class="sb-foot-search">
+        <svg style="position:absolute;left:9px;top:50%;transform:translateY(-50%);opacity:.4;pointer-events:none" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input type="text" id="sb-search-input" placeholder="Search all layers…" oninput="onSidebarSearch(this.value)" onkeydown="if(event.key==='Escape'){this.value='';onSidebarSearch('')}" autocomplete="off">
+        <div id="sb-search-results"></div>
+      </div>
+      <button id="radius-btn" onclick="toggleRadiusFilter()">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"/><line x1="12" y1="3" x2="12" y2="1"/></svg>
+        Show nearby (5-block radius)
+      </button>
+    </div>
+  </div>
   <div id="topbar">
     <div id="search-wrap">
       <svg class="s-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
@@ -5378,6 +5429,150 @@ async function saveSLO(id) {
   const { error } = await sb.from('boundaries').update({ properties:props, updated_by:currentUser?.id }).eq('id',id);
   if (error) showToast('Error: '+error.message,'err');
   else { showToast('SLO updated','ok'); await loadBoundaries(); }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// SIDEBAR GLOBAL SEARCH
+// ══════════════════════════════════════════════════════════════════
+let _sbSearchHits = [], _sbSearchTimer;
+
+function onSidebarSearch(q) {
+  clearTimeout(_sbSearchTimer);
+  const res = document.getElementById('sb-search-results');
+  if (!q.trim()) { res.innerHTML = ''; res.style.display = 'none'; return; }
+  _sbSearchTimer = setTimeout(() => {
+    const term = q.toLowerCase();
+    const hits = [];
+
+    // Crimes: type, address, description, notes
+    crimesData.forEach(c => {
+      if ([c.crime_type, c.address, c.description, c.notes].join(' ').toLowerCase().includes(term))
+        hits.push({ type:'crime', label: c.crime_type, sub: c.address || c.incident_date || '', lat: c.lat, lng: c.lng });
+    });
+
+    // Annotations: label, notes, category, subcategory
+    annotationsData.forEach(a => {
+      if (![a.label, a.notes, a.category, a.subcategory].join(' ').toLowerCase().includes(term)) return;
+      let lat = a.lat, lng = a.lng;
+      if (!lat && a.geometry_geojson) {
+        try {
+          const g = typeof a.geometry_geojson === 'string' ? JSON.parse(a.geometry_geojson) : a.geometry_geojson;
+          if (g.type === 'Point') { lat = g.coordinates[1]; lng = g.coordinates[0]; }
+          else {
+            const c0 = g.type === 'Polygon' ? g.coordinates[0][0] : g.coordinates[0];
+            lng = c0[0]; lat = c0[1];
+          }
+        } catch(e) {}
+      }
+      hits.push({ type:'annotation', label: a.label || a.category || 'Annotation', sub: a.subcategory || a.annotation_type || '', lat, lng });
+    });
+
+    // Boundaries: name, slo_name, rd
+    boundariesData.forEach(b => {
+      if (![b.name, b.properties?.slo_name, String(b.properties?.rd||'')].join(' ').toLowerCase().includes(term)) return;
+      hits.push({ type:'boundary', label: b.name, sub: b.properties?.slo_name || b.boundary_type || '', lat: null, lng: null, geojson: b.geometry });
+    });
+
+    _sbSearchHits = hits.slice(0, 12);
+    if (!_sbSearchHits.length) {
+      res.innerHTML = '<div class="sb-sr-empty">No results found</div>';
+    } else {
+      const icons = { crime:'🚨', annotation:'📌', boundary:'🗺' };
+      res.innerHTML = _sbSearchHits.map((h, i) => `
+        <div class="sb-sr-item" onclick="jumpToSidebarResult(${i})">
+          <span class="sb-sr-type">${icons[h.type]}</span>
+          <div><div class="sb-sr-label">${esc(h.label)}</div><div class="sb-sr-sub">${esc(h.sub)}</div></div>
+        </div>`).join('');
+    }
+    res.style.display = 'block';
+  }, 240);
+}
+
+function jumpToSidebarResult(i) {
+  const h = _sbSearchHits[i];
+  if (!h) return;
+  document.getElementById('sb-search-results').style.display = 'none';
+  document.getElementById('sb-search-input').value = '';
+  if (h.lat && h.lng) {
+    map.setView([h.lat, h.lng], 17);
+  } else if (h.geojson) {
+    try { map.fitBounds(L.geoJSON(h.geojson).getBounds(), { padding:[40,40] }); } catch(e) {}
+  }
+}
+
+// Close search results when clicking outside
+document.addEventListener('click', e => {
+  if (!e.target.closest('.sb-foot-search')) {
+    const res = document.getElementById('sb-search-results');
+    if (res) res.style.display = 'none';
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════
+// RADIUS FILTER  (~5 city blocks = 450 m)
+// ══════════════════════════════════════════════════════════════════
+let _radiusActive = false, _radiusCircle = null;
+const RADIUS_M = 450;
+
+function toggleRadiusFilter() {
+  _radiusActive = !_radiusActive;
+  document.getElementById('radius-btn').classList.toggle('active', _radiusActive);
+
+  if (_radiusActive) {
+    _applyRadiusFilter();
+    map.on('moveend', _applyRadiusFilter);
+    showToast('Showing records within ~5 blocks of map center', 'ok');
+  } else {
+    map.off('moveend', _applyRadiusFilter);
+    if (_radiusCircle) { map.removeLayer(_radiusCircle); _radiusCircle = null; }
+    renderCrimes();
+    renderCategoryAnnotations();
+    renderPublicAnnotations();
+    showToast('Radius filter off — all layers restored', 'ok');
+  }
+}
+
+function _applyRadiusFilter() {
+  if (!_radiusActive) return;
+  const center = map.getCenter();
+
+  // Update radius circle
+  if (_radiusCircle) map.removeLayer(_radiusCircle);
+  _radiusCircle = L.circle([center.lat, center.lng], {
+    radius: RADIUS_M, color:'#5B7A47', weight:2,
+    fillColor:'#5B7A47', fillOpacity:0.06, dashArray:'6 4',
+  }).addTo(map);
+
+  // Filter crime markers to radius
+  clusterGroup.clearLayers();
+  crimesData.filter(c => {
+    if (!activeCrimeTypes.has(c.crime_type)) return false;
+    if (!showClosed && c.status === 'closed') return false;
+    return map.distance([c.lat, c.lng], center) <= RADIUS_M;
+  }).forEach(c => {
+    const { dlat, dlng } = crimeJitter(c.id);
+    const marker = L.marker([c.lat+dlat, c.lng+dlng], { icon: getCrimeIcon(c.crime_type) });
+    marker.bindPopup(() => buildPopupHTML(c), { maxWidth:300, minWidth:260, closeButton:true, autoClose:false, closeOnClick:false });
+    marker.on('popupopen', () => {
+      setTimeout(() => {
+        const btn = document.getElementById('pop-save-'+c.id);
+        if (btn) btn.onclick = () => saveRecord(c.id);
+      }, 50);
+    });
+    clusterGroup.addLayer(marker);
+  });
+
+  // Filter point annotations to radius
+  Object.values(CAT_LAYER_GROUPS).forEach(grp => grp.clearLayers());
+  annotationsData.filter(a => {
+    if (a.annotation_type !== 'point') return true; // keep polygons/lines always
+    const lat = a.lat || (()=>{ try{ const g=typeof a.geometry_geojson==='string'?JSON.parse(a.geometry_geojson):a.geometry_geojson; return g.coordinates[1]; }catch(e){return null;} })();
+    const lng = a.lng || (()=>{ try{ const g=typeof a.geometry_geojson==='string'?JSON.parse(a.geometry_geojson):a.geometry_geojson; return g.coordinates[0]; }catch(e){return null;} })();
+    if (!lat || !lng) return false;
+    return map.distance([lat, lng], center) <= RADIUS_M;
+  });
+  renderCategoryAnnotations();
+  renderPublicAnnotations();
 }
 
 // ══════════════════════════════════════════════════════════════════

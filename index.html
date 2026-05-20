@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
 <title>Neighborhood Improvement Map — Jefferson Park</title>
 
 <!-- Supabase — BLOCKING (must be available at parse time for `const { createClient } = supabase`) -->
@@ -30,7 +30,6 @@
 /* ── Reset ─────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body { 
-  margin-top: 20px; 
   background-color: #f7f7f7; /* Match your app's background */
 }
 /* ══════════════════════════════════════════════════════════════════
@@ -63,6 +62,7 @@ body {
   --tb:       52px;      /* Top bar height */
   --font:     'DM Sans', system-ui, sans-serif;
   --mono:     'DM Mono', monospace;
+  --sat:      env(safe-area-inset-top, 0px); /* Safari top safe area */
 }
 
 html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); font-family:var(--font); color:var(--text); }
@@ -127,7 +127,7 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); fon
 
 /* ── Sidebar ───────────────────────────────────────────────────── */
 #sidebar {
-  position:absolute; top:0; left:0; bottom:0; width:var(--sw);
+  position:absolute; top:var(--sat); left:0; bottom:0; width:var(--sw);
   z-index:1000; background:var(--panel); border-right:1px solid var(--border);
   display:flex; flex-direction:column; overflow:hidden;
   transition:transform .3s ease;
@@ -142,7 +142,7 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); fon
 }
 /* Sidebar toggle button */
 #sb-toggle {
-  position:absolute; top:12px; z-index:1001;
+  position:absolute; top:calc(12px + var(--sat)); z-index:1001;
   left:var(--sw); transition:left .3s ease;
   min-width:36px; height:36px;
   background:var(--panel); border:1px solid var(--border);
@@ -216,7 +216,7 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
 
 /* ── Top Bar ───────────────────────────────────────────────────── */
 #topbar {
-  position:absolute; top:0; left:var(--sw); right:0; height:var(--tb);
+  position:absolute; top:var(--sat); left:var(--sw); right:0; height:var(--tb);
   z-index:1000; background:var(--panel); border-bottom:1px solid var(--border);
   display:flex; align-items:center; gap:8px; padding:0 14px;
   transition:left .3s ease;
@@ -239,7 +239,7 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
 #logout-btn:hover { border-color:var(--danger); color:var(--danger); }
 
 /* ── Map ───────────────────────────────────────────────────────── */
-#map { position:absolute; top:var(--tb); left:var(--sw); right:0; bottom:0; z-index:1; transition:left .3s ease; }
+#map { position:absolute; top:calc(var(--tb) + var(--sat)); left:var(--sw); right:0; bottom:0; z-index:1; transition:left .3s ease; }
 
 /* Leaflet cluster override — match our dark theme */
 .marker-cluster-small,

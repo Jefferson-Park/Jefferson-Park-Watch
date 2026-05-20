@@ -5626,10 +5626,39 @@ function toggleRadiusFilter() {
   } else {
     map.off('moveend', _applyRadiusFilter);
     if (_radiusCircle) { map.removeLayer(_radiusCircle); _radiusCircle = null; }
-    renderCrimes();
-    renderCategoryAnnotations();
-    renderPublicAnnotations();
-    showToast('Radius filter off — all layers restored', 'ok');
+
+    // Turn all crime types off
+    activeCrimeTypes.clear();
+    Object.keys(CRIMES).forEach(type => {
+      const sw = document.getElementById('sw-' + type.replace(/\W/g,'_'));
+      if (sw) sw.classList.remove('on');
+    });
+
+    // Turn all category layers off
+    Object.keys(CAT_LAYER_GROUPS).forEach(cat => {
+      layerVisible['cat_' + cat] = false;
+      const sw = document.getElementById('sw-cat-' + cat);
+      if (sw) sw.classList.remove('on');
+      const grp = CAT_LAYER_GROUPS[cat];
+      if (grp && map.hasLayer(grp)) map.removeLayer(grp);
+    });
+
+    // Turn boundaries + annotations off
+    ['slo','unnc'].forEach(type => {
+      layerVisible[type] = false;
+      const sw = document.getElementById('sw-' + type);
+      if (sw) sw.classList.remove('on');
+      (type === 'slo' ? sloLayerGroup : unncLayerGroup).remove ? (type === 'slo' ? sloLayerGroup : unncLayerGroup).remove() : map.removeLayer(type === 'slo' ? sloLayerGroup : unncLayerGroup);
+    });
+    if (layerVisible.annotations) {
+      layerVisible.annotations = false;
+      const sw = document.getElementById('sw-annotations');
+      if (sw) sw.classList.remove('on');
+      map.removeLayer(annotationLayerGroup);
+    }
+
+    clusterGroup.clearLayers();
+    showToast('Radius filter off — map cleared', 'ok');
   }
 }
 

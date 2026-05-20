@@ -127,7 +127,7 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); fon
 
 /* ── Sidebar ───────────────────────────────────────────────────── */
 #sidebar {
-  position:absolute; top:var(--sat); left:0; bottom:0; width:var(--sw);
+  position:absolute; top:0; left:0; bottom:0; width:var(--sw);
   z-index:1000; background:var(--panel); border-right:1px solid var(--border);
   display:flex; flex-direction:column; overflow:hidden;
   transition:transform .3s ease;
@@ -158,7 +158,7 @@ html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); fon
 body.sb-collapsed #topbar { left:0 !important; }
 body.sb-collapsed #map { left:0 !important; }
 body.sb-collapsed #bottom-panel { left:0 !important; }
-.sb-head { padding:14px; border-bottom:1px solid var(--border); flex-shrink:0; }
+.sb-head { padding:14px; padding-top:calc(14px + var(--sat)); border-bottom:1px solid var(--border); flex-shrink:0; }
 .sb-logo { display:flex; align-items:center; gap:10px; }
 .sb-logo-icon { width:36px; height:36px; background:var(--accent); border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 .sb-logo-text { font-size:13px; font-weight:600; }
@@ -216,9 +216,9 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
 
 /* ── Top Bar ───────────────────────────────────────────────────── */
 #topbar {
-  position:absolute; top:var(--sat); left:var(--sw); right:0; height:var(--tb);
+  position:absolute; top:0; left:var(--sw); right:0; height:calc(var(--tb) + var(--sat));
   z-index:1000; background:var(--panel); border-bottom:1px solid var(--border);
-  display:flex; align-items:center; gap:8px; padding:0 14px;
+  display:flex; align-items:flex-end; gap:8px; padding:0 14px calc((var(--tb) - 44px) / 2);
   transition:left .3s ease;
 }
 #search-wrap { flex:1; position:relative; max-width:380px; }

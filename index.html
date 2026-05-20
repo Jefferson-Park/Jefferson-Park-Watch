@@ -5447,7 +5447,7 @@ function onSidebarSearch(q) {
     // Crimes: type, address, description, notes
     crimesData.forEach(c => {
       if ([c.crime_type, c.address, c.description, c.notes].join(' ').toLowerCase().includes(term))
-        hits.push({ type:'crime', label: c.crime_type, sub: c.address || c.incident_date || '', lat: c.lat, lng: c.lng });
+        hits.push({ type:'crime', crimeType: c.crime_type, label: c.crime_type, sub: c.address || c.incident_date || '', lat: c.lat, lng: c.lng });
     });
 
     // Annotations: label, notes, category, subcategory
@@ -5464,13 +5464,13 @@ function onSidebarSearch(q) {
           }
         } catch(e) {}
       }
-      hits.push({ type:'annotation', label: a.label || a.category || 'Annotation', sub: a.subcategory || a.annotation_type || '', lat, lng });
+      hits.push({ type:'annotation', cat: a.category || 'observation', label: a.label || a.category || 'Annotation', sub: a.subcategory || a.annotation_type || '', lat, lng });
     });
 
     // Boundaries: name, slo_name, rd
     boundariesData.forEach(b => {
       if (![b.name, b.properties?.slo_name, String(b.properties?.rd||'')].join(' ').toLowerCase().includes(term)) return;
-      hits.push({ type:'boundary', label: b.name, sub: b.properties?.slo_name || b.boundary_type || '', lat: null, lng: null, geojson: b.geometry });
+      hits.push({ type:'boundary', btype: b.boundary_type, label: b.name, sub: b.properties?.slo_name || b.boundary_type || '', lat: null, lng: null, geojson: b.geometry });
     });
 
     _sbSearchHits = hits.slice(0, 12);
@@ -5493,20 +5493,83 @@ function jumpToSidebarResult(i) {
   if (!h) return;
   document.getElementById('sb-search-results').style.display = 'none';
   document.getElementById('sb-search-input').value = '';
+
+  // Ensure the layer containing this record is visible
+  if (h.type === 'crime') {
+    // Turn on this crime type if it isn't already
+    if (!activeCrimeTypes.has(h.crimeType)) {
+      activeCrimeTypes.add(h.crimeType);
+      const sw = document.getElementById('sw-' + h.crimeType.replace(/\W/g,'_'));
+      if (sw) sw.classList.add('on');
+      renderCrimes();
+    }
+  } else if (h.type === 'annotation') {
+    const cat = h.cat || 'observation';
+    const key = 'cat_' + cat;
+    if (!layerVisible[key]) {
+      layerVisible[key] = true;
+      const sw = document.getElementById('sw-cat-' + cat);
+      if (sw) sw.classList.add('on');
+      const grp = CAT_LAYER_GROUPS[cat];
+      if (grp && !map.hasLayer(grp)) grp.addTo(map);
+    }
+    // Also ensure legacy annotation layer is on
+    if (!layerVisible.annotations) {
+      layerVisible.annotations = true;
+      const sw = document.getElementById('sw-annotations');
+      if (sw) sw.classList.add('on');
+      annotationLayerGroup.addTo(map);
+    }
+  } else if (h.type === 'boundary') {
+    const btype = h.btype;
+    if (btype === 'slo' && !layerVisible.slo) {
+      layerVisible.slo = true;
+      const sw = document.getElementById('sw-slo');
+      if (sw) sw.classList.add('on');
+      sloLayerGroup.addTo(map);
+    } else if (btype === 'unnc' && !layerVisible.unnc) {
+      layerVisible.unnc = true;
+      const sw = document.getElementById('sw-unnc');
+      if (sw) sw.classList.add('on');
+      unncLayerGroup.addTo(map);
+    }
+  }
+
+  // Fly to location then open popup
   if (h.lat && h.lng) {
+    map.once('moveend', () => {
+      // Find and open the marker popup
+      setTimeout(() => {
+        let found = false;
+        if (h.type === 'crime') {
+          clusterGroup.eachLayer(m => {
+            if (found) return;
+            const ll = m.getLatLng();
+            if (Math.abs(ll.lat - h.lat) < 0.0005 && Math.abs(ll.lng - h.lng) < 0.0005) {
+              // Unspiderfy cluster if needed, then open
+              if (m.__parent) {
+                try { clusterGroup.zoomToShowLayer(m, () => m.openPopup()); } catch(e) { m.openPopup(); }
+              } else { m.openPopup(); }
+              found = true;
+            }
+          });
+        } else if (h.type === 'annotation') {
+          const grp = CAT_LAYER_GROUPS[h.cat];
+          if (grp) grp.eachLayer(m => {
+            if (found || !m.openPopup) return;
+            const ll = m.getLatLng ? m.getLatLng() : null;
+            if (ll && Math.abs(ll.lat - h.lat) < 0.0005 && Math.abs(ll.lng - h.lng) < 0.0005) {
+              m.openPopup(); found = true;
+            }
+          });
+        }
+      }, 350);
+    });
     map.setView([h.lat, h.lng], 17);
   } else if (h.geojson) {
     try { map.fitBounds(L.geoJSON(h.geojson).getBounds(), { padding:[40,40] }); } catch(e) {}
   }
 }
-
-// Close search results when clicking outside
-document.addEventListener('click', e => {
-  if (!e.target.closest('.sb-foot-search')) {
-    const res = document.getElementById('sb-search-results');
-    if (res) res.style.display = 'none';
-  }
-});
 
 // ══════════════════════════════════════════════════════════════════
 // RADIUS FILTER  (~5 city blocks = 450 m)
@@ -5514,14 +5577,52 @@ document.addEventListener('click', e => {
 let _radiusActive = false, _radiusCircle = null;
 const RADIUS_M = 450;
 
+function _enableAllLayers() {
+  // All crime types on
+  Object.keys(CRIMES).forEach(type => {
+    if (!activeCrimeTypes.has(type)) {
+      activeCrimeTypes.add(type);
+      const sw = document.getElementById('sw-' + type.replace(/\W/g,'_'));
+      if (sw) sw.classList.add('on');
+    }
+  });
+  // All category annotation layers on
+  Object.keys(CAT_LAYER_GROUPS).forEach(cat => {
+    const key = 'cat_' + cat;
+    if (!layerVisible[key]) {
+      layerVisible[key] = true;
+      const sw = document.getElementById('sw-cat-' + cat);
+      if (sw) sw.classList.add('on');
+      const grp = CAT_LAYER_GROUPS[cat];
+      if (grp && !map.hasLayer(grp)) grp.addTo(map);
+    }
+  });
+  // Boundary + annotation layers on
+  ['slo','unnc'].forEach(type => {
+    if (!layerVisible[type]) {
+      layerVisible[type] = true;
+      const sw = document.getElementById('sw-' + type);
+      if (sw) sw.classList.add('on');
+      (type === 'slo' ? sloLayerGroup : unncLayerGroup).addTo(map);
+    }
+  });
+  if (!layerVisible.annotations) {
+    layerVisible.annotations = true;
+    const sw = document.getElementById('sw-annotations');
+    if (sw) sw.classList.add('on');
+    annotationLayerGroup.addTo(map);
+  }
+}
+
 function toggleRadiusFilter() {
   _radiusActive = !_radiusActive;
   document.getElementById('radius-btn').classList.toggle('active', _radiusActive);
 
   if (_radiusActive) {
+    _enableAllLayers();
     _applyRadiusFilter();
     map.on('moveend', _applyRadiusFilter);
-    showToast('Showing records within ~5 blocks of map center', 'ok');
+    showToast('Showing all records within ~5 blocks of map center', 'ok');
   } else {
     map.off('moveend', _applyRadiusFilter);
     if (_radiusCircle) { map.removeLayer(_radiusCircle); _radiusCircle = null; }
@@ -5543,7 +5644,7 @@ function _applyRadiusFilter() {
     fillColor:'#5B7A47', fillOpacity:0.06, dashArray:'6 4',
   }).addTo(map);
 
-  // Filter crime markers to radius
+  // Filter crime markers to radius — respect existing crime type toggles
   clusterGroup.clearLayers();
   crimesData.filter(c => {
     if (!activeCrimeTypes.has(c.crime_type)) return false;
@@ -5557,22 +5658,40 @@ function _applyRadiusFilter() {
       setTimeout(() => {
         const btn = document.getElementById('pop-save-'+c.id);
         if (btn) btn.onclick = () => saveRecord(c.id);
+        const pbtn = document.getElementById('pop-photo-'+c.id);
+        if (pbtn) pbtn.onclick = () => { currentPhotoCtx={id:c.id,type:'crime'}; openModal('attach-modal'); };
+        const mbtn = document.getElementById('pop-movepin-'+c.id);
+        if (mbtn) mbtn.onclick = () => startCrimeMovePin(c.id, c.lat, c.lng);
+        const nbtn = document.getElementById('pop-notify-'+c.id);
+        if (nbtn) nbtn.onclick = () => notifyCrime(c.id);
       }, 50);
     });
     clusterGroup.addLayer(marker);
   });
 
-  // Filter point annotations to radius
-  Object.values(CAT_LAYER_GROUPS).forEach(grp => grp.clearLayers());
-  annotationsData.filter(a => {
-    if (a.annotation_type !== 'point') return true; // keep polygons/lines always
-    const lat = a.lat || (()=>{ try{ const g=typeof a.geometry_geojson==='string'?JSON.parse(a.geometry_geojson):a.geometry_geojson; return g.coordinates[1]; }catch(e){return null;} })();
-    const lng = a.lng || (()=>{ try{ const g=typeof a.geometry_geojson==='string'?JSON.parse(a.geometry_geojson):a.geometry_geojson; return g.coordinates[0]; }catch(e){return null;} })();
-    if (!lat || !lng) return false;
-    return map.distance([lat, lng], center) <= RADIUS_M;
+  // Filter point annotations to radius; keep polygons/lines (they fill area anyway)
+  Object.entries(CAT_LAYER_GROUPS).forEach(([cat, grp]) => {
+    grp.clearLayers();
+    annotationsData.filter(a => a.category === cat || (!a.category && cat === 'observation')).forEach(ann => {
+      if (!ann.geometry_geojson) return;
+      try {
+        const geom = typeof ann.geometry_geojson === 'string' ? JSON.parse(ann.geometry_geojson) : ann.geometry_geojson;
+        if (geom.type === 'Point') {
+          const lat = geom.coordinates[1], lng = geom.coordinates[0];
+          if (map.distance([lat, lng], center) > RADIUS_M) return;
+        }
+        // Re-render this annotation into its layer group (reuse existing render logic)
+        const catCfg = CATEGORY_LOOKUP[cat];
+        const baseColor = catCfg?.color || '#5B7A47';
+        const layer = L.geoJSON(geom, {
+          pointToLayer: (f, ll) => L.circleMarker(ll, { radius:7, color:baseColor, fillColor:baseColor, fillOpacity:.8, weight:1.5 }),
+          style: { color:baseColor, weight:2, fillColor:baseColor, fillOpacity:0.12 },
+        });
+        grp.addLayer(layer);
+        if (layerVisible['cat_'+cat] && !map.hasLayer(grp)) grp.addTo(map);
+      } catch(e) {}
+    });
   });
-  renderCategoryAnnotations();
-  renderPublicAnnotations();
 }
 
 // ══════════════════════════════════════════════════════════════════

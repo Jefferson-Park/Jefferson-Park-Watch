@@ -340,7 +340,6 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
 }
 
 /* Leaflet controls */
-.leaflet-top.leaflet-left { top:calc(var(--sat) + 60px) !important; }
 .leaflet-control-zoom a { background:var(--panel) !important; color:var(--text) !important; border-color:var(--border) !important; }
 .leaflet-control-zoom a:hover { background:var(--panel2) !important; }
 .leaflet-control-attribution { background:rgba(244,241,235,.88) !important; color:var(--muted) !important; font-size:10px !important; }
@@ -2059,8 +2058,11 @@ function initMap() {
     center: [34.028, -118.334],
     zoom: 14,
     layers: [TILE_STREET],
-    zoomControl: true,
+    zoomControl: false,
   });
+
+  // Zoom control on top-right to avoid hamburger button overlap
+  L.control.zoom({ position: 'topright' }).addTo(map);
 
   // Layer groups
   clusterGroup = L.markerClusterGroup({

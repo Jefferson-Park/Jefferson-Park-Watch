@@ -293,24 +293,31 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
   #sidebar.open { transform:translateX(0); }
   
   /* Pushes content down on mobile so it doesn't hit the address bar */
-  #topbar {
+  /* 1. Ensure the topbar has space and sits at the very top */
+#topbar {
   position: absolute;
-  top: 20px; /* Moves the address bar/search down 20px */
+  top: 10px;           /* Gives a tiny bit of breathing room at the top */
   left: 0;
   width: 100%;
-  padding-left: 50px; /* Leaves space for the hamburger */
+  padding-left: 15px;  /* Now you don't need to push text aside for the button */
   z-index: 1000;
+  height: 50px;
 }
   
   #map { left:0 !important; }
   #bottom-panel { left:0 !important; flex-wrap:wrap; }
   
-  /* Explicitly position the button to be safe on mobile and desktop */
-  #sb-toggle {
+ /* 2. Position the hamburger button BELOW the address bar */
+#sb-toggle {
   position: absolute;
-  top: 20px; /* Matches the topbar offset */
-  left: 5px;
-  z-index: 1001; /* Stays on top of everything */
+  top: 65px;           /* Pushes it below the 50px topbar + 15px gap */
+  left: 10px;
+  z-index: 1005;       /* Stays above everything */
+  border-radius: 8px;
+  background: white;   /* Gives it a clean look below the bar */
+  border: 1px solid var(--border);
+  min-width: 44px;
+  height: 44px;
 }
   
   body.sb-open #sb-toggle { left:288px !important; }

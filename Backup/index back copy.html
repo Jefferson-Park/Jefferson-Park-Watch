@@ -681,50 +681,7 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
           <span class="grp-chevron" id="chv-traffic" style="transform:rotate(-90deg)">▾</span>
         </div>
         <div class="grp-body collapsed" id="gb-traffic">
-          <!-- ── LAPD Collision Reports (Open Data / Edge Function) ── -->
-          <div class="sec-label" style="margin-top:2px;display:flex;align-items:center;justify-content:space-between">
-            <span>LAPD Collision Reports</span>
-            <span id="lapd-status" style="font-size:9px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;font-family:var(--mono)">not loaded</span>
-          </div>
-          <div style="padding:0 4px 2px;font-size:9px;color:var(--muted);font-family:var(--mono);line-height:1.4">
-            * Official LAPD data · <span id="lapd-date-range">dataset: 2010–present</span>
-          </div>
-          <div style="padding:0 4px 4px">
-            <div class="date-row">
-              <input type="date" class="date-input" id="lapd-df-from" title="LAPD data start date">
-              <input type="date" class="date-input" id="lapd-df-to"   title="LAPD data end date">
-            </div>
-            <div class="date-btns" style="margin-bottom:6px">
-              <button class="btn-apply" onclick="applyLAPDDate()">Load</button>
-              <button class="btn-clear" onclick="clearLAPDDate()">Clear</button>
-            </div>
-          </div>
-          <div class="tog-row" onclick="toggleLAPDLayer()">
-            <div class="tog-icon" style="background:rgba(196,120,10,.15)"><span style="font-size:14px">🚦</span></div>
-            <span class="tog-label">LAPD Collisions All</span>
-            <span class="tog-count" id="ct-lapd-all">0</span>
-            <div class="tog-sw" id="sw-lapd-all"></div>
-          </div>
-          <div class="tog-row" onclick="toggleLAPDSubtype('pedestrian')">
-            <div class="tog-icon" style="background:rgba(196,120,10,.10)"><span style="font-size:13px">🚶</span></div>
-            <span class="tog-label" style="font-size:11px;color:var(--muted)">↳ Pedestrian Hit</span>
-            <span class="tog-count" id="ct-lapd-pedestrian">0</span>
-            <div class="tog-sw" id="sw-lapd-pedestrian"></div>
-          </div>
-          <div class="tog-row" onclick="toggleLAPDSubtype('bicycle')">
-            <div class="tog-icon" style="background:rgba(196,120,10,.10)"><span style="font-size:13px">🚲</span></div>
-            <span class="tog-label" style="font-size:11px;color:var(--muted)">↳ Bicycle Collision</span>
-            <span class="tog-count" id="ct-lapd-bicycle">0</span>
-            <div class="tog-sw" id="sw-lapd-bicycle"></div>
-          </div>
-          <div class="tog-row" onclick="toggleLAPDSubtype('fatality')">
-            <div class="tog-icon" style="background:rgba(185,48,32,.10)"><span style="font-size:13px">⚫</span></div>
-            <span class="tog-label" style="font-size:11px;color:var(--muted)">↳ Fatalities</span>
-            <span class="tog-count" id="ct-lapd-fatality">0</span>
-            <div class="tog-sw" id="sw-lapd-fatality"></div>
-          </div>
-
-          <div class="sec-label" style="margin-top:8px">Public Reported Traffic Safety</div>
+          <div class="sec-label" style="margin-top:2px">Traffic Safety & Crime</div>
           <div class="tog-row" onclick="toggleCatLayer('traffic')">
             <div class="tog-icon" style="background:rgba(240,165,0,.15)"><span style="font-size:14px">🚗</span></div>
             <span class="tog-label">Traffic Accidents All</span>
@@ -804,7 +761,6 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
             <span class="tog-count" id="ct-sub-lighting-other_structure">0</span>
             <div class="tog-sw" id="sw-sub-lighting-other_structure"></div>
           </div>
-
         </div>
       </div>
 
@@ -1640,7 +1596,7 @@ let pendingGeometry = null;
 // ── Category map (Section 5 of planning notes) ───────────────────
 // group → array of { label, value, table, icon, color, fields, sensitiveDefault }
 const CATEGORY_MAP = {
-  'Public Reported Traffic Safety': [
+  'Traffic Safety & Crime': [
     {
       label: 'Crime Incident', value: '__crime__', table: 'crimes',
       icon: '🚨', color: '#e8453c',
@@ -1955,20 +1911,20 @@ const TEAM_DEFAULT = {
 
 // ── Crime config ──────────────────────────────────────────────────
 const CRIMES = {
-  'Aggravated Assault': { color:'#e8453c', cat:'violent',  icon:'⚡' },
-  'Battery':            { color:'#e8453c', cat:'violent',  icon:'✊' },
-  'Robbery':            { color:'#e8453c', cat:'violent',  icon:'💰' },
-  'Homicide':           { color:'#7b0000', cat:'violent',  icon:'⚫' },
-  'Criminal Threat':    { color:'#e8453c', cat:'violent',  icon:'⚠️' },
-  'Shots Fired':        { color:'#ff6b35', cat:'violent',  icon:'🔫' },
-  'Burglary':           { color:'#f0a500', cat:'property', icon:'🏠' },
-  'Theft':              { color:'#f0a500', cat:'property', icon:'👜' },
-  'Vandalism':          { color:'#f0a500', cat:'property', icon:'🎨' },
-  'GTA':                { color:'#2d8bff', cat:'vehicle',  icon:'🚗' },
-  'Attempt GTA':        { color:'#2d8bff', cat:'vehicle',  icon:'🔑' },
-  'TFMV':               { color:'#2d8bff', cat:'vehicle',  icon:'🔧' },
-  'BFMV':               { color:'#2d8bff', cat:'vehicle',  icon:'🔧' },
-  'BTFV':               { color:'#2d8bff', cat:'vehicle',  icon:'🔧' },
+  'Aggravated Assault': { color:'#e8453c', cat:'violent'  },
+  'Battery':            { color:'#e8453c', cat:'violent'  },
+  'Robbery':            { color:'#e8453c', cat:'violent'  },
+  'Homicide':           { color:'#7b0000', cat:'violent'  },
+  'Criminal Threat':    { color:'#e8453c', cat:'violent'  },
+  'Shots Fired':        { color:'#ff6b35', cat:'violent'  },
+  'Burglary':           { color:'#f0a500', cat:'property' },
+  'Theft':              { color:'#f0a500', cat:'property' },
+  'Vandalism':          { color:'#f0a500', cat:'property' },
+  'GTA':                { color:'#2d8bff', cat:'vehicle'  },
+  'Attempt GTA':        { color:'#2d8bff', cat:'vehicle'  },
+  'TFMV':               { color:'#2d8bff', cat:'vehicle'  },
+  'BFMV':               { color:'#2d8bff', cat:'vehicle'  },
+  'BTFV':               { color:'#2d8bff', cat:'vehicle'  },
 };
 
 // ══════════════════════════════════════════════════════════════════
@@ -2072,8 +2028,6 @@ async function launch() {
     document.getElementById('btn-import-pdf').style.display = 'flex';
     document.getElementById('btn-crime-batch').style.display = 'flex';
     document.getElementById('btn-slo').style.display = 'flex';
-  }
-  if (userRole === 'admin') {
     document.getElementById('btn-admin-portal').style.display = 'flex';
   }
 
@@ -2192,12 +2146,10 @@ function initMap() {
   unncLayerGroup       = L.layerGroup();
   annotationLayerGroup = L.layerGroup(); // off by default — user toggles on
   photoLayerGroup      = L.layerGroup(); // off by default
-  lapdLayerGroup       = L.layerGroup(); // off by default — loaded on demand
-  layerVisible['lapd'] = false;
   initCatLayers(); // create per-category layer groups
 
   // Draw controls — wrapped in try/catch so CDN failure doesn't crash map
-  if (userRole === 'admin' || userRole === 'project_manager' || userRole === 'field_officer') {
+  if (userRole === 'admin' || userRole === 'field_officer') {
     try {
       if (typeof L.Control.Draw === 'undefined') {
         throw new Error('Leaflet.draw library not loaded');
@@ -2243,7 +2195,6 @@ function initMap() {
     await loadCrimes();
     await loadPublicAnnotations(); // must finish before loadPublicPhotos (annotation photos need ann lat/lng)
     loadPublicPhotos();
-    loadLAPDCollisions(); // pre-fetch LAPD collisions (last 365 days); renders when user toggles layer on
   });
   setupRealtime();
 }
@@ -3067,12 +3018,11 @@ const CRIME_ICON_CACHE = {};
 function getCrimeIcon(type) {
   if (CRIME_ICON_CACHE[type]) return CRIME_ICON_CACHE[type];
   const color = CRIMES[type]?.color || '#888';
-  const icon  = CRIMES[type]?.icon  || '●';
   CRIME_ICON_CACHE[type] = L.divIcon({
-    html: `<div style="width:22px;height:22px;background:${color};border:2.5px solid rgba(255,255,255,0.9);border-radius:50%;box-shadow:0 0 0 3px ${color}44;display:flex;align-items:center;justify-content:center;font-size:11px;line-height:1">${icon}</div>`,
+    html: `<div style="width:20px;height:20px;background:${color};border:2.5px solid rgba(255,255,255,0.9);border-radius:50%;box-shadow:0 0 0 3px ${color}44"></div>`,
     className: '',
-    iconSize: [22, 22],
-    iconAnchor: [11, 11],
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
     popupAnchor: [0, -12],
   });
   return CRIME_ICON_CACHE[type];
@@ -3730,10 +3680,12 @@ function toggleAnnotations() {
 function buildToggles() {
   const el = document.getElementById('crime-toggles');
   Object.entries(CRIMES).forEach(([type, cfg]) => {
+    // Default all crime types OFF — user turns on what they want
+    // activeCrimeTypes.add(type);
     el.innerHTML += `
       <div class="tog-row" onclick="toggleCrime('${type}',this)">
         <div class="tog-icon" style="background:${cfg.color}22">
-          <span style="font-size:13px">${cfg.icon}</span>
+          <div style="width:10px;height:10px;border-radius:50%;background:${cfg.color}"></div>
         </div>
         <span class="tog-label" style="font-size:11px">${type}</span>
         <span class="tog-count" id="ct-${type.replace(/\W/g,'_')}">0</span>
@@ -5768,223 +5720,6 @@ function _applyRadiusFilter() {
         if (layerVisible['cat_'+cat] && !map.hasLayer(grp)) grp.addTo(map);
       } catch(e) {}
     });
-  });
-}
-
-// ══════════════════════════════════════════════════════════════════
-// LAPD COLLISION DATA  (Supabase Edge Function → data.lacity.org)
-// ══════════════════════════════════════════════════════════════════
-// Edge function: supabase/functions/lapd-traffic/index.ts
-// Dataset:  d5tf-ez2w (2010 → early 2024, frozen; new dataset TBD)
-// When the new post-2024 LAPD dataset is published, update only the
-// Edge Function — index.html never needs to change.
-
-let lapdLayerGroup;                // Leaflet layerGroup for LAPD markers (set in initMap)
-let lapdCollisionsData  = [];      // normalized records from Edge Function
-let trafficDateFrom     = null;    // LAPD date filter start  (YYYY-MM-DD)
-let trafficDateTo       = null;    // LAPD date filter end    (YYYY-MM-DD)
-const lapdSubtypeActive = {};      // { pedestrian: bool, bicycle: bool, fatality: bool }
-
-// ── MO-code classifier ───────────────────────────────────────────
-// Maps LAPD Traffic Collision Modus Operandi codes to display types.
-// MO codes are space-separated strings stored in the `mo_codes` field.
-// Key codes: 3001 = fatal, 3002-3005/3022 = pedestrian, 3016 = bicycle.
-function lapdAccidentType(r) {
-  const codes = (r.mo_codes || '').trim().split(/\s+/).filter(Boolean);
-  if (codes.includes('3001') || (r.description || '').toUpperCase().includes('FATAL'))
-    return 'fatality';
-  if (codes.some(c => ['3002','3003','3004','3005','3022'].includes(c))
-      || (r.description || '').toUpperCase().includes('PEDESTRIAN'))
-    return 'pedestrian';
-  if (codes.includes('3016') || (r.description || '').toUpperCase().includes('BICYCLE'))
-    return 'bicycle';
-  return 'vehicle';
-}
-
-// ── Marker icon ──────────────────────────────────────────────────
-const LAPD_TYPE_CONFIG = {
-  fatality:   { color: '#B93020', emoji: '⚫', label: 'Fatality' },
-  pedestrian: { color: '#C4780A', emoji: '🚶', label: 'Pedestrian Hit' },
-  bicycle:    { color: '#2B6CB0', emoji: '🚲', label: 'Bicycle Collision' },
-  vehicle:    { color: '#888888', emoji: '🚗', label: 'Vehicle Collision' },
-};
-
-function getLAPDIcon(type) {
-  const cfg = LAPD_TYPE_CONFIG[type] || LAPD_TYPE_CONFIG.vehicle;
-  return L.divIcon({
-    html: `<div style="
-      width:22px;height:22px;border-radius:50%;
-      background:${cfg.color};border:2.5px solid white;
-      display:flex;align-items:center;justify-content:center;
-      font-size:10px;box-shadow:0 1px 5px rgba(0,0,0,.45)
-    ">${cfg.emoji}</div>`,
-    className: '',
-    iconSize:   [22, 22],
-    iconAnchor: [11, 11],
-  });
-}
-
-// ── Load (calls Edge Function) ────────────────────────────────────
-async function loadLAPDCollisions() {
-  const statusEl = document.getElementById('lapd-status');
-  if (statusEl) statusEl.textContent = 'Loading…';
-
-  // Default window: last 365 days
-  const from = trafficDateFrom || (() => {
-    const d = new Date(); d.setFullYear(d.getFullYear() - 1);
-    return d.toISOString().slice(0, 10);
-  })();
-  const to = trafficDateTo || new Date().toISOString().slice(0, 10);
-
-  try {
-    const { data, error } = await sb.functions.invoke('lapd-traffic', {
-      body: { from, to }
-    });
-    if (error) throw error;
-
-    lapdCollisionsData = (data.records || []).map(r => ({
-      ...r,
-      accidentType: lapdAccidentType(r),
-    }));
-
-    // Count by type
-    const counts = { all: lapdCollisionsData.length, pedestrian: 0, bicycle: 0, fatality: 0 };
-    lapdCollisionsData.forEach(r => {
-      if      (r.accidentType === 'pedestrian') counts.pedestrian++;
-      else if (r.accidentType === 'bicycle')    counts.bicycle++;
-      else if (r.accidentType === 'fatality')   counts.fatality++;
-    });
-
-    const note = data.count >= 800
-      ? `${data.count}+ records (cap)`
-      : `${data.count} records`;
-    if (statusEl) statusEl.textContent = note;
-
-    // Derive actual date range from returned records and update the note
-    const dates = lapdCollisionsData.map(r => r.date).filter(Boolean).sort();
-    if (dates.length) {
-      const fmt = d => { const [y,m] = d.split('-'); return `${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m-1]} ${y}`; };
-      const rangeEl = document.getElementById('lapd-date-range');
-      if (rangeEl) rangeEl.textContent = `${fmt(dates[0])} – ${fmt(dates[dates.length-1])}`;
-    }
-
-    const setEl = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-    setEl('ct-lapd-all',        counts.all);
-    setEl('ct-lapd-pedestrian', counts.pedestrian);
-    setEl('ct-lapd-bicycle',    counts.bicycle);
-    setEl('ct-lapd-fatality',   counts.fatality);
-
-    // Render if layer is already toggled on
-    if (layerVisible['lapd']) renderLAPDCollisions();
-
-  } catch (e) {
-    console.warn('LAPD fetch failed:', e.message);
-    if (statusEl) statusEl.textContent = 'Unavailable';
-    // Only toast if the user explicitly triggered a load (layer is on or Load was clicked)
-    if (layerVisible['lapd'] || trafficDateFrom || trafficDateTo) {
-      showToast('LAPD data unavailable — ' + e.message, 'err');
-    }
-  }
-}
-
-// ── Render markers ────────────────────────────────────────────────
-function renderLAPDCollisions() {
-  if (!lapdLayerGroup) return;
-  lapdLayerGroup.clearLayers();
-  if (!layerVisible['lapd']) return;
-
-  const activeSubs = Object.keys(lapdSubtypeActive).filter(k => lapdSubtypeActive[k]);
-  const showAll    = activeSubs.length === 0;
-
-  lapdCollisionsData
-    .filter(r => showAll || activeSubs.includes(r.accidentType))
-    .forEach(r => {
-      const cfg    = LAPD_TYPE_CONFIG[r.accidentType] || LAPD_TYPE_CONFIG.vehicle;
-      const marker = L.marker([r.lat, r.lng], { icon: getLAPDIcon(r.accidentType) });
-      marker.bindPopup(`
-        <div style="padding:10px 12px;font-family:var(--font);color:var(--text);min-width:220px">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-            <div style="width:28px;height:28px;border-radius:50%;background:${cfg.color}22;
-              display:flex;align-items:center;justify-content:center;font-size:15px">${cfg.emoji}</div>
-            <div>
-              <div style="font-weight:600;font-size:13px;color:${cfg.color}">${cfg.label}</div>
-              <div style="font-size:10px;color:var(--muted);font-family:var(--mono)">${r.date || '—'}</div>
-            </div>
-          </div>
-          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">📍 ${r.address || 'Unknown location'}</div>
-          <div style="font-size:11px;margin-bottom:4px">${r.description || 'Traffic Collision'}</div>
-          ${r.mo_codes ? `<div style="font-size:10px;color:var(--muted);font-family:var(--mono)">MO: ${r.mo_codes}</div>` : ''}
-          <div style="margin-top:8px;padding-top:6px;border-top:1px solid var(--border);
-            font-size:10px;color:var(--muted)">
-            Source: LAPD Open Data &middot; DR# ${r.id || '—'}
-          </div>
-        </div>`, { maxWidth: 280, closeButton: true, autoClose: false, closeOnClick: false });
-      lapdLayerGroup.addLayer(marker);
-    });
-}
-
-// ── Toggle handlers ───────────────────────────────────────────────
-function toggleLAPDLayer() {
-  layerVisible['lapd'] = !layerVisible['lapd'];
-  const sw = document.getElementById('sw-lapd-all');
-  if (sw) sw.classList.toggle('on', layerVisible['lapd']);
-
-  if (layerVisible['lapd']) {
-    lapdLayerGroup.addTo(map);
-    if (!lapdCollisionsData.length) {
-      loadLAPDCollisions(); // first time: trigger fetch
-    } else {
-      renderLAPDCollisions();
-    }
-  } else {
-    map.removeLayer(lapdLayerGroup);
-  }
-}
-
-function toggleLAPDSubtype(type) {
-  lapdSubtypeActive[type] = !lapdSubtypeActive[type];
-  const sw = document.getElementById('sw-lapd-' + type);
-  if (sw) sw.classList.toggle('on', lapdSubtypeActive[type]);
-
-  if (!layerVisible['lapd'] && lapdSubtypeActive[type]) {
-    // Auto-enable the parent layer when a sub-toggle is turned on
-    toggleLAPDLayer();
-  } else {
-    renderLAPDCollisions();
-  }
-}
-
-function applyLAPDDate() {
-  trafficDateFrom = document.getElementById('lapd-df-from').value || null;
-  trafficDateTo   = document.getElementById('lapd-df-to').value   || null;
-  loadLAPDCollisions();
-  // Ensure layer becomes visible after an explicit Load
-  if (!layerVisible['lapd']) toggleLAPDLayer();
-}
-
-function clearLAPDDate() {
-  trafficDateFrom = null;
-  trafficDateTo   = null;
-  document.getElementById('lapd-df-from').value = '';
-  document.getElementById('lapd-df-to').value   = '';
-
-  lapdCollisionsData = [];
-  if (lapdLayerGroup) lapdLayerGroup.clearLayers();
-
-  const statusEl = document.getElementById('lapd-status');
-  if (statusEl) statusEl.textContent = 'cleared';
-
-  ['ct-lapd-all','ct-lapd-pedestrian','ct-lapd-bicycle','ct-lapd-fatality']
-    .forEach(id => { const el = document.getElementById(id); if (el) el.textContent = '0'; });
-
-  // Reset toggle state
-  layerVisible['lapd'] = false;
-  const sw = document.getElementById('sw-lapd-all');
-  if (sw) sw.classList.remove('on');
-  ['pedestrian','bicycle','fatality'].forEach(t => {
-    lapdSubtypeActive[t] = false;
-    const s = document.getElementById('sw-lapd-' + t);
-    if (s) s.classList.remove('on');
   });
 }
 

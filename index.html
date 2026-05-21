@@ -686,8 +686,9 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
             <span>LAPD Collision Reports</span>
             <span id="lapd-status" style="font-size:9px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;font-family:var(--mono)">not loaded</span>
           </div>
-          <div style="padding:0 4px 2px;font-size:9px;color:var(--muted);font-family:var(--mono);line-height:1.4">
-            * Official LAPD data · dataset: 2010–Mar 2024
+          <div style="padding:2px 4px 6px;font-size:9px;color:var(--muted);font-family:var(--mono);line-height:1.6">
+            * Official LAPD · <span id="lapd-date-range">2010–Mar 2025</span><br>
+            <span id="lapd-hint" style="color:var(--accent)">↑ Set dates &amp; click Load · zoomed-in = deeper history</span>
           </div>
           <div style="padding:0 4px 4px">
             <div class="date-row">
@@ -2241,9 +2242,15 @@ function initMap() {
 
   loadBoundaries().then(async () => {
     await loadCrimes();
-    await loadPublicAnnotations(); // must finish before loadPublicPhotos (annotation photos need ann lat/lng)
+    await loadPublicAnnotations();
     loadPublicPhotos();
-    loadLAPDCollisions(); // pre-fetch LAPD collisions (last 365 days); renders when user toggles layer on
+    // Pre-populate LAPD date inputs with last 90 days — user hits Load when ready
+    const today = new Date();
+    const ago90 = new Date(); ago90.setDate(today.getDate() - 90);
+    const dfFrom = document.getElementById('lapd-df-from');
+    const dfTo   = document.getElementById('lapd-df-to');
+    if (dfFrom) dfFrom.value = ago90.toISOString().slice(0, 10);
+    if (dfTo)   dfTo.value   = today.toISOString().slice(0, 10);
   });
   setupRealtime();
 }
@@ -5827,18 +5834,30 @@ function getLAPDIcon(type) {
 // ── Load (calls Edge Function) ────────────────────────────────────
 async function loadLAPDCollisions() {
   const statusEl = document.getElementById('lapd-status');
+  const hintEl   = document.getElementById('lapd-hint');
   if (statusEl) statusEl.textContent = 'Loading…';
+  if (hintEl)   hintEl.style.display = 'none';
 
-  // Default window: last 365 days
+  // Use selected dates or default to last 90 days
   const from = trafficDateFrom || (() => {
-    const d = new Date(); d.setFullYear(d.getFullYear() - 1);
+    const d = new Date(); d.setDate(d.getDate() - 90);
     return d.toISOString().slice(0, 10);
   })();
   const to = trafficDateTo || new Date().toISOString().slice(0, 10);
 
+  // Pass current map viewport bounds so 800-record cap covers
+  // only what's on screen — tighter zoom = deeper time coverage
+  const bounds = map.getBounds();
+  const bbox = {
+    north: bounds.getNorth().toFixed(6),
+    south: bounds.getSouth().toFixed(6),
+    east:  bounds.getEast().toFixed(6),
+    west:  bounds.getWest().toFixed(6),
+  };
+
   try {
     const { data, error } = await sb.functions.invoke('lapd-traffic', {
-      body: { from, to }
+      body: { from, to, ...bbox }
     });
     if (error) throw error;
 
@@ -5855,10 +5874,24 @@ async function loadLAPDCollisions() {
       else if (r.accidentType === 'fatality')   counts.fatality++;
     });
 
-    const note = data.count >= 800
-      ? `${data.count}+ records (cap)`
-      : `${data.count} records`;
+    const capped = data.count >= 800;
+    const note   = capped ? `${data.count}+ records (cap — zoom in)` : `${data.count} records`;
     if (statusEl) statusEl.textContent = note;
+
+    // Update date range note from actual returned records
+    const dates = lapdCollisionsData.map(r => r.date).filter(Boolean).sort();
+    if (dates.length) {
+      const fmt = d => { const [y,m] = d.split('-'); return `${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m-1]} ${y}`; };
+      const rangeEl = document.getElementById('lapd-date-range');
+      if (rangeEl) rangeEl.textContent = `${fmt(dates[0])} – ${fmt(dates[dates.length-1])}`;
+    }
+
+    // If cap was hit, prompt user to zoom in for deeper coverage
+    if (capped && hintEl) {
+      hintEl.textContent  = '⚠ Cap hit · zoom in for deeper history';
+      hintEl.style.color  = 'var(--warn, #f0a500)';
+      hintEl.style.display = 'block';
+    }
 
     const setEl = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
     setEl('ct-lapd-all',        counts.all);
@@ -5872,7 +5905,7 @@ async function loadLAPDCollisions() {
   } catch (e) {
     console.warn('LAPD fetch failed:', e.message);
     if (statusEl) statusEl.textContent = 'Unavailable';
-    // Only toast if the user explicitly triggered a load (layer is on or Load was clicked)
+    if (hintEl) { hintEl.textContent = '↑ Set dates & click Load'; hintEl.style.display = 'block'; }
     if (layerVisible['lapd'] || trafficDateFrom || trafficDateTo) {
       showToast('LAPD data unavailable — ' + e.message, 'err');
     }

@@ -2197,7 +2197,7 @@ function initMap() {
   initCatLayers(); // create per-category layer groups
 
   // Draw controls — wrapped in try/catch so CDN failure doesn't crash map
-  if (userRole === 'admin' || userRole === 'field_officer') {
+  if (userRole === 'admin' || userRole === 'project_manager' || userRole === 'field_officer') {
     try {
       if (typeof L.Control.Draw === 'undefined') {
         throw new Error('Leaflet.draw library not loaded');

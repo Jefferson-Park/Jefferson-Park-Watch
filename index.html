@@ -1955,20 +1955,20 @@ const TEAM_DEFAULT = {
 
 // ── Crime config ──────────────────────────────────────────────────
 const CRIMES = {
-  'Aggravated Assault': { color:'#e8453c', cat:'violent'  },
-  'Battery':            { color:'#e8453c', cat:'violent'  },
-  'Robbery':            { color:'#e8453c', cat:'violent'  },
-  'Homicide':           { color:'#7b0000', cat:'violent'  },
-  'Criminal Threat':    { color:'#e8453c', cat:'violent'  },
-  'Shots Fired':        { color:'#ff6b35', cat:'violent'  },
-  'Burglary':           { color:'#f0a500', cat:'property' },
-  'Theft':              { color:'#f0a500', cat:'property' },
-  'Vandalism':          { color:'#f0a500', cat:'property' },
-  'GTA':                { color:'#2d8bff', cat:'vehicle'  },
-  'Attempt GTA':        { color:'#2d8bff', cat:'vehicle'  },
-  'TFMV':               { color:'#2d8bff', cat:'vehicle'  },
-  'BFMV':               { color:'#2d8bff', cat:'vehicle'  },
-  'BTFV':               { color:'#2d8bff', cat:'vehicle'  },
+  'Aggravated Assault': { color:'#e8453c', cat:'violent',  icon:'⚡' },
+  'Battery':            { color:'#e8453c', cat:'violent',  icon:'✊' },
+  'Robbery':            { color:'#e8453c', cat:'violent',  icon:'💰' },
+  'Homicide':           { color:'#7b0000', cat:'violent',  icon:'⚫' },
+  'Criminal Threat':    { color:'#e8453c', cat:'violent',  icon:'⚠️' },
+  'Shots Fired':        { color:'#ff6b35', cat:'violent',  icon:'🔫' },
+  'Burglary':           { color:'#f0a500', cat:'property', icon:'🏠' },
+  'Theft':              { color:'#f0a500', cat:'property', icon:'👜' },
+  'Vandalism':          { color:'#f0a500', cat:'property', icon:'🎨' },
+  'GTA':                { color:'#2d8bff', cat:'vehicle',  icon:'🚗' },
+  'Attempt GTA':        { color:'#2d8bff', cat:'vehicle',  icon:'🔑' },
+  'TFMV':               { color:'#2d8bff', cat:'vehicle',  icon:'🔧' },
+  'BFMV':               { color:'#2d8bff', cat:'vehicle',  icon:'🔧' },
+  'BTFV':               { color:'#2d8bff', cat:'vehicle',  icon:'🔧' },
 };
 
 // ══════════════════════════════════════════════════════════════════
@@ -2072,6 +2072,8 @@ async function launch() {
     document.getElementById('btn-import-pdf').style.display = 'flex';
     document.getElementById('btn-crime-batch').style.display = 'flex';
     document.getElementById('btn-slo').style.display = 'flex';
+  }
+  if (userRole === 'admin') {
     document.getElementById('btn-admin-portal').style.display = 'flex';
   }
 
@@ -3065,11 +3067,12 @@ const CRIME_ICON_CACHE = {};
 function getCrimeIcon(type) {
   if (CRIME_ICON_CACHE[type]) return CRIME_ICON_CACHE[type];
   const color = CRIMES[type]?.color || '#888';
+  const icon  = CRIMES[type]?.icon  || '●';
   CRIME_ICON_CACHE[type] = L.divIcon({
-    html: `<div style="width:20px;height:20px;background:${color};border:2.5px solid rgba(255,255,255,0.9);border-radius:50%;box-shadow:0 0 0 3px ${color}44"></div>`,
+    html: `<div style="width:22px;height:22px;background:${color};border:2.5px solid rgba(255,255,255,0.9);border-radius:50%;box-shadow:0 0 0 3px ${color}44;display:flex;align-items:center;justify-content:center;font-size:11px;line-height:1">${icon}</div>`,
     className: '',
-    iconSize: [20, 20],
-    iconAnchor: [10, 10],
+    iconSize: [22, 22],
+    iconAnchor: [11, 11],
     popupAnchor: [0, -12],
   });
   return CRIME_ICON_CACHE[type];
@@ -3727,12 +3730,10 @@ function toggleAnnotations() {
 function buildToggles() {
   const el = document.getElementById('crime-toggles');
   Object.entries(CRIMES).forEach(([type, cfg]) => {
-    // Default all crime types OFF — user turns on what they want
-    // activeCrimeTypes.add(type);
     el.innerHTML += `
       <div class="tog-row" onclick="toggleCrime('${type}',this)">
         <div class="tog-icon" style="background:${cfg.color}22">
-          <div style="width:10px;height:10px;border-radius:50%;background:${cfg.color}"></div>
+          <span style="font-size:13px">${cfg.icon}</span>
         </div>
         <span class="tog-label" style="font-size:11px">${type}</span>
         <span class="tog-count" id="ct-${type.replace(/\W/g,'_')}">0</span>

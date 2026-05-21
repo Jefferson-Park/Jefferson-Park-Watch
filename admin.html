@@ -1154,6 +1154,7 @@ async function loadUsers() {
       </div>
       <select class="role-sel" onchange="updateRole('${u.id}',this.value)">
         <option value="field_officer" ${u.role==='field_officer'?'selected':''}>Field Officer</option>
+        <option value="project_manager" ${u.role==='project_manager'?'selected':''}>Project Manager</option>
         <option value="admin" ${u.role==='admin'?'selected':''}>Admin</option>
       </select>
     </div>`).join('');

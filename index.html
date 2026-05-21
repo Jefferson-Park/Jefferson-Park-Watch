@@ -681,7 +681,50 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
           <span class="grp-chevron" id="chv-traffic" style="transform:rotate(-90deg)">▾</span>
         </div>
         <div class="grp-body collapsed" id="gb-traffic">
-          <div class="sec-label" style="margin-top:2px">Traffic Safety & Crime</div>
+          <!-- ── LAPD Collision Reports (Open Data / Edge Function) ── -->
+          <div class="sec-label" style="margin-top:2px;display:flex;align-items:center;justify-content:space-between">
+            <span>LAPD Collision Reports</span>
+            <span id="lapd-status" style="font-size:9px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;font-family:var(--mono)">not loaded</span>
+          </div>
+          <div style="padding:0 4px 2px;font-size:9px;color:var(--muted);font-family:var(--mono);line-height:1.4">
+            * Official LAPD data · dataset: 2010–Mar 2024
+          </div>
+          <div style="padding:0 4px 4px">
+            <div class="date-row">
+              <input type="date" class="date-input" id="lapd-df-from" title="LAPD data start date">
+              <input type="date" class="date-input" id="lapd-df-to"   title="LAPD data end date">
+            </div>
+            <div class="date-btns" style="margin-bottom:6px">
+              <button class="btn-apply" onclick="applyLAPDDate()">Load</button>
+              <button class="btn-clear" onclick="clearLAPDDate()">Clear</button>
+            </div>
+          </div>
+          <div class="tog-row" onclick="toggleLAPDLayer()">
+            <div class="tog-icon" style="background:rgba(196,120,10,.15)"><span style="font-size:14px">🚦</span></div>
+            <span class="tog-label">LAPD Collisions All</span>
+            <span class="tog-count" id="ct-lapd-all">0</span>
+            <div class="tog-sw" id="sw-lapd-all"></div>
+          </div>
+          <div class="tog-row" onclick="toggleLAPDSubtype('pedestrian')">
+            <div class="tog-icon" style="background:rgba(196,120,10,.10)"><span style="font-size:13px">🚶</span></div>
+            <span class="tog-label" style="font-size:11px;color:var(--muted)">↳ Pedestrian Hit</span>
+            <span class="tog-count" id="ct-lapd-pedestrian">0</span>
+            <div class="tog-sw" id="sw-lapd-pedestrian"></div>
+          </div>
+          <div class="tog-row" onclick="toggleLAPDSubtype('bicycle')">
+            <div class="tog-icon" style="background:rgba(196,120,10,.10)"><span style="font-size:13px">🚲</span></div>
+            <span class="tog-label" style="font-size:11px;color:var(--muted)">↳ Bicycle Collision</span>
+            <span class="tog-count" id="ct-lapd-bicycle">0</span>
+            <div class="tog-sw" id="sw-lapd-bicycle"></div>
+          </div>
+          <div class="tog-row" onclick="toggleLAPDSubtype('fatality')">
+            <div class="tog-icon" style="background:rgba(185,48,32,.10)"><span style="font-size:13px">⚫</span></div>
+            <span class="tog-label" style="font-size:11px;color:var(--muted)">↳ Fatalities</span>
+            <span class="tog-count" id="ct-lapd-fatality">0</span>
+            <div class="tog-sw" id="sw-lapd-fatality"></div>
+          </div>
+
+          <div class="sec-label" style="margin-top:8px">Public Reported Traffic Safety</div>
           <div class="tog-row" onclick="toggleCatLayer('traffic')">
             <div class="tog-icon" style="background:rgba(240,165,0,.15)"><span style="font-size:14px">🚗</span></div>
             <span class="tog-label">Traffic Accidents All</span>
@@ -762,45 +805,6 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
             <div class="tog-sw" id="sw-sub-lighting-other_structure"></div>
           </div>
 
-          <!-- ── LAPD Collision Reports (Open Data / Edge Function) ── -->
-          <div class="sec-label" style="margin-top:8px;display:flex;align-items:center;justify-content:space-between">
-            <span>LAPD Collision Reports</span>
-            <span id="lapd-status" style="font-size:9px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;font-family:var(--mono)">not loaded</span>
-          </div>
-          <div style="padding:0 4px 4px">
-            <div class="date-row">
-              <input type="date" class="date-input" id="lapd-df-from" title="LAPD data start date">
-              <input type="date" class="date-input" id="lapd-df-to"   title="LAPD data end date">
-            </div>
-            <div class="date-btns" style="margin-bottom:6px">
-              <button class="btn-apply" onclick="applyLAPDDate()">Load</button>
-              <button class="btn-clear" onclick="clearLAPDDate()">Clear</button>
-            </div>
-          </div>
-          <div class="tog-row" onclick="toggleLAPDLayer()">
-            <div class="tog-icon" style="background:rgba(196,120,10,.15)"><span style="font-size:14px">🚦</span></div>
-            <span class="tog-label">LAPD Collisions All</span>
-            <span class="tog-count" id="ct-lapd-all">0</span>
-            <div class="tog-sw" id="sw-lapd-all"></div>
-          </div>
-          <div class="tog-row" onclick="toggleLAPDSubtype('pedestrian')">
-            <div class="tog-icon" style="background:rgba(196,120,10,.10)"><span style="font-size:13px">🚶</span></div>
-            <span class="tog-label" style="font-size:11px;color:var(--muted)">↳ Pedestrian Hit</span>
-            <span class="tog-count" id="ct-lapd-pedestrian">0</span>
-            <div class="tog-sw" id="sw-lapd-pedestrian"></div>
-          </div>
-          <div class="tog-row" onclick="toggleLAPDSubtype('bicycle')">
-            <div class="tog-icon" style="background:rgba(196,120,10,.10)"><span style="font-size:13px">🚲</span></div>
-            <span class="tog-label" style="font-size:11px;color:var(--muted)">↳ Bicycle Collision</span>
-            <span class="tog-count" id="ct-lapd-bicycle">0</span>
-            <div class="tog-sw" id="sw-lapd-bicycle"></div>
-          </div>
-          <div class="tog-row" onclick="toggleLAPDSubtype('fatality')">
-            <div class="tog-icon" style="background:rgba(185,48,32,.10)"><span style="font-size:13px">⚫</span></div>
-            <span class="tog-label" style="font-size:11px;color:var(--muted)">↳ Fatalities</span>
-            <span class="tog-count" id="ct-lapd-fatality">0</span>
-            <div class="tog-sw" id="sw-lapd-fatality"></div>
-          </div>
         </div>
       </div>
 
@@ -1636,7 +1640,7 @@ let pendingGeometry = null;
 // ── Category map (Section 5 of planning notes) ───────────────────
 // group → array of { label, value, table, icon, color, fields, sensitiveDefault }
 const CATEGORY_MAP = {
-  'Traffic Safety & Crime': [
+  'Public Reported Traffic Safety': [
     {
       label: 'Crime Incident', value: '__crime__', table: 'crimes',
       icon: '🚨', color: '#e8453c',

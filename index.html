@@ -557,6 +557,23 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
   color: var(--muted);
   font-size: 12px;
 }
+
+/* ── Wind Flow Layer ─────────────────────────────────────────────── */
+.wind-arrow-marker { background: transparent !important; border: none !important; box-shadow: none !important; }
+@keyframes windFlow {
+  0%, 100% { opacity: 0.25; }
+  50%       { opacity: 1;    }
+}
+.wind-arrow { animation: windFlow var(--wind-dur, 3s) ease-in-out infinite; }
+
+/* ── PurpleAir sensor dots ─────────────────────────────────────── */
+.pa-sensor-dot {
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.85);
+  box-shadow: 0 1px 6px rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-weight: 700; line-height: 1;
+}
 </style>
 </head>
 <body>
@@ -851,6 +868,53 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
             <span class="tog-label">Billboards</span>
             <span class="tog-count" id="ct-cat-billboard">0</span>
             <div class="tog-sw" id="sw-cat-billboard"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Environment & Health group -->
+      <div class="layer-group" id="grp-environment">
+        <div class="grp-head" onclick="toggleGroup('environment')">
+          <span>🌬 Environment &amp; Health<span class="grp-count" id="cnt-environment"></span></span>
+          <span class="grp-chevron" id="chv-environment" style="transform:rotate(-90deg)">▾</span>
+        </div>
+        <div class="grp-body collapsed" id="gb-environment">
+          <div style="padding:2px 4px 6px;font-size:9px;color:var(--muted);font-family:var(--mono);line-height:1.6">
+            Wind: Open-Meteo (free, no key) · Sensors: PurpleAir community network<br>
+            <span style="color:var(--accent)">Arrows show where air is going · refreshes on pan/zoom</span>
+          </div>
+
+          <!-- Wind Flow toggle -->
+          <div class="tog-row" onclick="toggleWindLayer()">
+            <div class="tog-icon" style="background:rgba(100,160,220,.15)">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="rgb(100,160,220)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"/><path d="M9.6 4.6A2 2 0 1 1 11 8H2"/><path d="M12.6 19.4A2 2 0 1 0 14 16H2"/></svg>
+            </div>
+            <span class="tog-label">Wind Flow</span>
+            <span class="tog-count" id="ct-wind" style="color:var(--muted)">—</span>
+            <div class="tog-sw" id="sw-wind"></div>
+          </div>
+
+          <!-- PurpleAir Sensors toggle -->
+          <div class="tog-row" onclick="togglePurpleAirLayer()">
+            <div class="tog-icon" style="background:rgba(143,63,151,.15)">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#8f3f97" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M16.9 16.9l2.1 2.1M4.9 19.1l2.1-2.1M16.9 7.1l2.1-2.1"/></svg>
+            </div>
+            <span class="tog-label">PurpleAir Sensors</span>
+            <span class="tog-count" id="ct-purpleair">0</span>
+            <div class="tog-sw" id="sw-purpleair"></div>
+          </div>
+
+          <!-- AQI legend (shown always for reference) -->
+          <div style="padding:4px 4px 6px;margin-top:2px">
+            <div class="sec-label" style="margin-top:0;margin-bottom:4px">AQI Color Scale</div>
+            <div style="display:flex;flex-wrap:wrap;gap:3px">
+              <span style="font-size:9px;background:#00e400;color:#000;padding:1px 5px;border-radius:3px;font-family:var(--mono)">Good</span>
+              <span style="font-size:9px;background:#ffff00;color:#000;padding:1px 5px;border-radius:3px;font-family:var(--mono)">Moderate</span>
+              <span style="font-size:9px;background:#ff7e00;color:#000;padding:1px 5px;border-radius:3px;font-family:var(--mono)">USG</span>
+              <span style="font-size:9px;background:#ff0000;color:#fff;padding:1px 5px;border-radius:3px;font-family:var(--mono)">Unhealthy</span>
+              <span style="font-size:9px;background:#8f3f97;color:#fff;padding:1px 5px;border-radius:3px;font-family:var(--mono)">V. Unhealthy</span>
+              <span style="font-size:9px;background:#7e0023;color:#fff;padding:1px 5px;border-radius:3px;font-family:var(--mono)">Hazardous</span>
+            </div>
           </div>
         </div>
       </div>
@@ -2194,7 +2258,7 @@ function initMap() {
   annotationLayerGroup = L.layerGroup(); // off by default — user toggles on
   photoLayerGroup      = L.layerGroup(); // off by default
   lapdLayerGroup = L.markerClusterGroup({
-    maxClusterRadius: 40,
+    maxClusterRadius: 25,
     showCoverageOnHover: false,
     spiderfyOnMaxZoom: true,
     disableClusteringAtZoom: 18,
@@ -2218,6 +2282,10 @@ function initMap() {
     }
   }); // orange clusters — distinct from green crime clusters
   layerVisible['lapd'] = false;
+  windLayerGroup      = L.layerGroup();
+  purpleairLayerGroup = L.layerGroup();
+  layerVisible['wind']      = false;
+  layerVisible['purpleair'] = false;
   initCatLayers(); // create per-category layer groups
 
   // Draw controls — wrapped in try/catch so CDN failure doesn't crash map
@@ -5799,6 +5867,344 @@ function _applyRadiusFilter() {
       } catch(e) {}
     });
   });
+}
+
+// ══════════════════════════════════════════════════════════════════
+// ENVIRONMENT & HEALTH — Wind Flow + PurpleAir Sensors
+// ══════════════════════════════════════════════════════════════════
+// Wind:      Open-Meteo (free, no key, CORS-friendly)
+// PurpleAir: proxied via Supabase Edge Function "purpleair-sensors"
+//            to keep the API key off the browser.
+//
+// EDGE FUNCTION CODE — paste into Supabase → Edge Functions →
+// purpleair-sensors → index.ts (replace all boilerplate):
+//
+// import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
+// serve(async (req) => {
+//   const cors = { 'Access-Control-Allow-Origin':'*',
+//     'Access-Control-Allow-Headers':'authorization,x-client-info,apikey,content-type' }
+//   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
+//   const url = new URL(req.url)
+//   const { nwlng, nwlat, selng, selat } = Object.fromEntries(url.searchParams)
+//   if (!nwlng || !nwlat || !selng || !selat)
+//     return new Response(JSON.stringify({ error:'Missing bounds' }), { status:400, headers:{...cors,'Content-Type':'application/json'} })
+//   const key = Deno.env.get('PURPLEAIR_READ_KEY')
+//   if (!key)
+//     return new Response(JSON.stringify({ error:'Missing key' }), { status:500, headers:{...cors,'Content-Type':'application/json'} })
+//   const fields = 'sensor_index,name,latitude,longitude,pm2.5_10minute,pm2.5_60minute,humidity,temperature'
+//   const apiUrl = `https://api.purpleair.com/v1/sensors?fields=${fields}&nwlng=${nwlng}&nwlat=${nwlat}&selng=${selng}&selat=${selat}&location_type=0`
+//   const r = await fetch(apiUrl, { headers:{ 'X-API-Key': key } })
+//   const data = await r.json()
+//   return new Response(JSON.stringify(data), { headers:{...cors,'Content-Type':'application/json'} })
+// })
+// ══════════════════════════════════════════════════════════════════
+
+// ── Globals ────────────────────────────────────────────────────────
+let windLayerGroup      = null;   // initialized in initMap
+let purpleairLayerGroup = null;   // initialized in initMap
+let _windMoveHandler    = null;
+let _paMoveHandler      = null;
+
+// ── AQI color + label from PM2.5 µg/m³ ────────────────────────────
+function aqiColorFromPm25(pm) {
+  if (pm == null || isNaN(pm)) return '#aaaaaa';
+  if (pm <= 12.0)  return '#00e400';
+  if (pm <= 35.4)  return '#ffff00';
+  if (pm <= 55.4)  return '#ff7e00';
+  if (pm <= 150.4) return '#ff0000';
+  if (pm <= 250.4) return '#8f3f97';
+  return '#7e0023';
+}
+function aqiLabelFromPm25(pm) {
+  if (pm == null || isNaN(pm)) return 'No data';
+  if (pm <= 12.0)  return 'Good';
+  if (pm <= 35.4)  return 'Moderate';
+  if (pm <= 55.4)  return 'Unhealthy for Sensitive Groups';
+  if (pm <= 150.4) return 'Unhealthy';
+  if (pm <= 250.4) return 'Very Unhealthy';
+  return 'Hazardous';
+}
+
+// ── Compass direction label from degrees ───────────────────────────
+function compassDir(deg) {
+  const dirs = ['N','NE','E','SE','S','SW','W','NW','N'];
+  return dirs[Math.round((((deg % 360) + 360) % 360) / 45)];
+}
+
+// ── Wind speed (mph) → CSS animation duration ─────────────────────
+// Calm = slow pulse (4 s), strong = fast (0.8 s)
+function windAnimDuration(speedMph) {
+  const clamped = Math.max(0, Math.min(60, speedMph || 0));
+  return (4 - (clamped / 60) * 3.2).toFixed(2) + 's';
+}
+
+// ── Build 4×4 lat/lng grid across current map viewport ────────────
+function _buildWindGrid() {
+  const b = map.getBounds();
+  const n = b.getNorth(), s = b.getSouth(), e = b.getEast(), w = b.getWest();
+  const rows = 4, cols = 4;
+  const latStep = (n - s) / (rows + 1);
+  const lngStep = (e - w) / (cols + 1);
+  const pts = [];
+  for (let r = 1; r <= rows; r++)
+    for (let c = 1; c <= cols; c++)
+      pts.push({ lat: s + latStep * r, lng: w + lngStep * c });
+  return pts;
+}
+
+// ── Fetch wind from Open-Meteo for a grid of points ───────────────
+async function _fetchWindData(gridPts) {
+  const lats = gridPts.map(p => p.lat.toFixed(4)).join(',');
+  const lngs = gridPts.map(p => p.lng.toFixed(4)).join(',');
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lngs}` +
+              `&current=wind_speed_10m,wind_direction_10m&wind_speed_unit=mph&forecast_days=1`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(9000) });
+  if (!res.ok) throw new Error('Open-Meteo ' + res.status);
+  const json = await res.json();
+  return Array.isArray(json) ? json : [json];
+}
+
+// ── Render animated wind arrows ────────────────────────────────────
+async function loadWindLayer() {
+  const statusEl = document.getElementById('ct-wind');
+  if (statusEl) statusEl.textContent = '…';
+  windLayerGroup.clearLayers();
+
+  const grid = _buildWindGrid();
+  let weatherArr;
+  try {
+    weatherArr = await _fetchWindData(grid);
+  } catch(err) {
+    console.warn('[wind]', err.message);
+    if (statusEl) statusEl.textContent = 'err';
+    showToast('Wind data unavailable — check connection', 'err');
+    return;
+  }
+
+  let rendered = 0;
+  weatherArr.forEach((w, i) => {
+    const pt    = grid[i];
+    if (!pt) return;
+    const speed = w?.current?.wind_speed_10m;
+    const dir   = w?.current?.wind_direction_10m;
+    if (speed == null || dir == null) return;
+
+    // Arrow points TOWARD where air is going (dir is FROM direction → add 180°)
+    const bearing  = (dir + 180) % 360;
+    const duration = windAnimDuration(speed);
+
+    // Visual weight scales with speed
+    const intensity = Math.min(1, 0.3 + (speed / 30) * 0.7);
+    const sz        = Math.round(28 + Math.min(speed / 2, 16)); // 28–44 px
+    // Color: sky blue (calm) → bright white-blue (strong)
+    const blueShift = Math.min(speed / 25, 1);
+    const rr = Math.round(100 + blueShift * 100);
+    const gg = Math.round(160 + blueShift * 70);
+    const strokeColor = `rgb(${rr},${gg},220)`;
+
+    const icon = L.divIcon({
+      className: 'wind-arrow-marker',
+      html: `<div style="width:${sz}px;height:${sz}px;overflow:visible">
+        <svg width="${sz}" height="${sz}" viewBox="0 0 24 24"
+             xmlns="http://www.w3.org/2000/svg"
+             class="wind-arrow"
+             style="transform:rotate(${bearing}deg);transform-origin:center;
+                    animation-duration:${duration};opacity:${intensity.toFixed(2)};
+                    filter:drop-shadow(0 0 3px rgba(100,160,255,.55))">
+          <line x1="12" y1="22" x2="12" y2="5"
+                stroke="${strokeColor}" stroke-width="2.5" stroke-linecap="round"/>
+          <polyline points="7,11 12,4 17,11"
+                    stroke="${strokeColor}" stroke-width="2.5"
+                    stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        </svg>
+      </div>`,
+      iconSize:   [sz, sz],
+      iconAnchor: [sz / 2, sz / 2],
+    });
+
+    const marker = L.marker([pt.lat, pt.lng], { icon, interactive: true, zIndexOffset: -200 });
+    marker.bindPopup(`
+      <div style="padding:12px 14px;min-width:190px">
+        <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;
+             letter-spacing:.08em;margin-bottom:8px">🌬 Wind Conditions</div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;
+             padding:3px 0;border-bottom:1px solid var(--border)">
+          <span style="color:var(--muted)">Speed</span>
+          <strong>${speed.toFixed(1)} mph</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;
+             padding:3px 0;border-bottom:1px solid var(--border)">
+          <span style="color:var(--muted)">From</span>
+          <strong>${compassDir(dir)} (${Math.round(dir)}°)</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0">
+          <span style="color:var(--muted)">Air moving toward</span>
+          <strong>${compassDir(bearing)}</strong>
+        </div>
+        <div style="margin-top:8px;padding-top:6px;border-top:1px solid var(--border);
+             font-size:10px;color:var(--muted)">
+          Source: Open-Meteo · 10 m elevation · current conditions
+        </div>
+      </div>`, { maxWidth: 250, closeButton: true });
+    windLayerGroup.addLayer(marker);
+    rendered++;
+  });
+
+  if (statusEl) statusEl.textContent = rendered ? rendered + ' pts' : 'no data';
+}
+
+// ── Toggle wind layer ──────────────────────────────────────────────
+function toggleWindLayer() {
+  layerVisible['wind'] = !layerVisible['wind'];
+  const sw = document.getElementById('sw-wind');
+  if (sw) sw.classList.toggle('on', layerVisible['wind']);
+
+  if (layerVisible['wind']) {
+    windLayerGroup.addTo(map);
+    loadWindLayer();
+    _windMoveHandler = () => loadWindLayer();
+    map.on('moveend', _windMoveHandler);
+    showToast('🌬 Wind layer on · arrows point where air is going', 'ok');
+  } else {
+    map.removeLayer(windLayerGroup);
+    windLayerGroup.clearLayers();
+    if (_windMoveHandler) { map.off('moveend', _windMoveHandler); _windMoveHandler = null; }
+    const statusEl = document.getElementById('ct-wind');
+    if (statusEl) statusEl.textContent = '—';
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// PURPLEAIR SENSORS
+// ══════════════════════════════════════════════════════════════════
+
+async function loadPurpleAirSensors() {
+  const statusEl = document.getElementById('ct-purpleair');
+  if (statusEl) statusEl.textContent = '…';
+  purpleairLayerGroup.clearLayers();
+
+  const b = map.getBounds();
+  const params = new URLSearchParams({
+    nwlng: b.getWest().toFixed(4),
+    nwlat: b.getNorth().toFixed(4),
+    selng: b.getEast().toFixed(4),
+    selat: b.getSouth().toFixed(4),
+  });
+
+  let data;
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/functions/v1/purpleair-sensors?${params}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${SUPABASE_ANON}`,
+          'apikey':        SUPABASE_ANON,
+        },
+        signal: AbortSignal.timeout(14000),
+      }
+    );
+    if (!res.ok) throw new Error('Edge Function returned ' + res.status);
+    data = await res.json();
+  } catch(err) {
+    console.warn('[purpleair]', err.message);
+    if (statusEl) statusEl.textContent = 'err';
+    showToast('PurpleAir unavailable — check Edge Function deployment', 'err');
+    return;
+  }
+
+  // PurpleAir v1 response: { fields: [...], data: [[...], ...] }
+  const fields  = data.fields || [];
+  const rows    = data.data   || [];
+  const sensors = rows.map(row => {
+    const obj = {};
+    fields.forEach((f, i) => { obj[f] = row[i]; });
+    return obj;
+  });
+
+  let rendered = 0;
+  sensors.forEach(s => {
+    const lat = parseFloat(s.latitude);
+    const lng = parseFloat(s.longitude);
+    if (!lat || !lng || isNaN(lat) || isNaN(lng)) return;
+
+    const pm    = parseFloat(s['pm2.5_60minute'] ?? s['pm2.5_10minute']);
+    const color = aqiColorFromPm25(pm);
+    const label = aqiLabelFromPm25(pm);
+    // Text contrast: dark text on bright backgrounds (good/moderate), white on dark
+    const textColor = (pm <= 35.4) ? '#000' : '#fff';
+    const sz        = pm <= 12 ? 22 : pm <= 35.4 ? 24 : pm <= 55.4 ? 27 : 31;
+
+    const icon = L.divIcon({
+      className: 'wind-arrow-marker',
+      html: `<div class="pa-sensor-dot"
+               style="width:${sz}px;height:${sz}px;
+                      background:${color};color:${textColor};
+                      font-size:${sz <= 22 ? 8 : 9}px;
+                      border-color:${textColor === '#000' ? 'rgba(0,0,0,.3)' : 'rgba(255,255,255,.85)'}">
+               ${isNaN(pm) ? '?' : Math.round(pm)}
+             </div>`,
+      iconSize:   [sz, sz],
+      iconAnchor: [sz / 2, sz / 2],
+    });
+
+    const pmDisplay  = isNaN(pm) ? '—' : pm.toFixed(1);
+    const humidity   = s.humidity   != null ? parseFloat(s.humidity).toFixed(0) + '%' : '—';
+    const tempF      = s.temperature != null ? parseFloat(s.temperature).toFixed(0) + '°F' : '—';
+    const sensorName = s.name || 'Unnamed Sensor #' + (s.sensor_index || '');
+
+    const marker = L.marker([lat, lng], { icon, zIndexOffset: 50 });
+    marker.bindPopup(`
+      <div style="padding:12px 14px;min-width:210px">
+        <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;
+             letter-spacing:.08em;margin-bottom:4px">🟣 PurpleAir Sensor</div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px">${esc(sensorName)}</div>
+        <div style="display:inline-block;background:${color};color:${textColor};
+             padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;
+             margin-bottom:10px">${label}</div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;
+             padding:3px 0;border-bottom:1px solid var(--border)">
+          <span style="color:var(--muted)">PM2.5 (60 min avg)</span>
+          <strong>${pmDisplay} µg/m³</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;
+             padding:3px 0;border-bottom:1px solid var(--border)">
+          <span style="color:var(--muted)">Humidity</span><strong>${humidity}</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0">
+          <span style="color:var(--muted)">Temperature</span><strong>${tempF}</strong>
+        </div>
+        <div style="margin-top:8px;padding-top:6px;border-top:1px solid var(--border);
+             font-size:10px;color:var(--muted)">
+          Source: PurpleAir community sensor network
+        </div>
+      </div>`, { maxWidth: 270, closeButton: true });
+    purpleairLayerGroup.addLayer(marker);
+    rendered++;
+  });
+
+  if (statusEl) statusEl.textContent = String(rendered);
+  if (rendered === 0) showToast('No PurpleAir sensors found in this viewport', 'ok');
+}
+
+// ── Toggle PurpleAir layer ─────────────────────────────────────────
+function togglePurpleAirLayer() {
+  layerVisible['purpleair'] = !layerVisible['purpleair'];
+  const sw = document.getElementById('sw-purpleair');
+  if (sw) sw.classList.toggle('on', layerVisible['purpleair']);
+
+  if (layerVisible['purpleair']) {
+    purpleairLayerGroup.addTo(map);
+    loadPurpleAirSensors();
+    _paMoveHandler = () => loadPurpleAirSensors();
+    map.on('moveend', _paMoveHandler);
+    showToast('🟣 PurpleAir sensors on · loading viewport…', 'ok');
+  } else {
+    map.removeLayer(purpleairLayerGroup);
+    purpleairLayerGroup.clearLayers();
+    if (_paMoveHandler) { map.off('moveend', _paMoveHandler); _paMoveHandler = null; }
+    const statusEl = document.getElementById('ct-purpleair');
+    if (statusEl) statusEl.textContent = '0';
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════

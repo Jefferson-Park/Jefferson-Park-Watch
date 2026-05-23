@@ -17,6 +17,9 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.min.css">
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
 
+<!-- EXIF reader — field photo GPS/date extraction -->
+<script src="https://cdn.jsdelivr.net/npm/exifr@7/dist/lite.umd.cjs"></script>
+
 <!-- Leaflet Draw — polygon/line/point tools -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css">
 <script defer src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
@@ -1193,14 +1196,19 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
       <span id="closed-lbl">Show Closed</span>
     </button>
-    <!-- Admin only -->
+    <!-- PM + admin batch tools -->
     <button class="bp-btn" id="btn-import-pdf" onclick="openPDF()" style="display:none">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="12" x2="8" y2="12"/><line x1="12" y1="16" x2="12" y2="8"/></svg>
-      CSV Batch Update
+      SLO Upload
     </button>
     <button class="bp-btn" id="btn-crime-batch" onclick="openCrimeBatch()" style="display:none">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="14"/><line x1="9" y1="11" x2="15" y2="11"/></svg>
-      Crime Batch Upload
+      Crimes Upload
+    </button>
+    <!-- Field officer + PM + admin -->
+    <button class="bp-btn" id="btn-field-photo" onclick="openFieldPhotoUpload()" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      Field Photo Upload
     </button>
     <button class="bp-btn" id="btn-slo" onclick="openSLO()" style="display:none">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -1445,6 +1453,82 @@ GTA,12th Ave and 30th St,90018,1/8/26,11:00:00 PM,Suspect took vehicle without p
         <button class="btn-cancel" onclick="closeModal('crime-batch-modal');resetCrimeBatch()">Cancel</button>
         <button class="btn-submit" id="cb-import-btn" onclick="importCrimeBatch()">
           Upload Crimes
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ FIELD PHOTO BATCH UPLOAD MODAL ═══════ -->
+<div class="modal-overlay" id="field-photo-modal">
+  <div class="modal-box" style="width:900px;max-width:97vw">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <div class="modal-title" style="margin:0">📷 Field Photo Upload</div>
+      <button onclick="closeFieldPhotoModal()" title="Close"
+        style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 2px;line-height:1">✕</button>
+    </div>
+
+    <!-- Instructions -->
+    <div style="background:rgba(91,122,71,.07);border:1px solid rgba(91,122,71,.25);border-radius:8px;padding:11px 14px;margin-bottom:14px;font-size:12px;line-height:1.7">
+      <strong style="color:var(--accent)">How it works:</strong>
+      Drag a folder of field photos (JPG / HEIC) or click to select files. GPS coordinates and date are read from each photo's EXIF data — no manual entry needed.
+      Photos without GPS are flagged <span style="color:var(--amber)">⚠️</span> and skipped automatically.
+      Assign categories per photo during review, then batch-submit. All pins land as <strong>draft / private</strong> — admin promotes to public after QC.
+    </div>
+
+    <!-- Drop zone -->
+    <div class="pdf-drop" id="fp-drop-zone"
+      onclick="document.getElementById('fp-file-input').click()"
+      ondragover="event.preventDefault();document.getElementById('fp-drop-zone').style.borderColor='var(--accent)'"
+      ondragleave="document.getElementById('fp-drop-zone').style.borderColor=''"
+      ondrop="onFPDrop(event)">
+      <div style="font-size:32px;margin-bottom:6px">📁</div>
+      <div style="font-size:13px;color:var(--muted)">
+        <strong style="color:var(--text)">Drag a folder here</strong> or click to select photos
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">.jpg · .jpeg · .heic · .heif — GPS EXIF required for map placement</div>
+    </div>
+    <!-- Folder input (webkitdirectory) + individual file fallback -->
+    <input type="file" id="fp-file-input" accept=".jpg,.jpeg,.heic,.heif,image/jpeg,image/heic"
+      multiple webkitdirectory style="display:none" onchange="onFPFileInput(event)">
+
+    <!-- Progress bar (shared: read phase + upload phase) -->
+    <div id="fp-progress-wrap" style="display:none;margin:10px 0 4px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px" id="fp-progress-label">Reading photos…</div>
+      <div style="background:var(--panel2);border-radius:4px;height:6px;overflow:hidden">
+        <div id="fp-progress-bar" style="height:6px;width:0%;background:var(--accent);border-radius:4px;transition:width .2s ease"></div>
+      </div>
+    </div>
+
+    <div id="fp-status" style="font-size:12px;color:var(--muted);padding:4px 0;min-height:18px"></div>
+
+    <!-- Review table -->
+    <div id="fp-preview" style="display:none">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;gap:10px">
+        <span id="fp-info"></span>
+        <span style="margin-left:auto;color:var(--muted);font-size:10px">
+          📍 Draft pins shown on map · Cluster = same location · Click cluster to spiderfy
+        </span>
+      </div>
+      <div style="overflow-x:auto;max-height:300px;overflow-y:auto">
+        <table class="pdf-table">
+          <thead>
+            <tr>
+              <th style="width:32px" title="Uncheck to skip">Skip</th>
+              <th>Filename (stored as)</th>
+              <th style="width:130px">Date Taken</th>
+              <th style="width:190px">GPS Coordinates</th>
+              <th style="width:200px">Category</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody id="fp-tbody"></tbody>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="closeFieldPhotoModal()">Cancel</button>
+        <button class="btn-submit" id="fp-submit-btn" onclick="submitFieldPhotos()" disabled>
+          No Photos Ready
         </button>
       </div>
     </div>
@@ -1714,6 +1798,7 @@ let activeCrimeTypes = new Set();
 let layerVisible = { slo: false, unnc: false, annotations: false, photos: false };
 let clusterGroup = null;
 let sloLayerGroup = null, unncLayerGroup = null, annotationLayerGroup = null, photoLayerGroup = null;
+let fieldPhotoClusterGroup = null; // temporary layer for field photo upload review
 let geocodeLng = null, geocodeLat = null;
 let addPreviewMarker = null;
 let geocodeTimer = null;
@@ -2149,6 +2234,7 @@ async function launch() {
   }
   if (isOfficer || isPM) {
     document.getElementById('btn-add-crime').style.display = 'flex';
+    document.getElementById('btn-field-photo').style.display = 'flex';
   }
   if (isPM) {
     document.getElementById('btn-toggle-closed').style.display = 'flex';
@@ -2280,6 +2366,27 @@ function initMap() {
   unncLayerGroup       = L.layerGroup();
   annotationLayerGroup = L.layerGroup(); // off by default — user toggles on
   photoLayerGroup      = L.layerGroup(); // off by default
+
+  // Field photo upload review layer — temporary, shown during batch upload modal
+  fieldPhotoClusterGroup = L.markerClusterGroup({
+    maxClusterRadius: 40,
+    showCoverageOnHover: false,
+    spiderfyOnMaxZoom: true,
+    spiderfyDistanceMultiplier: 2.5,  // spread co-located photos (same tree, multi-angle)
+    disableClusteringAtZoom: 19,
+    iconCreateFunction: function(cluster) {
+      const count = cluster.getChildCount();
+      return L.divIcon({
+        html: `<div style="width:32px;height:32px;border-radius:50%;background:#5B7A47;
+          border:2px solid #fff;display:flex;align-items:center;justify-content:center;
+          color:#fff;font-size:11px;font-weight:700;font-family:monospace;
+          box-shadow:0 2px 6px rgba(0,0,0,.4)">📷${count}</div>`,
+        className: '',
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+      });
+    },
+  });
   lapdLayerGroup = L.markerClusterGroup({
     maxClusterRadius: 25,
     showCoverageOnHover: false,
@@ -6426,6 +6533,388 @@ async function doResetPassword() {
     err.style.color = 'var(--accent)';
     err.textContent = '✓ Password updated! Signing you in…';
     setTimeout(() => location.replace(location.pathname), 1500);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// FIELD PHOTO BATCH UPLOADER
+// Drag-drop a folder → read EXIF GPS + date → plot draft pins →
+// assign category per photo → batch submit to map_annotations + photos
+// ══════════════════════════════════════════════════════════════════
+
+let fpItems = []; // { file, filename, lat, lng, dateStr, hasGps, skip, category, notes, previewMarker }
+
+function openFieldPhotoUpload() {
+  resetFieldPhoto();
+  openModal('field-photo-modal');
+}
+
+function resetFieldPhoto() {
+  fpItems = [];
+  const dz = document.getElementById('fp-drop-zone');
+  if (dz) dz.style.borderColor = '';
+  const st = document.getElementById('fp-status');
+  if (st) st.textContent = '';
+  const pv = document.getElementById('fp-preview');
+  if (pv) pv.style.display = 'none';
+  const pw = document.getElementById('fp-progress-wrap');
+  if (pw) pw.style.display = 'none';
+  const tb = document.getElementById('fp-tbody');
+  if (tb) tb.innerHTML = '';
+  if (fieldPhotoClusterGroup) {
+    fieldPhotoClusterGroup.clearLayers();
+    if (map.hasLayer(fieldPhotoClusterGroup)) map.removeLayer(fieldPhotoClusterGroup);
+  }
+}
+
+function closeFieldPhotoModal() {
+  closeModal('field-photo-modal');
+  resetFieldPhoto();
+}
+
+// ── Drop / file input handlers ────────────────────────────────────
+
+function onFPDrop(e) {
+  e.preventDefault();
+  document.getElementById('fp-drop-zone').style.borderColor = '';
+
+  // Try DataTransfer folder entries first (Chrome/Edge support)
+  const items = e.dataTransfer.items;
+  if (items && items.length) {
+    const entries = [];
+    for (const item of items) {
+      const entry = item.webkitGetAsEntry ? item.webkitGetAsEntry() : null;
+      if (entry) entries.push(entry);
+    }
+    if (entries.length) {
+      fpCollectEntries(entries).then(processFieldPhotoFiles);
+      return;
+    }
+  }
+  // Fallback: flat file list
+  const files = Array.from(e.dataTransfer.files)
+    .filter(f => /\.(jpg|jpeg|heic|heif)$/i.test(f.name));
+  processFieldPhotoFiles(files);
+}
+
+async function fpCollectEntries(entries) {
+  const files = [];
+  async function readEntry(entry) {
+    if (entry.isFile) {
+      await new Promise(res => entry.file(f => { files.push(f); res(); }, () => res()));
+    } else if (entry.isDirectory) {
+      // Read all entries in this directory (readEntries may batch; loop until empty)
+      const reader = entry.createReader();
+      let batch;
+      do {
+        batch = await new Promise(res => reader.readEntries(res, () => res([])));
+        for (const sub of batch) await readEntry(sub);
+      } while (batch.length > 0);
+    }
+  }
+  for (const entry of entries) await readEntry(entry);
+  return files.filter(f => /\.(jpg|jpeg|heic|heif)$/i.test(f.name));
+}
+
+function onFPFileInput(e) {
+  const files = Array.from(e.target.files)
+    .filter(f => /\.(jpg|jpeg|heic|heif)$/i.test(f.name));
+  processFieldPhotoFiles(files);
+  e.target.value = '';
+}
+
+// ── Core: read EXIF, build items, plot preview pins ───────────────
+
+async function processFieldPhotoFiles(files) {
+  if (!files.length) { showToast('No .jpg / .heic files found', 'err'); return; }
+
+  document.getElementById('fp-status').textContent =
+    `Reading EXIF from ${files.length} photo${files.length > 1 ? 's' : ''}…`;
+  document.getElementById('fp-progress-wrap').style.display = 'block';
+  document.getElementById('fp-progress-bar').style.width = '0%';
+  document.getElementById('fp-preview').style.display = 'none';
+
+  fpItems = [];
+  fieldPhotoClusterGroup.clearLayers();
+  fieldPhotoClusterGroup.addTo(map);
+
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i];
+    document.getElementById('fp-progress-label').textContent =
+      `Reading EXIF ${i + 1} / ${files.length}: ${f.name}`;
+    document.getElementById('fp-progress-bar').style.width =
+      `${Math.round(((i + 1) / files.length) * 100)}%`;
+
+    let lat = null, lng = null, dateStr = null, hasGps = false;
+    try {
+      // exifr lite handles GPS + DateTimeOriginal for JPG and HEIC
+      const tags = await exifr.parse(f, { gps: true, pick: ['DateTimeOriginal', 'DateTime', 'GPSLatitude', 'GPSLongitude'] });
+      if (tags) {
+        if (tags.latitude != null && tags.longitude != null) {
+          lat = +tags.latitude;
+          lng = +tags.longitude;
+          hasGps = !isNaN(lat) && !isNaN(lng);
+        }
+        const dt = tags.DateTimeOriginal || tags.DateTime;
+        if (dt) {
+          if (typeof dt === 'string') {
+            // EXIF format: "YYYY:MM:DD HH:MM:SS"
+            dateStr = dt.replace(/^(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3').slice(0, 16);
+          } else if (dt instanceof Date && !isNaN(dt)) {
+            dateStr = dt.toISOString().slice(0, 16).replace('T', ' ');
+          }
+        }
+      }
+    } catch (_) { /* EXIF unavailable — proceed without GPS */ }
+
+    const item = { file: f, filename: f.name, lat, lng, dateStr, hasGps,
+                   skip: !hasGps, category: '', notes: '', previewMarker: null };
+
+    if (hasGps) {
+      const marker = L.circleMarker([lat, lng], {
+        radius: 8, color: '#fff', weight: 2,
+        fillColor: '#5B7A47', fillOpacity: 0.85,
+      });
+      marker.bindTooltip(`📷 Field_${f.name}${dateStr ? '\n' + dateStr : ''}`,
+        { direction: 'top', offset: [0, -10], sticky: false });
+      fieldPhotoClusterGroup.addLayer(marker);
+      item.previewMarker = marker;
+    }
+
+    fpItems.push(item);
+    if (i % 8 === 0) await new Promise(r => setTimeout(r, 0)); // yield to UI
+  }
+
+  document.getElementById('fp-progress-wrap').style.display = 'none';
+  document.getElementById('fp-status').textContent = '';
+
+  renderFPTable();
+
+  // Fit map to GPS-valid pins
+  const gps = fpItems.filter(x => x.hasGps);
+  if (gps.length) {
+    try {
+      map.fitBounds(
+        [[Math.min(...gps.map(x => x.lat)), Math.min(...gps.map(x => x.lng))],
+         [Math.max(...gps.map(x => x.lat)), Math.max(...gps.map(x => x.lng))]],
+        { padding: [70, 70], maxZoom: 17 }
+      );
+    } catch (_) {}
+  }
+}
+
+// ── Render review table ───────────────────────────────────────────
+
+function renderFPTable() {
+  const ready   = fpItems.filter(x => x.hasGps && !x.skip).length;
+  const flagged = fpItems.filter(x => !x.hasGps).length;
+  const total   = fpItems.length;
+
+  document.getElementById('fp-info').innerHTML =
+    `<strong>${total}</strong> photos · ` +
+    `<span style="color:var(--accent)">✓ ${ready} ready</span>` +
+    (flagged ? ` · <span style="color:var(--amber)">⚠️ ${flagged} no GPS — will be skipped</span>` : '');
+
+  // Build category <optgroup> list dynamically from the live CATEGORY_MAP
+  // (no hardcoding — any future category automatically appears here)
+  let catOpts = '<option value="">— assign after QC —</option>';
+  Object.entries(CATEGORY_MAP).forEach(([group, cats]) => {
+    const rows = cats
+      .filter(c => c.value !== '__crime__') // crime has its own flow
+      .map(c => `<option value="${escHtml(c.value)}">${c.icon ? c.icon + ' ' : ''}${escHtml(c.label)}</option>`)
+      .join('');
+    if (rows) catOpts += `<optgroup label="${escHtml(group)}">${rows}</optgroup>`;
+  });
+
+  document.getElementById('fp-tbody').innerHTML = fpItems.map((item, idx) => {
+    const gpsCell = item.hasGps
+      ? `<code style="font-size:10px;color:var(--accent)">${item.lat.toFixed(5)}, ${item.lng.toFixed(5)}</code>`
+      : `<span style="color:var(--amber);font-size:11px">⚠️ No GPS</span>`;
+
+    return `<tr id="fp-row-${idx}" style="${item.skip ? 'opacity:.4' : ''}">
+      <td style="text-align:center">
+        <input type="checkbox" id="fp-skip-${idx}"
+          ${item.skip ? 'checked' : ''}
+          ${!item.hasGps ? 'disabled title="No GPS — cannot place on map"' : 'title="Check to skip this photo"'}
+          onchange="fpToggleSkip(${idx})">
+      </td>
+      <td style="font-family:var(--mono);font-size:10px;word-break:break-all;max-width:180px">
+        Field_${escHtml(item.filename)}
+      </td>
+      <td style="font-family:var(--mono);font-size:10px;white-space:nowrap">
+        ${item.dateStr || '<span style="color:var(--muted)">—</span>'}
+      </td>
+      <td>${gpsCell}</td>
+      <td>
+        <select style="width:100%;background:var(--bg);border:1px solid var(--border);
+          border-radius:4px;padding:3px 5px;color:var(--text);font-size:11px;
+          font-family:var(--font);outline:none;cursor:pointer"
+          onchange="fpSetCat(${idx},this.value)"
+          ${!item.hasGps || item.skip ? 'disabled' : ''}>
+          ${catOpts}
+        </select>
+      </td>
+      <td>
+        <input type="text" placeholder="optional…"
+          style="width:100%;background:var(--bg);border:1px solid var(--border);
+            border-radius:4px;padding:3px 6px;color:var(--text);font-size:11px;
+            font-family:var(--font);outline:none"
+          oninput="fpSetNotes(${idx},this.value)"
+          ${!item.hasGps || item.skip ? 'disabled' : ''}>
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('fp-preview').style.display = 'block';
+  fpUpdateSubmitBtn();
+}
+
+// ── Per-row interaction handlers ──────────────────────────────────
+
+function fpToggleSkip(idx) {
+  const checked = document.getElementById(`fp-skip-${idx}`).checked;
+  fpItems[idx].skip = checked;
+  const row = document.getElementById(`fp-row-${idx}`);
+  if (row) row.style.opacity = checked ? '.4' : '';
+
+  // Enable/disable category + notes inputs
+  const sel = row?.querySelector('select');
+  const inp = row?.querySelector('input[type=text]');
+  if (sel) sel.disabled = checked;
+  if (inp) inp.disabled = checked;
+
+  // Show/hide preview map marker
+  const m = fpItems[idx].previewMarker;
+  if (m) {
+    if (checked) { try { fieldPhotoClusterGroup.removeLayer(m); } catch (_) {} }
+    else { fieldPhotoClusterGroup.addLayer(m); }
+  }
+  fpUpdateSubmitBtn();
+}
+
+function fpSetCat(idx, val)   { fpItems[idx].category = val; }
+function fpSetNotes(idx, val) { fpItems[idx].notes    = val; }
+
+function fpUpdateSubmitBtn() {
+  const n   = fpItems.filter(x => !x.skip && x.hasGps).length;
+  const btn = document.getElementById('fp-submit-btn');
+  if (!btn) return;
+  btn.disabled    = n === 0;
+  btn.textContent = n > 0 ? `Upload ${n} Field Photo Pin${n > 1 ? 's' : ''}` : 'No Photos Ready';
+}
+
+// ── Batch submit ──────────────────────────────────────────────────
+
+async function submitFieldPhotos() {
+  if (!currentUser) { showToast('Must be signed in', 'err'); return; }
+  const toUpload = fpItems.filter(x => !x.skip && x.hasGps);
+  if (!toUpload.length) return;
+
+  const btn = document.getElementById('fp-submit-btn');
+  btn.disabled = true;
+
+  const pw  = document.getElementById('fp-progress-wrap');
+  const pb  = document.getElementById('fp-progress-bar');
+  const pl  = document.getElementById('fp-progress-label');
+  pw.style.display = 'block';
+  pb.style.width   = '0%';
+
+  let ok = 0, fail = 0;
+
+  for (let i = 0; i < toUpload.length; i++) {
+    const item = toUpload[i];
+    pl.textContent = `Uploading ${i + 1} / ${toUpload.length}: Field_${item.filename}…`;
+    pb.style.width = `${Math.round(((i + 1) / toUpload.length) * 100)}%`;
+
+    try {
+      // ── Step 1: Create annotation via RPC (builds PostGIS point) ──
+      const geojson = JSON.stringify({ type: 'Point', coordinates: [item.lng, item.lat] });
+      const pinLabel = `Field_${item.filename.replace(/\.[^.]+$/, '')}`;
+
+      const { error: annErr } = await sb.rpc('insert_annotation', {
+        p_created_by: currentUser.id,
+        p_label:      pinLabel,
+        p_type:       'point',
+        p_geojson:    geojson,
+        p_notes:      item.notes || null,
+      });
+      if (annErr) throw new Error('RPC: ' + annErr.message);
+
+      // ── Step 2: Retrieve the new annotation id ──────────────────
+      const { data: newAnn, error: fetchErr } = await sb.from('map_annotations')
+        .select('id')
+        .eq('created_by', currentUser.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      if (fetchErr || !newAnn?.id) throw new Error('Could not retrieve annotation id');
+      const annId = newAnn.id;
+
+      // ── Step 3: Patch category + source metadata ─────────────────
+      // category starts null if unassigned — admin fills during QC
+      const catPatch = {
+        category:      item.category || null,
+        category_data: { source: 'field_photo', ...(item.dateStr && { field_date: item.dateStr }) },
+        status:        'draft',
+        is_public:     false,
+        is_sensitive:  false,
+      };
+      const { error: catErr } = await sb.from('map_annotations')
+        .update(catPatch).eq('id', annId);
+      if (catErr) throw new Error('Category patch: ' + catErr.message);
+
+      // ── Step 4: Upload photo to Supabase Storage ─────────────────
+      const ext         = item.filename.split('.').pop().toLowerCase() || 'jpg';
+      const storagePath = `field_photos/${annId}/Field_${item.filename}`;
+      const mimeType    = /heic|heif/i.test(ext) ? 'image/heic' : 'image/jpeg';
+
+      const { error: storErr } = await sb.storage.from('crime-photos')
+        .upload(storagePath, item.file, { contentType: item.file.type || mimeType, upsert: false });
+      if (storErr) throw new Error('Storage: ' + storErr.message);
+
+      // ── Step 5: Link photo to annotation in photos table ─────────
+      const { error: photoErr } = await sb.from('photos').insert({
+        uploaded_by:   currentUser.id,
+        storage_path:  storagePath,
+        annotation_id: annId,
+        crime_id:      null,
+        is_public:     false,
+        caption:       `Field photo${item.dateStr ? ' · ' + item.dateStr : ''}`,
+      });
+      if (photoErr) throw new Error('Photos table: ' + photoErr.message);
+
+      ok++;
+    } catch (err) {
+      console.error('[Field Photo] Upload failed:', item.filename, err.message);
+      fail++;
+    }
+  }
+
+  pw.style.display = 'none';
+
+  const skipped = fpItems.filter(x => x.skip || !x.hasGps).length;
+  showToast(
+    ok > 0
+      ? `✓ ${ok} field pin${ok > 1 ? 's' : ''} created${fail ? ' · ' + fail + ' failed' : ''}${skipped ? ' · ' + skipped + ' skipped' : ''}`
+      : `All ${fail} upload${fail > 1 ? 's' : ''} failed — check console`,
+    ok > 0 ? 'ok' : 'err'
+  );
+
+  if (ok > 0) {
+    // Reload annotation layer so new draft pins appear immediately
+    await loadPublicAnnotations();
+    // Auto-enable annotations layer so user sees the new pins right away
+    if (!layerVisible.annotations) {
+      layerVisible.annotations = true;
+      annotationLayerGroup.addTo(map);
+      const sw = document.getElementById('sw-annotations');
+      if (sw) sw.classList.add('on');
+    }
+    closeModal('field-photo-modal');
+    resetFieldPhoto();
+  } else {
+    btn.disabled    = false;
+    btn.textContent = `Retry (${fail} failed)`;
   }
 }
 

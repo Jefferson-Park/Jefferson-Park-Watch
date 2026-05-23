@@ -326,88 +326,57 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
 .leaflet-popup-content { margin:0 !important; min-width:260px; max-width:300px; max-height:70vh; overflow-y:auto; }
 .leaflet-container a.leaflet-popup-close-button { top:8px !important; right:8px !important; }
 
-/* ── Mobile responsive ─────────────────────────────────────────── */
+/* Mobile responsive */
 @media (max-width: 640px) {
-  :root {
-    --sw: 0px;
-    --tb: 56px;   /* topbar height on mobile */
-  }
+  :root { --sw:0px; --tb:60px; } /* Increased top bar height to accommodate address bar */
+  #sidebar { width:280px; transform:translateX(-280px); --sw:280px; }
+  #sidebar.open { transform:translateX(0); }
+  
+  /* Pushes content down on mobile so it doesn't hit the address bar */
+  /* 1. Ensure the topbar has space and sits at the very top */
+#topbar {
+  position: absolute;
+  top: 10px;           /* Gives a tiny bit of breathing room at the top */
+  left: 0;
+  width: 100%;
+  padding-left: 15px;  /* Now you don't need to push text aside for the button */
+  z-index: 1000;
+  height: 50px;
+}
+  
+  #map { left:0 !important; }
+  #bottom-panel { left:0 !important; flex-wrap:wrap; }
+  
+ /* 2. Position the hamburger button BELOW the address bar */
+#sb-toggle {
+  position: absolute;
+  top: 65px;           /* Pushes it below the 50px topbar + 15px gap */
+  left: 10px;
+  z-index: 1005;       /* Stays above everything */
+  border-radius: 8px;
+  background: white;   /* Gives it a clean look below the bar */
+  border: 1px solid var(--border);
+  min-width: 44px;
+  height: 44px;
+}
+  
+  body.sb-open #sb-toggle { left:288px !important; }
+  
+  .leaflet-popup-content { min-width:200px; max-width:calc(100vw - 40px); }
+  .pop-head { padding:10px 34px 8px 10px; }
+  .pop-body { padding:8px 10px; }
+  .pop-desc { font-size:11px; }
+  .leaflet-popup { margin-bottom:20px; }
+  .leaflet-popup-content img { max-height:180px; width:100%; object-fit:cover; }
+}
 
-  /* Sidebar slides in from left as an overlay */
-  #sidebar {
-    width: 280px;
-    transform: translateX(-280px);
-    --sw: 280px;
-    top: 0;
-    bottom: 0;
-    z-index: 1100;  /* above map and topbar */
-  }
-  #sidebar.open { transform: translateX(0); }
-
-  /* Topbar: full width, fixed height, flush to top */
-  #topbar {
-    left: 0 !important;
-    right: 0;
-    top: 0;
-    height: var(--tb);
-    padding: 0 10px;
-    padding-top: env(safe-area-inset-top, 0px);
-    align-items: center;
-    gap: 6px;
-  }
-
-  /* Map: starts below topbar, fills rest of screen */
-  #map {
-    left: 0 !important;
-    top: var(--tb) !important;
-    bottom: 0;
-    right: 0;
-  }
-
-  #bottom-panel { left: 0 !important; flex-wrap: wrap; }
-
-  /* ── Hamburger: bottom-left corner, well away from search bar ── */
-  #sb-toggle {
-    position: fixed;          /* fixed so it never scrolls or shifts */
-    bottom: 24px;
-    left: 12px;
-    top: auto !important;     /* override the default top positioning */
-    z-index: 1200;
-    border-radius: 50%;       /* pill/circle feels natural at bottom */
-    width: 48px;
-    height: 48px;
-    min-width: 48px;
-    padding: 0;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    box-shadow: 0 2px 10px rgba(0,0,0,.18);
-    justify-content: center;
-    /* hide the "Layers" text label on mobile — icon only */
-    font-size: 0;
-    gap: 0;
-  }
-  /* Show only the SVG icon inside the toggle */
-  #sb-toggle svg { width: 18px; height: 18px; }
-
-  /* When sidebar is open, shift hamburger so it's not behind the panel */
-  body.sb-open #sb-toggle {
-    left: 292px;
-  }
-
-  /* Search results drop DOWN from topbar — ensure they clear the bar */
-  #search-results {
-    top: calc(100% + 4px);
-    max-height: 220px;
-    z-index: 1050;
-  }
-
-  /* Popups */
-  .leaflet-popup-content { min-width: 200px; max-width: calc(100vw - 40px); }
-  .pop-head  { padding: 10px 34px 8px 10px; }
-  .pop-body  { padding: 8px 10px; }
-  .pop-desc  { font-size: 11px; }
-  .leaflet-popup { margin-bottom: 20px; }
-  .leaflet-popup-content img { max-height: 180px; width: 100%; object-fit: cover; }
+  /* Popup adjustments */
+  .leaflet-popup-content { min-width:200px; max-width:calc(100vw - 40px); }
+  .pop-head { padding:10px 34px 8px 10px; }
+  .pop-body { padding:8px 10px; }
+  .pop-desc { font-size:11px; }
+  .leaflet-popup { margin-bottom:20px; }
+  .leaflet-popup-content img { max-height:180px; width:100%; object-fit:cover; }
 }
 
 /* Leaflet controls */
@@ -2190,12 +2159,6 @@ function initMap() {
     zoomControl: false,
   });
 
-  // On mobile the map container may not have settled its final dimensions
-  // at the moment Leaflet initializes — force a size recalculation after paint.
-  if (window.innerWidth <= 640) {
-    setTimeout(() => { map.invalidateSize(); }, 100);
-  }
-
   // Zoom control on top-right to avoid hamburger button overlap
   L.control.zoom({ position: 'topright' }).addTo(map);
 
@@ -2231,7 +2194,7 @@ function initMap() {
   annotationLayerGroup = L.layerGroup(); // off by default — user toggles on
   photoLayerGroup      = L.layerGroup(); // off by default
   lapdLayerGroup = L.markerClusterGroup({
-    maxClusterRadius: 25,
+    maxClusterRadius: 40,
     showCoverageOnHover: false,
     spiderfyOnMaxZoom: true,
     disableClusteringAtZoom: 18,
@@ -4117,15 +4080,13 @@ function toggleSidebar() {
   const bp    = document.getElementById('bottom-panel');
   const tog   = document.getElementById('sb-toggle');
   const isMobile = window.innerWidth <= 640;
+  const sw    = isMobile ? '260px' : 'var(--sw)';
 
   if (isMobile) {
-    // Mobile: slide sidebar over map as an overlay
+    // Mobile: slide sidebar over map
     sb.classList.toggle('open');
     const isOpen = sb.classList.contains('open');
-    // Use body class so CSS handles the hamburger shift — don't set inline left
-    document.body.classList.toggle('sb-open', isOpen);
-    tog.style.left = ''; // clear any previously set inline style
-    setTimeout(() => { if (map) map.invalidateSize(); }, 320);
+    tog.style.left = isOpen ? '260px' : '0';
   } else {
     // Desktop: push map content
     sb.classList.toggle('collapsed');
@@ -4135,6 +4096,7 @@ function toggleSidebar() {
     mp.style.left = offset;
     bp.style.left = offset;
     tog.style.left = collapsed ? '0' : 'var(--sw)';
+    // Invalidate map size after transition
     setTimeout(() => { if (map) map.invalidateSize(); }, 320);
   }
 }

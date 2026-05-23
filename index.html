@@ -6532,71 +6532,83 @@ async function doResetPassword() {
 // Reads JPEG APP1 EXIF directly from an ArrayBuffer.
 // Returns { lat, lng, dateStr, hasGps }
 function parseExifGPS(buffer) {
-  const b = new Uint8Array(buffer);
-  function u16(o, le) { return le ? b[o]|(b[o+1]<<8) : (b[o]<<8)|b[o+1]; }
-  function u32(o, le) {
+  // All helpers take an explicit Uint8Array so there is no closure ambiguity
+  // between the outer file buffer `b` and the inner APP1 slice `a`.
+  function u16(arr, o, le) { return le ? arr[o]|(arr[o+1]<<8) : (arr[o]<<8)|arr[o+1]; }
+  function u32(arr, o, le) {
     return le
-      ? (b[o]|(b[o+1]<<8)|(b[o+2]<<16)|(b[o+3]*16777216))
-      : ((b[o]*16777216)|(b[o+1]<<16)|(b[o+2]<<8)|b[o+3]);
+      ? (arr[o]|(arr[o+1]<<8)|(arr[o+2]<<16)|(arr[o+3]*16777216))
+      : ((arr[o]*16777216)|(arr[o+1]<<16)|(arr[o+2]<<8)|arr[o+3]);
   }
-  function rat(o, le) { const n=u32(o,le), d=u32(o+4,le); return d ? n/d : 0; }
+  function rat(arr, o, le) {
+    const n = u32(arr,o,le), d = u32(arr,o+4,le);
+    return d ? n/d : 0;
+  }
 
+  const b = new Uint8Array(buffer);
   let i = 2;
   while (i < b.length - 4) {
-    // Scan for APP1 marker (0xFF 0xE1)
+    // Find APP1 marker 0xFF 0xE1
     if (b[i] === 0xFF && b[i+1] === 0xE1) {
       const segLen = (b[i+2]<<8)|b[i+3];
+      // `a` is the APP1 payload — a fresh Uint8Array with indices starting at 0
       const a = b.slice(i+4, i+2+segLen);
-      // Must start with "Exif\0\0"
+      // Confirm "Exif\0\0" header
       if (a[0]===69&&a[1]===120&&a[2]===105&&a[3]===102) {
-        const t = 6; // TIFF header start
-        const le = a[t] === 0x49; // 'II' = little-endian
-        const ifd0 = t + u32(a, t+4, le);
+        const t  = 6;                      // TIFF header starts after "Exif\0\0"
+        const le = a[t] === 0x49;          // 0x49='I' → little-endian; 0x4D='M' → big-endian
+        const ifd0     = t + u32(a, t+4, le);
         const nEntries = u16(a, ifd0, le);
 
-        let gpsOff=null, exifOff=null;
-        for (let e=0; e<nEntries; e++) {
-          const p = ifd0+2+e*12;
+        let gpsOff = null, exifOff = null;
+        for (let e = 0; e < nEntries; e++) {
+          const p   = ifd0 + 2 + e * 12;
           const tag = u16(a, p, le);
-          if (tag===0x8769) exifOff = u32(a, p+8, le); // Exif SubIFD
-          if (tag===0x8825) gpsOff  = u32(a, p+8, le); // GPS IFD
+          if (tag === 0x8769) exifOff = u32(a, p+8, le); // ExifIFD pointer
+          if (tag === 0x8825) gpsOff  = u32(a, p+8, le); // GPS IFD pointer
         }
 
-        // DateTimeOriginal from ExifIFD (tag 0x9003)
+        // DateTimeOriginal (tag 0x9003) from ExifIFD
         let dateStr = null;
         if (exifOff !== null) {
           const eb = t + exifOff;
           const ne = u16(a, eb, le);
-          for (let e=0; e<ne; e++) {
-            const p = eb+2+e*12;
-            if (u16(a,p,le) === 0x9003) {
+          for (let e = 0; e < ne; e++) {
+            const p = eb + 2 + e * 12;
+            if (u16(a, p, le) === 0x9003) {
               const cnt = u32(a, p+4, le);
               const vo  = t + u32(a, p+8, le);
               let s = '';
-              for (let c=0; c<Math.min(cnt-1,19); c++) s += String.fromCharCode(a[vo+c]);
-              // Convert "YYYY:MM:DD HH:MM:SS" → "YYYY-MM-DD HH:MM:SS"
+              for (let c = 0; c < Math.min(cnt-1, 19); c++) s += String.fromCharCode(a[vo+c]);
               dateStr = s.replace(/^(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3');
             }
           }
         }
 
-        // GPS coordinates
+        // GPS IFD
         if (gpsOff !== null) {
           const gb = t + gpsOff;
           const ng = u16(a, gb, le);
-          let latRef='N', lngRef='E', lat=null, lng=null;
-          for (let e=0; e<ng; e++) {
-            const p  = gb+2+e*12;
+          let latRef = 'N', lngRef = 'E', lat = null, lng = null;
+          for (let e = 0; e < ng; e++) {
+            const p   = gb + 2 + e * 12;
             const tag = u16(a, p, le);
-            const vo  = t + u32(a, p+8, le);
-            if (tag===1) latRef = String.fromCharCode(a[p+8]);
-            if (tag===3) lngRef = String.fromCharCode(a[p+8]);
-            if (tag===2) lat = rat(a,vo,le) + rat(a,vo+8,le)/60 + rat(a,vo+16,le)/3600;
-            if (tag===4) lng = rat(a,vo,le) + rat(a,vo+8,le)/60 + rat(a,vo+16,le)/3600;
+            // Ref tags (1, 3) are ASCII type — value fits inline; first byte at p+8
+            if (tag === 1) latRef = String.fromCharCode(a[p+8]);
+            if (tag === 3) lngRef = String.fromCharCode(a[p+8]);
+            // Rational tags (2, 4) — value offset stored in last 4 bytes of entry
+            if (tag === 2) {
+              const vo = t + u32(a, p+8, le);
+              lat = rat(a,vo,le) + rat(a,vo+8,le)/60 + rat(a,vo+16,le)/3600;
+            }
+            if (tag === 4) {
+              const vo = t + u32(a, p+8, le);
+              lng = rat(a,vo,le) + rat(a,vo+8,le)/60 + rat(a,vo+16,le)/3600;
+            }
           }
-          if (latRef==='S' && lat!==null) lat = -lat;
-          if (lngRef==='W' && lng!==null) lng = -lng;
-          if (lat!==null && lng!==null && !isNaN(lat) && !isNaN(lng)) {
+          if (latRef === 'S' && lat !== null) lat = -lat;
+          if (lngRef === 'W' && lng !== null) lng = -lng;
+          if (lat !== null && lng !== null && !isNaN(lat) && !isNaN(lng)) {
             return { lat, lng, dateStr, hasGps: true };
           }
         }

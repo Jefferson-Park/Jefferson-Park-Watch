@@ -6648,7 +6648,9 @@ async function processFieldPhotoFiles(files) {
     let lat = null, lng = null, dateStr = null, hasGps = false;
     try {
       // exifr lite handles GPS + DateTimeOriginal for JPG and HEIC
-      const tags = await exifr.parse(f, { gps: true, pick: ['DateTimeOriginal', 'DateTime', 'GPSLatitude', 'GPSLongitude'] });
+      // Note: no `pick` option — it strips GPSLatitudeRef/GPSLongitudeRef,
+      // causing longitude to lose its negative sign (West → positive = wrong continent)
+      const tags = await exifr.parse(f, { gps: true });
       if (tags) {
         if (tags.latitude != null && tags.longitude != null) {
           lat = +tags.latitude;

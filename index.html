@@ -398,7 +398,6 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
   .pop-desc  { font-size: 11px; }
   .leaflet-popup { margin-bottom: 20px; }
   .leaflet-popup-content img { max-height: 180px; width: 100%; object-fit: cover; }
-  #fp-pin-panel { top:auto; bottom:60px; right:8px; left:8px; width:auto; max-height:68vh; }
 }
 
 /* Leaflet controls */
@@ -1104,42 +1103,6 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
         </div>
       </div>
 
-      <!-- UNNC Greening Master Plan group (below Social Services) -->
-      <div class="layer-group" id="grp-gmp">
-        <div class="grp-head" onclick="toggleGroup('gmp')">
-          <span>🌿 Greening Master Plan<span class="grp-count" id="cnt-gmp"></span></span>
-          <span class="grp-chevron" id="chv-gmp" style="transform:rotate(-90deg)">▾</span>
-        </div>
-        <div class="grp-body collapsed" id="gb-gmp">
-          <!-- GMP Map link — PM/Admin only, injected by applyRoleUI() -->
-          <div id="gmp-maplink-row" style="display:none;padding:6px 10px 2px">
-            <a id="btn-gmp-map" href="unnc_map.html" target="_blank"
-               style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;
-                      color:var(--accent);text-decoration:none;padding:5px 8px;border-radius:6px;
-                      background:rgba(45,80,22,.12);border:1px solid rgba(45,80,22,.25)">
-              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-              </svg>
-              Open GMP Public Map ↗
-            </a>
-          </div>
-          <!-- Toggle row -->
-          <div class="tog-row" onclick="toggleGMPLayer()">
-            <div class="tog-icon" style="background:rgba(45,80,22,.12)">
-              <span style="font-size:14px">📍</span>
-            </div>
-            <span class="tog-label">Project Sites<span class="tog-sub">From greening_projects table</span></span>
-            <span class="tog-count" id="ct-gmp">0</span>
-            <div class="tog-sw" id="sw-gmp"></div>
-          </div>
-          <!-- Live project list, populated by loadGMPProjects() -->
-          <div id="gmp-project-list" style="padding:0 6px 4px;font-size:10px;color:var(--muted)">
-            <span style="opacity:.5">Loading…</span>
-          </div>
-        </div>
-      </div>
-
       <!-- Internal tools — hidden from public -->
       <div class="layer-group" id="grp-internal">
         <div class="grp-head" onclick="toggleGroup('internal')">
@@ -1209,13 +1172,6 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
     <span>🗺 Drag the pin to the correct location, then click <b>Confirm</b></span>
     <button onclick="confirmMovedPin()" style="padding:5px 12px;background:var(--accent);color:#000;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font)">Confirm</button>
     <button onclick="cancelMovePinMode()" style="padding:5px 10px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer;font-family:var(--font)">Cancel</button>
-  </div>
-
-  <!-- Field Photo QC Pin Popup Panel -->
-  <div id="fp-pin-panel" style="display:none;position:fixed;top:70px;right:16px;width:368px;
-    max-height:calc(100vh - 86px);overflow-y:auto;background:var(--panel);
-    border:1px solid var(--border);border-radius:12px;z-index:2500;
-    box-shadow:0 8px 32px rgba(0,0,0,.55)">
   </div>
 
   <!-- Bottom Panel -->
@@ -2279,10 +2235,6 @@ async function launch() {
   const internalGrp = document.getElementById('grp-internal');
   if (internalGrp) internalGrp.style.display = (isPublic) ? 'none' : 'block';
 
-  // GMP Map ↗ link — PM/Admin only
-  const gmpMapRow = document.getElementById('gmp-maplink-row');
-  if (gmpMapRow) gmpMapRow.style.display = isPM ? 'block' : 'none';
-
   // Draw hint
   if (isOfficer || isPM) {
     const hint = document.getElementById('draw-hint-box');
@@ -3139,9 +3091,9 @@ let attachByCrime = {};  // crime_id      → [photo, …]
 async function loadPublicPhotos() {
   try {
     let data, error;
-    if (userRole === 'admin' || userRole === 'field_officer' || userRole === 'project_manager') {
+    if (userRole === 'admin' || userRole === 'field_officer') {
       ({ data, error } = await sb.from('photos')
-        .select('id, storage_path, caption, is_public, crime_id, annotation_id, uploaded_by'));
+        .select('id, storage_path, caption, is_public, crime_id, annotation_id'));
     } else {
       ({ data, error } = await sb.from('photos')
         .select('id, storage_path, caption, is_public, crime_id, annotation_id')
@@ -3208,8 +3160,7 @@ async function getStorageUrl(storagePath) {
 // ── Build an attachment strip and inject into a container element ──
 // containerId: id of the DOM element to populate
 // attachments: array of photo rows from `photos` table
-// annId: optional annotation id — enables per-item delete for PM/FO/admin
-async function buildAttachmentStrip(containerId, attachments, annId = null) {
+async function buildAttachmentStrip(containerId, attachments) {
   const el = document.getElementById(containerId);
   if (!el) return;
   if (!attachments || !attachments.length) {
@@ -3217,7 +3168,6 @@ async function buildAttachmentStrip(containerId, attachments, annId = null) {
     return;
   }
   el.style.display = 'block';
-  const canDelete = currentUser && ['admin','project_manager','field_officer'].includes(userRole);
   el.innerHTML = `<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:5px">Attachments (${attachments.length})</div>`;
 
   for (const p of attachments) {
@@ -3225,18 +3175,7 @@ async function buildAttachmentStrip(containerId, attachments, annId = null) {
     const isLink = path.startsWith('link://');
     const isPDF  = !isLink && path.toLowerCase().endsWith('.pdf');
     const itemEl = document.createElement('div');
-    itemEl.style.cssText = 'margin-bottom:6px;position:relative';
-    itemEl.id = 'att-item-' + p.id;
-
-    // Delete button — shown for admin/PM/FO
-    const delBtn = canDelete && p.id ? (() => {
-      const btn = document.createElement('button');
-      btn.title = 'Delete attachment';
-      btn.innerHTML = '🗑';
-      btn.style.cssText = 'position:absolute;top:4px;right:4px;z-index:2;background:rgba(0,0,0,.55);border:none;border-radius:4px;color:#fff;font-size:11px;width:22px;height:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0';
-      btn.onclick = (e) => { e.stopPropagation(); deletePhotoInline(p.id, path, containerId, attachments, annId); };
-      return btn;
-    })() : null;
+    itemEl.style.cssText = 'margin-bottom:6px';
 
     if (isLink) {
       const url = path.replace('link://','');
@@ -3246,7 +3185,6 @@ async function buildAttachmentStrip(containerId, attachments, annId = null) {
           color:var(--accent);font-size:11px;text-decoration:none;word-break:break-all">
         🔗 <span>${esc(p.caption || url)}</span>
       </a>`;
-      if (delBtn) itemEl.appendChild(delBtn);
     } else if (isPDF) {
       const url = await getStorageUrl(path);
       if (url) {
@@ -3260,7 +3198,6 @@ async function buildAttachmentStrip(containerId, attachments, annId = null) {
           </svg>
           <span>${esc(p.caption || 'Open PDF')}</span>
         </a>`;
-        if (delBtn) itemEl.appendChild(delBtn);
       }
     } else {
       // Image
@@ -3271,6 +3208,7 @@ async function buildAttachmentStrip(containerId, attachments, annId = null) {
         img.alt = p.caption || 'Photo';
         img.title = p.caption || '';
         img.onclick = () => window.open(url, '_blank');
+        // Fetch as blob to avoid Supabase auth headers causing 400 on public buckets
         fetch(url).then(r => r.blob()).then(blob => { img.src = URL.createObjectURL(blob); }).catch(() => {});
         itemEl.appendChild(img);
         if (p.caption) {
@@ -3279,40 +3217,9 @@ async function buildAttachmentStrip(containerId, attachments, annId = null) {
           cap.textContent = p.caption;
           itemEl.appendChild(cap);
         }
-        if (delBtn) itemEl.appendChild(delBtn);
       }
     }
     el.appendChild(itemEl);
-  }
-}
-
-// ── Delete a photo/attachment inline from a popup strip ───────────
-async function deletePhotoInline(photoId, storagePath, containerId, attachments, annId) {
-  if (!confirm('Delete this attachment? This cannot be undone.')) return;
-  try {
-    if (!storagePath.startsWith('link://')) {
-      const { error: storErr } = await sb.storage.from('crime-photos').remove([storagePath]);
-      if (storErr) console.warn('[deletePhotoInline] storage remove (non-fatal):', storErr.message);
-    }
-    const { error: dbErr } = await sb.from('photos').delete().eq('id', photoId);
-    if (dbErr) throw new Error(dbErr.message);
-
-    showToast('Attachment deleted ✓', 'ok');
-
-    // Update in-memory caches
-    if (annId && attachByAnn[annId]) {
-      attachByAnn[annId] = attachByAnn[annId].filter(p => p.id !== photoId);
-    }
-
-    // Re-render strip with updated list
-    const remaining = attachments.filter(p => p.id !== photoId);
-    const el = document.getElementById(containerId);
-    if (el) { el.innerHTML = ''; await buildAttachmentStrip(containerId, remaining, annId); }
-
-    // Refresh photo layer pins
-    await loadPublicPhotos();
-  } catch(e) {
-    showToast('Delete failed: ' + e.message, 'err');
   }
 }
 
@@ -5092,7 +4999,6 @@ async function onPinDropped(e) {
 let movePinMarker   = null;
 let movePinRecordId   = null;
 let movePinRecordType = null;
-let fpMovePinIdx      = null; // index into fpItems for fp_batch moves
 
 // startMovePinForRecord — called from annotation popup Move Pin button
 // Works on any annotation the user has edit rights to, post-save.
@@ -5167,22 +5073,6 @@ function _activateMovePinMode(lat, lng) {
 async function confirmMovedPin() {
   if (!movePinMarker || !movePinRecordId) { cancelMovePinMode(); return; }
   const { lat, lng } = movePinMarker.getLatLng();
-
-  // ── fp_batch: pre-upload in-memory update only ────────────────
-  if (movePinRecordType === 'fp_batch') {
-    const idx = fpMovePinIdx;
-    if (idx !== null && fpItems[idx]) {
-      fpItems[idx].lat = lat;
-      fpItems[idx].lng = lng;
-      if (fpItems[idx].previewMarker) fpItems[idx].previewMarker.setLatLng([lat, lng]);
-      renderFPTable();
-      showToast('📍 Pin location updated ✓', 'ok');
-    }
-    fpMovePinIdx = null;
-    cancelMovePinMode();
-    if (idx !== null) openFPPinPopup(idx); // reopen with updated coords
-    return;
-  }
 
   let error;
   if (movePinRecordType === 'crime') {
@@ -6638,123 +6528,95 @@ async function doResetPassword() {
 // plot draft pins with spider clustering → batch submit to Supabase
 // ══════════════════════════════════════════════════════════════════
 
-// ── Pure-JS EXIF GPS + Date parser (JPEG + HEIC/HEIF) ────────────
-// Supports iPhone HEIC (default format) and JPEG from any camera.
+// ── Pure-JS EXIF GPS + Date parser (no external library) ─────────
+// Reads JPEG APP1 EXIF directly from an ArrayBuffer.
 // Returns { lat, lng, dateStr, hasGps }
-
-// Shared TIFF IFD parser.  `a` = Uint8Array, `t` = byte offset of
-// the TIFF byte-order mark ('II' or 'MM') within `a`.
-function _parseTIFFBlock(a, t) {
-  if (t + 8 > a.length) return null;
-  function u16(o, le) { return le ? a[o]|(a[o+1]<<8) : (a[o]<<8)|a[o+1]; }
-  function u32(o, le) { return le ? (a[o]|(a[o+1]<<8)|(a[o+2]<<16)|(a[o+3]*16777216)) : ((a[o]*16777216)|(a[o+1]<<16)|(a[o+2]<<8)|a[o+3]); }
-  function rat(o, le)  { const n=u32(o,le), d=u32(o+4,le); return d ? n/d : 0; }
-
-  const le   = a[t] === 0x49; // 'I' = little-endian
-  const ifd0 = t + u32(t+4, le);
-  if (ifd0+2 > a.length) return null;
-  const nEnt = u16(ifd0, le);
-
-  let gpsOff=null, exifOff=null;
-  for (let e=0; e<nEnt; e++) {
-    const p = ifd0+2+e*12; if (p+12>a.length) break;
-    const tag = u16(p, le);
-    if (tag===0x8769) exifOff = u32(p+8, le);
-    if (tag===0x8825) gpsOff  = u32(p+8, le);
-  }
-
-  let dateStr = null;
-  if (exifOff != null) {
-    const eb = t+exifOff; if (eb+2 <= a.length) {
-      const ne = u16(eb, le);
-      for (let e=0; e<ne; e++) {
-        const p = eb+2+e*12; if (p+12>a.length) break;
-        if (u16(p,le) === 0x9003) {
-          const cnt=u32(p+4,le), vo=t+u32(p+8,le);
-          let s=''; for (let c=0; c<Math.min(cnt-1,19) && vo+c<a.length; c++) s+=String.fromCharCode(a[vo+c]);
-          dateStr = s.replace(/^(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3');
-        }
-      }
-    }
-  }
-
-  if (gpsOff != null) {
-    const gb = t+gpsOff; if (gb+2 <= a.length) {
-      const ng = u16(gb, le);
-      let latRef='N', lngRef='E', lat=null, lng=null;
-      for (let e=0; e<ng; e++) {
-        const p = gb+2+e*12; if (p+12>a.length) break;
-        const tag = u16(p, le);
-        if (tag===1) latRef = String.fromCharCode(a[p+8]);
-        if (tag===3) lngRef = String.fromCharCode(a[p+8]);
-        if (tag===2) { const vo=t+u32(p+8,le); lat = rat(vo,le)+rat(vo+8,le)/60+rat(vo+16,le)/3600; }
-        if (tag===4) { const vo=t+u32(p+8,le); lng = rat(vo,le)+rat(vo+8,le)/60+rat(vo+16,le)/3600; }
-      }
-      if (latRef==='S' && lat!=null) lat=-lat;
-      if (lngRef==='W' && lng!=null) lng=-lng;
-      if (lat!=null && lng!=null && !isNaN(lat) && !isNaN(lng))
-        return { lat, lng, dateStr, hasGps: true };
-    }
-  }
-  return { lat:null, lng:null, dateStr, hasGps: false };
-}
-
-// JPEG: scan for APP1 marker 0xFF 0xE1, then parse TIFF block inside it.
 function parseExifGPS(buffer) {
+  // All helpers take an explicit Uint8Array so there is no closure ambiguity
+  // between the outer file buffer `b` and the inner APP1 slice `a`.
+  function u16(arr, o, le) { return le ? arr[o]|(arr[o+1]<<8) : (arr[o]<<8)|arr[o+1]; }
+  function u32(arr, o, le) {
+    return le
+      ? (arr[o]|(arr[o+1]<<8)|(arr[o+2]<<16)|(arr[o+3]*16777216))
+      : ((arr[o]*16777216)|(arr[o+1]<<16)|(arr[o+2]<<8)|arr[o+3]);
+  }
+  function rat(arr, o, le) {
+    const n = u32(arr,o,le), d = u32(arr,o+4,le);
+    return d ? n/d : 0;
+  }
+
   const b = new Uint8Array(buffer);
   let i = 2;
-  while (i < b.length-4) {
-    if (b[i]===0xFF && b[i+1]===0xE1) {
+  while (i < b.length - 4) {
+    // Find APP1 marker 0xFF 0xE1
+    if (b[i] === 0xFF && b[i+1] === 0xE1) {
       const segLen = (b[i+2]<<8)|b[i+3];
-      const a = b.slice(i+4, i+2+segLen); // APP1 payload at index 0
+      // `a` is the APP1 payload — a fresh Uint8Array with indices starting at 0
+      const a = b.slice(i+4, i+2+segLen);
       // Confirm "Exif\0\0" header
       if (a[0]===69&&a[1]===120&&a[2]===105&&a[3]===102) {
-        const result = _parseTIFFBlock(a, 6); // TIFF header is 6 bytes in
-        if (result) return result;
+        const t  = 6;                      // TIFF header starts after "Exif\0\0"
+        const le = a[t] === 0x49;          // 0x49='I' → little-endian; 0x4D='M' → big-endian
+        const ifd0     = t + u32(a, t+4, le);
+        const nEntries = u16(a, ifd0, le);
+
+        let gpsOff = null, exifOff = null;
+        for (let e = 0; e < nEntries; e++) {
+          const p   = ifd0 + 2 + e * 12;
+          const tag = u16(a, p, le);
+          if (tag === 0x8769) exifOff = u32(a, p+8, le); // ExifIFD pointer
+          if (tag === 0x8825) gpsOff  = u32(a, p+8, le); // GPS IFD pointer
+        }
+
+        // DateTimeOriginal (tag 0x9003) from ExifIFD
+        let dateStr = null;
+        if (exifOff !== null) {
+          const eb = t + exifOff;
+          const ne = u16(a, eb, le);
+          for (let e = 0; e < ne; e++) {
+            const p = eb + 2 + e * 12;
+            if (u16(a, p, le) === 0x9003) {
+              const cnt = u32(a, p+4, le);
+              const vo  = t + u32(a, p+8, le);
+              let s = '';
+              for (let c = 0; c < Math.min(cnt-1, 19); c++) s += String.fromCharCode(a[vo+c]);
+              dateStr = s.replace(/^(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3');
+            }
+          }
+        }
+
+        // GPS IFD
+        if (gpsOff !== null) {
+          const gb = t + gpsOff;
+          const ng = u16(a, gb, le);
+          let latRef = 'N', lngRef = 'E', lat = null, lng = null;
+          for (let e = 0; e < ng; e++) {
+            const p   = gb + 2 + e * 12;
+            const tag = u16(a, p, le);
+            // Ref tags (1, 3) are ASCII type — value fits inline; first byte at p+8
+            if (tag === 1) latRef = String.fromCharCode(a[p+8]);
+            if (tag === 3) lngRef = String.fromCharCode(a[p+8]);
+            // Rational tags (2, 4) — value offset stored in last 4 bytes of entry
+            if (tag === 2) {
+              const vo = t + u32(a, p+8, le);
+              lat = rat(a,vo,le) + rat(a,vo+8,le)/60 + rat(a,vo+16,le)/3600;
+            }
+            if (tag === 4) {
+              const vo = t + u32(a, p+8, le);
+              lng = rat(a,vo,le) + rat(a,vo+8,le)/60 + rat(a,vo+16,le)/3600;
+            }
+          }
+          if (latRef === 'S' && lat !== null) lat = -lat;
+          if (lngRef === 'W' && lng !== null) lng = -lng;
+          if (lat !== null && lng !== null && !isNaN(lat) && !isNaN(lng)) {
+            return { lat, lng, dateStr, hasGps: true };
+          }
+        }
       }
     }
     i++;
   }
-  return { lat:null, lng:null, dateStr:null, hasGps:false };
-}
-
-// HEIC/HEIF: scan the file for the literal "Exif\0\0" + TIFF byte-order mark.
-// This works because HEIC always embeds EXIF verbatim as an item extent.
-// Reads up to 3 MB — EXIF item is typically in the first ~500 KB on iPhone.
-function parseHEICExif(buffer) {
-  const b = new Uint8Array(buffer);
-  const limit = Math.min(b.length, 3*1024*1024);
-  for (let i=0; i<limit-12; i++) {
-    // "Exif\0\0" = 45 78 69 66 00 00, then TIFF byte-order 'II' or 'MM'
-    if (b[i]===0x45 && b[i+1]===0x78 && b[i+2]===0x69 && b[i+3]===0x66 &&
-        b[i+4]===0x00 && b[i+5]===0x00 &&
-        (b[i+6]===0x49 || b[i+6]===0x4D)) {
-      const result = _parseTIFFBlock(b, i+6); // pass full buffer; t is absolute offset
-      if (result) return result;
-    }
-  }
-  return { lat:null, lng:null, dateStr:null, hasGps:false };
-}
-
-// Dispatcher: peek at file header, route to HEIC or JPEG parser.
-// HEIC detection: bytes 4-7 == 'ftyp'; brand at bytes 8-11 is heic/heix/mif1/etc.
-async function autoParseExif(file) {
-  try {
-    const peek = new Uint8Array(await file.slice(0, 12).arrayBuffer());
-    const ftyp  = String.fromCharCode(peek[4],peek[5],peek[6],peek[7]);
-    const brand = String.fromCharCode(peek[8],peek[9],peek[10],peek[11]);
-    const isHEIC = ftyp==='ftyp' && /heic|heix|mif1|msf1|heis|avif/i.test(brand);
-    if (isHEIC || /\.(heic|heif)$/i.test(file.name)) {
-      const buf = await file.slice(0, 3*1024*1024).arrayBuffer();
-      return parseHEICExif(buf);
-    }
-    // JPEG / PNG / other — original 256 KB slice is sufficient
-    const buf = await file.slice(0, 262144).arrayBuffer();
-    return parseExifGPS(buf);
-  } catch(err) {
-    console.warn('[autoParseExif]', file.name, err);
-    return { lat:null, lng:null, dateStr:null, hasGps:false };
-  }
+  return { lat: null, lng: null, dateStr: null, hasGps: false };
 }
 
 // ── State ─────────────────────────────────────────────────────────
@@ -6854,19 +6716,17 @@ async function processFieldPhotoFiles(files) {
 
     let lat=null, lng=null, dateStr=null, hasGps=false;
     try {
-      ({ lat, lng, dateStr, hasGps } = await autoParseExif(f));
+      // Read the first 256 KB — EXIF is always in the first few KB of a JPEG
+      const slice = f.slice(0, 262144);
+      const buf   = await slice.arrayBuffer();
+      const parsed = parseExifGPS(buf);
+      ({ lat, lng, dateStr, hasGps } = parsed);
     } catch(err) {
       console.warn('[EXIF] Failed to read', f.name, err);
     }
 
-    const fpIdx = fpItems.length; // capture index before push
-    const item = {
-      file: f, filename: f.name, lat, lng, dateStr, hasGps,
-      skip: !hasGps,
-      label: '',     // editable in popup; falls back to Field_${stem} at upload
-      category: '', catData: {}, status: 'draft', notes: '',
-      previewMarker: null,
-    };
+    const item = { file: f, filename: f.name, lat, lng, dateStr,
+                   hasGps, skip: !hasGps, category: '', notes: '', previewMarker: null };
 
     if (hasGps) {
       const marker = L.circleMarker([lat, lng], {
@@ -6877,7 +6737,6 @@ async function processFieldPhotoFiles(files) {
         `📷 Field_${f.name}${dateStr ? '\n'+dateStr : ''}`,
         { direction: 'top', offset: [0,-10] }
       );
-      marker.on('click', () => openFPPinPopup(fpIdx));
       fieldPhotoClusterGroup.addLayer(marker);
       item.previewMarker = marker;
     }
@@ -6914,14 +6773,20 @@ function renderFPTable() {
     `<span style="color:var(--accent)">✓ ${ready} ready</span>` +
     (flagged ? ` · <span style="color:var(--amber)">⚠️ ${flagged} no GPS — will be skipped</span>` : '');
 
-  // Build table rows
+  // Build category dropdown from live CATEGORY_MAP — no hardcoding
+  let catOpts = '<option value="">— assign after QC —</option>';
+  Object.entries(CATEGORY_MAP).forEach(([group, cats]) => {
+    const rows = cats
+      .filter(c => c.value !== '__crime__')
+      .map(c => `<option value="${escHtml(c.value)}">${c.icon?c.icon+' ':''}${escHtml(c.label)}</option>`)
+      .join('');
+    if (rows) catOpts += `<optgroup label="${escHtml(group)}">${rows}</optgroup>`;
+  });
+
   document.getElementById('fp-tbody').innerHTML = fpItems.map((item, idx) => {
     const gpsCell = item.hasGps
       ? `<code style="font-size:10px;color:var(--accent)">${item.lat.toFixed(5)}, ${item.lng.toFixed(5)}</code>`
       : `<span style="color:var(--amber);font-size:11px">⚠️ No GPS</span>`;
-    const catLabel = item.category && CATEGORY_LOOKUP[item.category]
-      ? `${CATEGORY_LOOKUP[item.category].icon} ${CATEGORY_LOOKUP[item.category].label}`
-      : '';
 
     return `<tr id="fp-row-${idx}" style="${item.skip?'opacity:.4':''}">
       <td style="text-align:center">
@@ -6931,298 +6796,34 @@ function renderFPTable() {
           onchange="fpToggleSkip(${idx})">
       </td>
       <td style="font-family:var(--mono);font-size:10px;word-break:break-all;max-width:175px">
-        ${item.label ? `<div style="font-size:11px;color:var(--text);font-family:var(--font)">${escHtml(item.label)}</div>` : ''}
-        <span style="color:var(--muted)">Field_${escHtml(item.filename)}</span>
-        ${catLabel ? `<div style="font-size:10px;color:var(--accent);margin-top:1px">${escHtml(catLabel)}</div>` : ''}
+        Field_${escHtml(item.filename)}
       </td>
       <td style="font-family:var(--mono);font-size:10px;white-space:nowrap">
         ${item.dateStr||'<span style="color:var(--muted)">—</span>'}
       </td>
       <td>${gpsCell}</td>
-      <td style="text-align:center">
-        <button onclick="openFPPinPopup(${idx})"
-          style="background:var(--bg);border:1px solid var(--border);border-radius:5px;
-            padding:4px 8px;font-size:11px;color:var(--accent);cursor:pointer;
-            font-family:var(--font);white-space:nowrap"
+      <td>
+        <select style="width:100%;background:var(--bg);border:1px solid var(--border);
+          border-radius:4px;padding:3px 5px;color:var(--text);font-size:11px;
+          font-family:var(--font);outline:none;cursor:pointer"
+          onchange="fpSetCat(${idx},this.value)"
           ${(!item.hasGps||item.skip)?'disabled':''}>
-          ✏ Edit
-        </button>
+          ${catOpts}
+        </select>
+      </td>
+      <td>
+        <input type="text" placeholder="optional…"
+          style="width:100%;background:var(--bg);border:1px solid var(--border);
+            border-radius:4px;padding:3px 6px;color:var(--text);font-size:11px;
+            font-family:var(--font);outline:none"
+          oninput="fpSetNotes(${idx},this.value)"
+          ${(!item.hasGps||item.skip)?'disabled':''}>
       </td>
     </tr>`;
   }).join('');
 
   document.getElementById('fp-preview').style.display = 'block';
   fpUpdateSubmitBtn();
-}
-
-// ══════════════════════════════════════════════════════════════════
-// FIELD PHOTO QC PIN POPUP
-// Fixed-panel popup for batch pins — mirrors PM annotation popup
-// but operates on fpItems[] (pre-upload, in-memory only).
-// ══════════════════════════════════════════════════════════════════
-
-let fpPinPanelIdx        = null;  // which fpItems[] slot is open
-let fpPinCurrentCategory = '';    // tracks live category selection in popup
-
-function closeFPPinPanel() {
-  const panel = document.getElementById('fp-pin-panel');
-  if (panel) panel.style.display = 'none';
-  fpPinPanelIdx = null;
-}
-
-function openFPPinPopup(idx) {
-  if (!fpItems[idx]) return;
-  fpPinPanelIdx = idx;
-  const item = fpItems[idx];
-  const panel = document.getElementById('fp-pin-panel');
-  if (!panel) return;
-
-  // Revoke any old object URL to avoid memory leak
-  if (panel._previewURL) { URL.revokeObjectURL(panel._previewURL); panel._previewURL = null; }
-  const previewURL = item.file ? URL.createObjectURL(item.file) : null;
-  if (previewURL) panel._previewURL = previewURL;
-
-  const defaultLabel = `Field_${item.filename.replace(/\.[^.]+$/, '')}`;
-  fpPinCurrentCategory = item.category || '';
-
-  panel.innerHTML = `
-    <div style="padding:12px 14px 10px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:8px">
-      <div style="flex:1;min-width:0">
-        <div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono)">📷 Field Photo QC</div>
-        <div style="font-size:10px;color:var(--muted);margin-top:2px;word-break:break-all;font-family:var(--mono)">${escHtml(item.filename)}</div>
-        <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;align-items:center">
-          ${item.dateStr ? `<span style="font-size:10px;font-family:var(--mono);color:var(--muted)">📅 ${escHtml(item.dateStr)}</span>` : ''}
-          <span id="fpp-coords-display" style="font-size:10px;font-family:var(--mono);${item.hasGps?'color:var(--accent)':'color:var(--amber)'}">
-            ${item.hasGps ? `📍 ${item.lat.toFixed(5)}, ${item.lng.toFixed(5)}` : '⚠ No GPS'}
-          </span>
-        </div>
-      </div>
-      <button onclick="closeFPPinPanel()" title="Close"
-        style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0;line-height:1;flex-shrink:0;margin-top:-2px">×</button>
-    </div>
-
-    ${previewURL ? `
-    <div style="padding:10px 14px 4px">
-      <img src="${previewURL}" onclick="window.open('${previewURL}','_blank')"
-        style="width:100%;max-height:240px;object-fit:cover;border-radius:8px;cursor:zoom-in;
-          border:1px solid var(--border);display:block">
-      <div style="font-size:9px;color:var(--muted);margin-top:3px;text-align:center;font-family:var(--mono)">click to enlarge</div>
-    </div>` : `<div style="padding:10px 14px 4px;font-size:11px;color:var(--muted);text-align:center">No preview available</div>`}
-
-    <div style="padding:10px 14px 0">
-
-      <div style="margin-bottom:10px">
-        <label style="display:block;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Label</label>
-        <input id="fpp-label" type="text" value="${escHtml(item.label || defaultLabel)}"
-          style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;
-            padding:8px 10px;color:var(--text);font-size:12px;font-family:var(--font);
-            outline:none;box-sizing:border-box">
-      </div>
-
-      <div style="margin-bottom:10px">
-        <label style="display:block;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Category</label>
-        <div id="fpp-cat-picker"></div>
-      </div>
-
-      <div id="fpp-dynamic-fields" style="margin-bottom:10px"></div>
-
-      <div style="margin-bottom:10px">
-        <label style="display:block;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Status</label>
-        <select id="fpp-status"
-          style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;
-            padding:8px 10px;color:var(--text);font-size:12px;font-family:var(--font);outline:none">
-          <option value="draft"    ${(item.status||'draft')==='draft'    ?'selected':''}>🟡 Draft</option>
-          <option value="approved" ${item.status==='approved'            ?'selected':''}>🟢 Approved</option>
-        </select>
-      </div>
-
-      <div style="margin-bottom:12px">
-        <label style="display:block;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Notes</label>
-        <textarea id="fpp-notes" placeholder="Field observations…"
-          style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;
-            padding:8px 10px;color:var(--text);font-size:12px;font-family:var(--font);
-            outline:none;resize:vertical;min-height:72px;box-sizing:border-box">${escHtml(item.notes||'')}</textarea>
-      </div>
-
-    </div>
-
-    <div style="padding:8px 14px 14px;display:flex;gap:8px;border-top:1px solid var(--border)">
-      ${item.hasGps ? `
-      <button onclick="startFPBatchMovePin(${idx})"
-        style="background:rgba(240,165,0,.1);border:1px solid #f0a500;border-radius:6px;
-          padding:9px 11px;font-size:12px;color:#f0a500;cursor:pointer;font-family:var(--font);
-          white-space:nowrap;flex-shrink:0">📍 Adjust Location</button>` : ''}
-      <button onclick="saveFPPinPopup()"
-        style="flex:1;background:var(--accent);color:#000;border:none;border-radius:6px;
-          padding:9px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font)">
-        ✓ Save Pin</button>
-    </div>
-  `;
-
-  _buildFPCategoryPicker(idx);
-  _buildFPDynamicSubfields(item.category || null, item.catData || {});
-  panel.style.display = 'block';
-
-  // Fly map to this pin
-  if (item.hasGps) {
-    try { map.flyTo([item.lat, item.lng], Math.max(map.getZoom(), 18), { duration: 0.5 }); } catch(_) {}
-  }
-}
-
-// Build category grid (PM/admin) or select (FO) inside popup
-function _buildFPCategoryPicker(idx) {
-  const container = document.getElementById('fpp-cat-picker');
-  if (!container) return;
-  const item  = fpItems[idx];
-  const isPM  = (userRole === 'admin' || userRole === 'project_manager');
-  container.innerHTML = '';
-
-  if (isPM) {
-    const grid = document.createElement('div');
-    grid.style.cssText = 'display:grid;grid-template-columns:repeat(2,1fr);gap:4px';
-    Object.entries(CATEGORY_MAP).forEach(([group, cats]) => {
-      const filtered = cats.filter(c => c.value !== '__crime__');
-      if (!filtered.length) return;
-      const lbl = document.createElement('div');
-      lbl.style.cssText = 'grid-column:1/-1;font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;padding:5px 0 2px;font-family:var(--mono)';
-      lbl.textContent = group;
-      grid.appendChild(lbl);
-      filtered.forEach(cat => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.dataset.val = cat.value;
-        btn.innerHTML = `${cat.icon||''} <span style="font-size:11px">${cat.label}</span>`;
-        btn.style.cssText = 'display:flex;align-items:center;gap:4px;padding:5px 7px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);cursor:pointer;font-family:var(--font);transition:all .12s;text-align:left;width:100%';
-        if (cat.value === (item.category || '')) {
-          btn.style.borderColor = cat.color || 'var(--accent)';
-          btn.style.background  = (cat.color || '#5B7A47') + '18';
-        }
-        btn.onclick = () => {
-          grid.querySelectorAll('button').forEach(b => { b.style.borderColor='var(--border)'; b.style.background='var(--bg)'; });
-          btn.style.borderColor = cat.color || 'var(--accent)';
-          btn.style.background  = (cat.color || '#5B7A47') + '18';
-          fpPinCurrentCategory  = cat.value;
-          _buildFPDynamicSubfields(cat.value, {});
-        };
-        grid.appendChild(btn);
-      });
-    });
-    container.appendChild(grid);
-  } else {
-    // Field officer — dropdown
-    const sel = document.createElement('select');
-    sel.style.cssText = 'width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);font-size:12px;font-family:var(--font);outline:none';
-    const blank = document.createElement('option');
-    blank.value = ''; blank.textContent = '— assign category —';
-    sel.appendChild(blank);
-    Object.entries(CATEGORY_MAP).forEach(([group, cats]) => {
-      const og = document.createElement('optgroup');
-      og.label = group;
-      cats.filter(c=>c.value!=='__crime__').forEach(cat => {
-        const opt = document.createElement('option');
-        opt.value = cat.value;
-        opt.textContent = `${cat.icon||''} ${cat.label}`;
-        if (cat.value === (item.category||'')) opt.selected = true;
-        og.appendChild(opt);
-      });
-      sel.appendChild(og);
-    });
-    sel.onchange = () => {
-      fpPinCurrentCategory = sel.value;
-      _buildFPDynamicSubfields(sel.value, {});
-    };
-    container.appendChild(sel);
-  }
-}
-
-// Build dynamic subfields for selected category (reuses mf-grid pattern)
-function _buildFPDynamicSubfields(catVal, existingData) {
-  const dynEl = document.getElementById('fpp-dynamic-fields');
-  if (!dynEl) return;
-  dynEl.innerHTML = '';
-  const cat = CATEGORY_LOOKUP[catVal];
-  if (!cat || !cat.fields || !cat.fields.length) return;
-
-  const grid = document.createElement('div');
-  grid.className = 'mf-grid';
-  cat.fields.forEach(f => {
-    const wrap = document.createElement('div');
-    wrap.className = 'mf' + (f.wide ? ' mf-full' : '');
-    const lbl = document.createElement('label');
-    lbl.textContent = f.label;
-    wrap.appendChild(lbl);
-    let input;
-    if (f.type === 'select') {
-      input = document.createElement('select');
-      input.innerHTML = f.options.map(o =>
-        `<option value="${o}"${existingData[f.id]===o?' selected':''}>${o}</option>`
-      ).join('');
-    } else if (f.type === 'textarea') {
-      input = document.createElement('textarea');
-      input.placeholder = f.placeholder || '';
-      input.style.minHeight = '60px';
-      input.value = existingData[f.id] || '';
-    } else {
-      input = document.createElement('input');
-      input.type = 'text';
-      input.placeholder = f.placeholder || '';
-      input.value = existingData[f.id] || '';
-    }
-    input.id = 'fpp-catf-' + f.id;
-    input.style.cssText = 'width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);font-size:12px;font-family:var(--font);outline:none';
-    wrap.appendChild(input);
-    grid.appendChild(wrap);
-  });
-  dynEl.appendChild(grid);
-}
-
-// Save popup values back to fpItems[fpPinPanelIdx]
-function saveFPPinPopup() {
-  if (fpPinPanelIdx === null) return;
-  const item = fpItems[fpPinPanelIdx];
-  if (!item) return;
-
-  item.label    = (document.getElementById('fpp-label')?.value || '').trim();
-  item.category = fpPinCurrentCategory || '';
-  item.status   = document.getElementById('fpp-status')?.value || 'draft';
-  item.notes    = (document.getElementById('fpp-notes')?.value || '').trim();
-
-  // Collect dynamic subfield values
-  const cat    = CATEGORY_LOOKUP[item.category];
-  const catData = {};
-  if (cat && cat.fields) {
-    cat.fields.forEach(f => {
-      const el = document.getElementById('fpp-catf-' + f.id);
-      if (el) catData[f.id] = el.value;
-    });
-  }
-  item.catData = catData;
-
-  // Update tooltip on the map marker
-  if (item.previewMarker) {
-    const catObj = CATEGORY_LOOKUP[item.category];
-    const catLabel = catObj ? ` · ${catObj.icon||''} ${catObj.label}` : '';
-    item.previewMarker.setTooltipContent(
-      `📷 ${item.label || 'Field_'+item.filename}${catLabel}${item.dateStr?'\n'+item.dateStr:''}`
-    );
-  }
-
-  renderFPTable();
-  closeFPPinPanel();
-  showToast(`✓ Saved: ${item.label || item.filename}`, 'ok');
-}
-
-// Trigger move-pin mode for a pre-upload batch item
-function startFPBatchMovePin(idx) {
-  fpMovePinIdx      = idx;
-  movePinRecordType = 'fp_batch';
-  movePinRecordId   = 'fp_batch'; // sentinel — confirms fp_batch branch in confirmMovedPin
-  closeFPPinPanel();
-  const item = fpItems[idx];
-  _activateMovePinMode(
-    item.lat ?? map.getCenter().lat,
-    item.lng ?? map.getCenter().lng
-  );
 }
 
 function fpToggleSkip(idx) {
@@ -7280,7 +6881,7 @@ async function submitFieldPhotos() {
     try {
       // Step 1: create annotation via RPC (PostGIS Point)
       const geojson = JSON.stringify({ type:'Point', coordinates:[item.lng, item.lat] });
-      const label   = item.label || `Field_${item.filename.replace(/\.[^.]+$/, '')}`;
+      const label   = `Field_${item.filename.replace(/\.[^.]+$/, '')}`;
 
       const { error: rpcErr } = await sb.rpc('insert_annotation', {
         p_created_by: currentUser.id,
@@ -7301,15 +6902,11 @@ async function submitFieldPhotos() {
       if (fetchErr || !newAnn?.id) throw new Error('Could not retrieve annotation id');
       const annId = newAnn.id;
 
-      // Step 3: patch category + metadata
+      // Step 3: patch category + metadata (category null = filled during QC)
       const { error: catErr } = await sb.from('map_annotations').update({
         category:      item.category || null,
-        category_data: {
-          source: 'field_photo',
-          ...(item.dateStr      && { field_date: item.dateStr }),
-          ...(item.catData      && Object.keys(item.catData).length && item.catData),
-        },
-        status:        item.status || 'draft',
+        category_data: { source:'field_photo', ...(item.dateStr && { field_date: item.dateStr }) },
+        status:        'draft',
         is_public:     false,
         is_sensitive:  false,
       }).eq('id', annId);
@@ -7385,113 +6982,6 @@ async function submitFieldPhotos() {
   const { data: { session } } = await sb.auth.getSession();
   if (session?.user) { currentUser = session.user; await loadRole(); launch(); }
 })();
-// ══════════════════════════════════════════════════════════════════
-// UNNC GREENING MASTER PLAN — lightweight layer in index.html
-// Reads from greening_projects Supabase table.
-// PM/Admin see the GMP Map ↗ link; all logged-in users see project markers.
-// ══════════════════════════════════════════════════════════════════
-let gmpLayerGroup   = null;
-let gmpProjects     = [];          // cached Supabase rows
-let gmpLayerVisible = false;
-
-// Marker factory — small green diamond pin
-function makeGMPMarker(proj) {
-  const icon = L.divIcon({
-    className: '',
-    html: `<div style="width:14px;height:14px;background:#2D5016;border:2px solid #fff;
-                        border-radius:3px;transform:rotate(45deg);
-                        box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>`,
-    iconSize: [14, 14],
-    iconAnchor: [7, 7],
-  });
-  const m = L.marker([proj.lat, proj.lng], { icon, zIndexOffset: 500 });
-  const statusColor = { planning:'#8B6914', active:'#2D5016', complete:'#1a7a3c', paused:'#7B3F00' };
-  const col = statusColor[proj.status] || '#555';
-  m.bindPopup(`
-    <div style="min-width:200px;font-family:var(--mono,monospace)">
-      <div style="font-weight:700;font-size:13px;margin-bottom:4px">🌿 ${proj.name}</div>
-      <div style="font-size:10px;color:${col};font-weight:600;text-transform:uppercase;
-                  background:${col}22;padding:1px 5px;border-radius:3px;display:inline-block;
-                  margin-bottom:5px">${proj.status || 'unknown'}</div>
-      ${proj.region ? `<div style="font-size:10px;color:#888;margin-bottom:3px">📍 ${proj.region}</div>` : ''}
-      ${proj.funding_source ? `<div style="font-size:10px;margin-bottom:2px">💰 ${proj.funding_source}${proj.amount ? ' — $'+Number(proj.amount).toLocaleString() : ''}</div>` : ''}
-      ${proj.wosip_goals?.length ? `<div style="font-size:10px;margin-bottom:2px">🎯 WOSIP: ${proj.wosip_goals.join(', ')}</div>` : ''}
-      ${proj.partners?.length ? `<div style="font-size:10px;color:#666">🤝 ${proj.partners.join(', ')}</div>` : ''}
-      ${proj.notes ? `<div style="font-size:10px;margin-top:5px;color:#555;border-top:1px solid #eee;padding-top:4px">${proj.notes}</div>` : ''}
-    </div>
-  `, { maxWidth: 260 });
-  return m;
-}
-
-async function loadGMPProjects() {
-  const list = document.getElementById('gmp-project-list');
-  const cnt  = document.getElementById('ct-gmp');
-  try {
-    const { data, error } = await sb
-      .from('greening_projects')
-      .select('id,name,region,status,wosip_goals,funding_source,amount,lat,lng,partners,notes')
-      .order('name');
-    if (error) throw error;
-    gmpProjects = data || [];
-    const n = gmpProjects.length;
-    if (cnt) cnt.textContent = n;
-    const cntBadge = document.getElementById('cnt-gmp');
-    if (cntBadge) cntBadge.textContent = n ? ' ' + n : '';
-    // Render mini list
-    if (list) {
-      if (!n) {
-        list.innerHTML = '<span style="opacity:.5">No projects yet</span>';
-      } else {
-        const statusDot = { planning:'🟡', active:'🟢', complete:'🔵', paused:'🟠' };
-        list.innerHTML = gmpProjects.map(p =>
-          `<div style="padding:3px 4px;border-radius:4px;cursor:pointer;display:flex;gap:5px;align-items:baseline"
-                onclick="gmpFlyTo(${p.lat},${p.lng},'${(p.name||'').replace(/'/g,"\'")}')">
-            <span>${statusDot[p.status]||'⚪'}</span>
-            <span style="font-size:10px;color:var(--text)">${p.name}</span>
-          </div>`
-        ).join('');
-      }
-    }
-    // If layer is visible, refresh markers
-    if (gmpLayerGroup && gmpLayerVisible) {
-      gmpLayerGroup.clearLayers();
-      gmpProjects.forEach(p => gmpLayerGroup.addLayer(makeGMPMarker(p)));
-    }
-  } catch(e) {
-    console.warn('GMP projects load error:', e.message);
-    if (list) list.innerHTML = `<span style="color:var(--danger);opacity:.7">${e.message}</span>`;
-  }
-}
-
-function toggleGMPLayer() {
-  if (!gmpLayerGroup) {
-    gmpLayerGroup = L.layerGroup();
-    gmpLayerGroup.addTo(map);
-  }
-  gmpLayerVisible = !gmpLayerVisible;
-  const sw = document.getElementById('sw-gmp');
-  if (gmpLayerVisible) {
-    gmpLayerGroup.clearLayers();
-    gmpProjects.forEach(p => gmpLayerGroup.addLayer(makeGMPMarker(p)));
-    gmpLayerGroup.addTo(map);
-    if (sw) sw.classList.add('on');
-  } else {
-    gmpLayerGroup.clearLayers();
-    map.removeLayer(gmpLayerGroup);
-    if (sw) sw.classList.remove('on');
-  }
-}
-
-function gmpFlyTo(lat, lng, name) {
-  map.flyTo([lat, lng], 17, { duration: 0.8 });
-}
-
-// Load projects on startup (data is tiny — no egress concern)
-document.addEventListener('DOMContentLoaded', () => {
-  // Defer until Supabase client is ready (sb is initialised synchronously after DOMContentLoaded)
-  setTimeout(loadGMPProjects, 800);
-});
-
 </script>
 </body>
 </html>

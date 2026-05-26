@@ -2031,12 +2031,13 @@ async function renderPhotos(photos) {
     </div>`;
   }).join('');
 
-  // Load signed URLs for images in parallel
+  // Load signed URLs for images in parallel.
+  // Guard: skip if imgEl already has a src — avoids re-downloading on every re-render.
   await Promise.all(photos.map(async p => {
     const path = p.storage_path || '';
     if (path.startsWith('link://') || path.toLowerCase().endsWith('.pdf')) return;
     const imgEl = document.querySelector(`img[data-path="${path}"]`);
-    if (!imgEl) return;
+    if (!imgEl || imgEl.src) return;   // ← skip if already loaded
     const {data} = await sb.storage.from('crime-photos').createSignedUrl(path, 3600);
     if (data?.signedUrl) imgEl.src = data.signedUrl;
   }));
@@ -2072,8 +2073,42 @@ async function togglePhotoPublic(id, current) {
     return;
   }
 
-  showToast(newVal ? '🌐 Photo is now public' : '🔒 Photo made private','ok');
-  await loadPhotos();
+  // ── Surgical local-state update — no loadPhotos() re-fetch ──────────────
+  // 1. Patch allPhotos in place
+  const idx = allPhotos.findIndex(p => p.id === id);
+  if (idx !== -1) allPhotos[idx].is_public = newVal;
+
+  // 2. Patch the DOM card directly — no signed URL churn, no grid rebuild
+  const sw    = document.getElementById(`photo-sw-${id}`);
+  const card  = document.getElementById(`pcard-${id}`);
+  if (sw) {
+    sw.classList.toggle('on', newVal);
+    // Update the adjacent visibility label (next element after the switch)
+    const label = sw.nextElementSibling;
+    if (label) {
+      label.textContent = newVal ? '🌐 Public' : '🔒 Private';
+      label.style.color = newVal ? 'var(--accent)' : 'var(--muted)';
+    }
+    // Update the onclick attribute so the next click passes the new value
+    sw.setAttribute('onclick', `togglePhotoPublic('${id}',${newVal})`);
+  }
+  // Also patch the onclick on any parent tog-row that proxies the same call
+  if (card) {
+    const allSwitches = card.querySelectorAll(`[onclick*="togglePhotoPublic"]`);
+    allSwitches.forEach(el => {
+      if (el !== sw) el.setAttribute('onclick', `togglePhotoPublic('${id}',${newVal})`);
+    });
+  }
+
+  // 3. If the current filter is visibility-specific, the card may need to hide/show.
+  //    Re-run filterPhotos only when visibility filter is active — it reads allPhotos[]
+  //    (already patched above) and re-renders without hitting Supabase.
+  const visF = document.getElementById('photos-filter-vis')?.value;
+  if (visF === 'public' || visF === 'private') {
+    filterPhotos(); // cheap client-side re-filter, no network call
+  }
+
+  showToast(newVal ? '🌐 Photo is now public' : '🔒 Photo made private', 'ok');
 }
 
 async function deletePhoto(id,path){

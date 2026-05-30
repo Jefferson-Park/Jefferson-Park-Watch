@@ -364,6 +364,10 @@ tbody td{padding:7px 10px;vertical-align:middle}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
         Public Reports <span class="cnt" id="cnt-obs" style="background:rgba(45,139,255,.2);color:var(--blue)">—</span>
       </div>
+      <div class="ntab" onclick="showTab('gmp')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+        GMP Projects <span class="cnt" id="cnt-gmp">—</span>
+      </div>
     </div>
 
     <div class="nav-r">
@@ -386,6 +390,7 @@ tbody td{padding:7px 10px;vertical-align:middle}
       <button class="maptb-btn" id="mb-parcel" onclick="toggleParcelLayer()">📋 Parcels</button>
       <button class="maptb-btn" id="mb-slo" onclick="toggleMapLayer('slo')">▭ SLO</button>
       <button class="maptb-btn" id="mb-unnc" onclick="toggleMapLayer('unnc')">▭ UNNC</button>
+      <button class="maptb-btn" id="mb-gmp" onclick="toggleGMPAdminLayer()">🌿 GMP</button>
       <button class="maptb-btn" onclick="fitAllData()">⊙ Fit All</button>
       <button class="maptb-btn" onclick="clearAllStars()" style="color:#fbbf24">★ Clear Stars</button>
     </div>
@@ -396,6 +401,14 @@ tbody td{padding:7px 10px;vertical-align:middle}
       <span>🗺 Drag the pin to the correct location</span>
       <button onclick="confirmAdminMovePin()" style="padding:5px 12px;background:var(--accent);color:#000;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font)">Confirm</button>
       <button onclick="cancelAdminMovePin()" style="padding:5px 10px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer;font-family:var(--font)">Cancel</button>
+    </div>
+    <!-- Move Pin confirm bar — GMP Projects -->
+    <div id="gmp-move-pin-bar" style="display:none;position:absolute;bottom:12px;left:50%;transform:translateX(-50%);z-index:1001;
+      background:var(--panel);border:1px solid var(--green);border-radius:8px;padding:8px 14px;
+      font-size:12px;color:var(--green);align-items:center;gap:10px;box-shadow:0 4px 16px rgba(0,0,0,.5)">
+      <span>🌿 Drag the pin to the correct location</span>
+      <button onclick="confirmGMPMovePin()" style="padding:5px 12px;background:var(--green);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font)">Confirm</button>
+      <button onclick="cancelGMPMovePin()" style="padding:5px 10px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer;font-family:var(--font)">Cancel</button>
     </div>
     <!-- Move Pin confirm bar — Crimes -->
     <div id="crime-move-pin-bar" style="display:none;position:absolute;bottom:12px;left:50%;transform:translateX(-50%);z-index:1001;
@@ -599,6 +612,43 @@ tbody td{padding:7px 10px;vertical-align:middle}
       <div id="obs-grid" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;min-height:0"></div>
     </div>
 
+    <!-- GMP PROJECTS TAB -->
+    <div class="tab-pane" id="tab-gmp">
+      <div class="tbar">
+        <h3>Greening Master Plan</h3>
+        <span class="tbar-count" id="gmp-tcount"></span>
+        <input class="tf tf-search" id="gmp-search" placeholder="Search name, region, status…" oninput="filterGMP()" style="width:200px">
+        <select class="tf" id="gmp-filter-status" onchange="filterGMP()" style="width:130px">
+          <option value="">All statuses</option>
+          <option value="planning">🟡 Planning</option>
+          <option value="active">🟢 Active</option>
+          <option value="complete">🔵 Complete</option>
+          <option value="paused">🟠 Paused</option>
+        </select>
+        <div class="tbar-spacer"></div>
+        <button class="btn btn-accent" onclick="openGMPModal(null)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add Project
+        </button>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th onclick="sortGMP('name')">Name</th>
+            <th onclick="sortGMP('region')">Region</th>
+            <th onclick="sortGMP('status')">Status</th>
+            <th>WOSIP Goals</th>
+            <th onclick="sortGMP('funding_source')">Funding</th>
+            <th onclick="sortGMP('amount')">Amount</th>
+            <th>Lat</th><th>Lng</th>
+            <th onclick="sortGMP('created_at')">Added</th>
+            <th>Actions</th>
+          </tr></thead>
+          <tbody id="gmp-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
   </div><!-- #data-panel -->
 </div><!-- #app -->
 
@@ -730,6 +780,50 @@ tbody td{padding:7px 10px;vertical-align:middle}
         📍 Move Pin
       </button>
       <button class="btn btn-accent" onclick="saveEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- GMP Edit/Add Modal -->
+<div id="gmp-modal" style="position:fixed;inset:0;z-index:5200;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center">
+  <div class="em" style="width:560px">
+    <div class="em-title" id="gmp-modal-title">Add GMP Project</div>
+    <input type="hidden" id="gmp-modal-id">
+    <div class="em-grid">
+      <div class="em-f full"><label>Project Name *</label><input type="text" id="gmp-name" placeholder="e.g. Vermont Corridor Tree Planting"></div>
+      <div class="em-f">
+        <label>Status *</label>
+        <select id="gmp-status" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 9px;color:var(--text);font-size:12px;font-family:var(--font);outline:none">
+          <option value="planning">🟡 Planning</option>
+          <option value="active">🟢 Active</option>
+          <option value="complete">🔵 Complete</option>
+          <option value="paused">🟠 Paused</option>
+        </select>
+      </div>
+      <div class="em-f"><label>Region</label><input type="text" id="gmp-region" placeholder="e.g. North, West, Central"></div>
+      <div class="em-f"><label>Funding Source</label><input type="text" id="gmp-funding" placeholder="e.g. Urban Forestry Grant"></div>
+      <div class="em-f"><label>Amount ($)</label><input type="number" id="gmp-amount" placeholder="0" min="0" step="1"></div>
+      <div class="em-f full"><label>WOSIP Goals <span style="font-weight:400;color:var(--muted)">(comma-separated numbers, e.g. 1,3,5)</span></label><input type="text" id="gmp-wosip" placeholder="e.g. 1,2,4"></div>
+      <div class="em-f full"><label>Partners <span style="font-weight:400;color:var(--muted)">(comma-separated)</span></label><input type="text" id="gmp-partners" placeholder="e.g. LA Sanitation, TreePeople"></div>
+      <div class="em-f full"><label>Notes</label><textarea id="gmp-notes" style="min-height:70px" placeholder="Project details, timeline, contacts…"></textarea></div>
+      <div class="em-f">
+        <label>Latitude *</label>
+        <input type="number" id="gmp-lat" placeholder="34.028…" step="any">
+      </div>
+      <div class="em-f">
+        <label>Longitude *</label>
+        <input type="number" id="gmp-lng" placeholder="-118.334…" step="any">
+      </div>
+    </div>
+    <div style="margin-top:10px;padding:8px 10px;background:rgba(45,139,58,.07);border:1px solid rgba(45,139,58,.2);border-radius:6px;font-size:11px;color:var(--muted)">
+      💡 <strong style="color:var(--text)">Tip:</strong> Save first, then use <em>Move Pin</em> to drag it to the exact location on the map.
+    </div>
+    <div class="em-footer">
+      <button class="btn" onclick="closeGMPModal()">Cancel</button>
+      <button class="btn" id="gmp-move-pin-btn" onclick="startGMPMovePin()" style="color:var(--green);border-color:var(--green);display:none">
+        🌿 Move Pin
+      </button>
+      <button class="btn btn-accent" onclick="saveGMPProject()">Save Project</button>
     </div>
   </div>
 </div>
@@ -896,6 +990,14 @@ const COLORS = {
 // Marker reference by crime id for map highlight
 const markerById = {};
 
+// ── GMP state ────────────────────────────────────────
+let allGMP = [], filteredGMP = [];
+let gmpSortCol = 'name', gmpSortDir = 1;
+let gmpLayerGrp = null;        // Leaflet layer group for admin GMP pins
+let gmpAdminLayerOn = false;
+let gmpMovePinMarker = null;   // draggable marker during move-pin mode
+let gmpMovePinId = null;       // UUID of project being repositioned
+
 // ══════════════════════════════════════════════════════
 // AUTH
 // ══════════════════════════════════════════════════════
@@ -952,6 +1054,7 @@ function initMap() {
   crimeCluster = L.layerGroup(); // NOT added to map by default — crimes off
   annLayerGrp  = L.layerGroup().addTo(adminMap);
   obsLayerGrp  = L.layerGroup(); // public_comments pins — off by default
+  gmpLayerGrp  = L.layerGroup(); // GMP project pins — off by default
   sloLayerGrp  = L.layerGroup();
   unncLayerGrp = L.layerGroup();
 
@@ -2177,9 +2280,15 @@ function showTab(name) {
   document.querySelectorAll('.tab-pane').forEach(el=>el.classList.remove('active'));
   document.querySelectorAll('.ntab').forEach(el=>el.classList.remove('active'));
   document.getElementById('tab-'+name).classList.add('active');
-  const idx={crimes:0,annotations:1,photos:2,users:3,observations:4}[name]??0;
+  const idx={crimes:0,annotations:1,photos:2,users:3,observations:4,gmp:5}[name]??0;
   document.querySelectorAll('.ntab')[idx]?.classList.add('active');
   if (name === 'observations') filterObs();
+  if (name === 'gmp') {
+    if (!allGMP.length) loadGMPProjects();
+    else filterGMP();
+    // Show GMP layer on map when tab is opened
+    if (!gmpAdminLayerOn) toggleGMPAdminLayer();
+  }
 }
 
 // ══════════════════════════════════════════════════════
@@ -2994,6 +3103,305 @@ function exportObsCSV() {
   const suffix = filteredObservations.length < allObservations.length ? '_filtered' : '';
   downloadCSV(`jefferson_park_public_reports${suffix}_${today()}.csv`, csv);
   showToast(`Exported ${rows.length}${rows.length < allObservations.length ? ' of '+allObservations.length : ''} public reports`, 'ok');
+}
+
+// ══════════════════════════════════════════════════════
+// GMP PROJECTS — CRUD + MAP LAYER
+// ══════════════════════════════════════════════════════
+
+// ── Load ─────────────────────────────────────────────
+async function loadGMPProjects() {
+  const { data, error } = await sb
+    .from('greening_projects')
+    .select('id,name,region,status,wosip_goals,funding_source,amount,lat,lng,partners,notes,created_at')
+    .order('name');
+  if (error) { showToast('Error loading GMP: ' + error.message, 'err'); return; }
+  allGMP = data || [];
+  document.getElementById('cnt-gmp').textContent = allGMP.length;
+  filterGMP();
+  renderGMPMarkers();
+}
+
+// ── Filter & Sort ─────────────────────────────────────
+function filterGMP() {
+  const s  = document.getElementById('gmp-search').value.toLowerCase();
+  const st = document.getElementById('gmp-filter-status').value;
+  filteredGMP = allGMP.filter(p =>
+    (!s  || (p.name||'').toLowerCase().includes(s) ||
+             (p.region||'').toLowerCase().includes(s) ||
+             (p.funding_source||'').toLowerCase().includes(s)) &&
+    (!st || p.status === st)
+  );
+  filteredGMP.sort((a, b) => {
+    const va = a[gmpSortCol] ?? '', vb = b[gmpSortCol] ?? '';
+    return va < vb ? -gmpSortDir : va > vb ? gmpSortDir : 0;
+  });
+  document.getElementById('gmp-tcount').textContent =
+    filteredGMP.length + ' of ' + allGMP.length;
+  renderGMPTable();
+}
+
+function sortGMP(col) {
+  if (gmpSortCol === col) gmpSortDir *= -1; else { gmpSortCol = col; gmpSortDir = 1; }
+  filterGMP();
+}
+
+// ── Table render ──────────────────────────────────────
+const GMP_STATUS_BADGE = {
+  planning: '<span class="badge" style="background:rgba(196,120,10,.12);color:#C4780A">🟡 Planning</span>',
+  active:   '<span class="badge" style="background:rgba(45,122,58,.12);color:var(--green)">🟢 Active</span>',
+  complete: '<span class="badge" style="background:rgba(43,108,176,.12);color:var(--blue)">🔵 Complete</span>',
+  paused:   '<span class="badge" style="background:rgba(180,100,20,.12);color:#b46414">🟠 Paused</span>',
+};
+
+function renderGMPTable() {
+  const tbody = document.getElementById('gmp-tbody');
+  if (!filteredGMP.length) {
+    tbody.innerHTML = '<tr><td colspan="10" class="empty-state">No projects found</td></tr>';
+    return;
+  }
+  tbody.innerHTML = filteredGMP.map(p => {
+    const wosip = Array.isArray(p.wosip_goals) ? p.wosip_goals.join(', ') : (p.wosip_goals || '—');
+    const amt   = p.amount ? '$' + Number(p.amount).toLocaleString() : '—';
+    const lat   = p.lat  != null ? Number(p.lat).toFixed(5)  : '<span style="color:var(--danger)">missing</span>';
+    const lng   = p.lng  != null ? Number(p.lng).toFixed(5)  : '<span style="color:var(--danger)">missing</span>';
+    const added = p.created_at ? p.created_at.slice(0,10) : '—';
+    const statusBadge = GMP_STATUS_BADGE[p.status] || esc(p.status||'—');
+    return `<tr id="gmp-row-${p.id}">
+      <td class="tc-type">${esc(p.name)}</td>
+      <td class="tc-addr">${esc(p.region||'—')}</td>
+      <td>${statusBadge}</td>
+      <td class="tc-mono">${esc(wosip)}</td>
+      <td class="tc-addr">${esc(p.funding_source||'—')}</td>
+      <td class="tc-mono">${esc(amt)}</td>
+      <td class="tc-mono">${lat}</td>
+      <td class="tc-mono">${lng}</td>
+      <td class="tc-mono">${added}</td>
+      <td class="tc-actions">
+        <button class="btn btn-sm" onclick="flyToGMP(${p.lat},${p.lng},'${p.id}')" title="Find on map"
+          ${p.lat == null ? 'disabled style="opacity:.4"' : ''}>📍</button>
+        <button class="btn btn-sm" onclick="openGMPModal('${p.id}')" title="Edit">✏️</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteGMPProject('${p.id}','${esc(p.name)}')" title="Delete">🗑</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Map layer ─────────────────────────────────────────
+function makeGMPAdminIcon(proj) {
+  const col = { planning:'#C4780A', active:'#2D7A3A', complete:'#2B6CB0', paused:'#b46414' }[proj.status] || '#5B7A47';
+  return L.divIcon({
+    className: '',
+    html: `<div style="display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 2px 5px rgba(0,0,0,.55))">
+      <div style="width:13px;height:13px;background:${col};border:2px solid #fff;
+                  border-radius:3px;transform:rotate(45deg)"></div>
+    </div>`,
+    iconSize: [13, 13],
+    iconAnchor: [6, 6],
+  });
+}
+
+function renderGMPMarkers() {
+  if (!gmpLayerGrp) return;
+  gmpLayerGrp.clearLayers();
+  allGMP.forEach(p => {
+    if (p.lat == null || p.lng == null) return;
+    const m = L.marker([p.lat, p.lng], { icon: makeGMPAdminIcon(p), zIndexOffset: 600 });
+    const amt = p.amount ? ' — $' + Number(p.amount).toLocaleString() : '';
+    m.bindPopup(`<div style="padding:10px;font-family:var(--font);min-width:180px">
+      <div style="font-weight:600;font-size:12px;margin-bottom:4px">🌿 ${esc(p.name)}</div>
+      ${GMP_STATUS_BADGE[p.status]||''}
+      ${p.region ? `<div style="font-size:10px;color:var(--muted);margin-top:4px">📍 ${esc(p.region)}</div>` : ''}
+      ${p.funding_source ? `<div style="font-size:10px;margin-top:2px">💰 ${esc(p.funding_source)}${amt}</div>` : ''}
+      <div style="display:flex;gap:5px;margin-top:8px">
+        <button class="btn btn-sm" onclick="openGMPModal('${p.id}');adminMap.closePopup()" style="flex:1">✏️ Edit</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteGMPProject('${p.id}','${esc(p.name)}');adminMap.closePopup()" style="flex:1">🗑</button>
+      </div>
+    </div>`, { closeButton: false });
+    gmpLayerGrp.addLayer(m);
+  });
+}
+
+function toggleGMPAdminLayer() {
+  gmpAdminLayerOn = !gmpAdminLayerOn;
+  document.getElementById('mb-gmp').classList.toggle('on', gmpAdminLayerOn);
+  if (gmpAdminLayerOn) gmpLayerGrp.addTo(adminMap);
+  else adminMap.removeLayer(gmpLayerGrp);
+}
+
+function flyToGMP(lat, lng, id) {
+  if (lat == null || lng == null) { showToast('No coordinates for this project', 'err'); return; }
+  if (!gmpAdminLayerOn) toggleGMPAdminLayer();
+  adminMap.flyTo([lat, lng], 18);
+  // Highlight table row
+  document.querySelectorAll('[id^="gmp-row-"]').forEach(r => r.classList.remove('highlighted'));
+  const row = document.getElementById('gmp-row-' + id);
+  if (row) { row.classList.add('highlighted'); row.scrollIntoView({ block: 'nearest' }); }
+}
+
+// ── Move Pin ──────────────────────────────────────────
+function startGMPMovePin() {
+  const id = document.getElementById('gmp-modal-id').value;
+  const p  = allGMP.find(x => x.id === id);
+  if (!p) return;
+  closeGMPModal();
+  gmpMovePinId = id;
+  const startLat = p.lat  ?? adminMap.getCenter().lat;
+  const startLng = p.lng  ?? adminMap.getCenter().lng;
+
+  gmpMovePinMarker = L.marker([startLat, startLng], {
+    draggable: true,
+    icon: L.divIcon({
+      html: `<div style="display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 2px 8px rgba(0,0,0,.7))">
+        <div style="width:22px;height:22px;background:var(--green);border:3px solid white;border-radius:50%;
+          box-shadow:0 0 0 5px rgba(45,122,58,.4);cursor:grab"></div>
+        <div style="font-size:9px;color:#fff;background:var(--green);padding:1px 6px;border-radius:3px;
+          margin-top:2px;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</div>
+      </div>`,
+      className: '', iconSize: [130, 40], iconAnchor: [65, 18],
+    }),
+    zIndexOffset: 3000,
+  }).addTo(adminMap);
+
+  if (!gmpAdminLayerOn) toggleGMPAdminLayer();
+  adminMap.flyTo([startLat, startLng], Math.max(adminMap.getZoom(), 18));
+  document.getElementById('gmp-move-pin-bar').style.display = 'flex';
+  showToast('Drag the 🌿 pin to the correct location, then click Confirm', 'ok');
+}
+
+async function confirmGMPMovePin() {
+  if (!gmpMovePinMarker || !gmpMovePinId) { cancelGMPMovePin(); return; }
+  const { lat, lng } = gmpMovePinMarker.getLatLng();
+  const { error } = await sb
+    .from('greening_projects')
+    .update({ lat: lat, lng: lng })
+    .eq('id', gmpMovePinId);
+  if (error) { showToast('Error moving pin: ' + error.message, 'err'); }
+  else {
+    showToast('📍 GMP pin updated ✓', 'ok');
+    await loadGMPProjects();
+  }
+  cancelGMPMovePin();
+}
+
+function cancelGMPMovePin() {
+  if (gmpMovePinMarker) { adminMap.removeLayer(gmpMovePinMarker); gmpMovePinMarker = null; }
+  gmpMovePinId = null;
+  document.getElementById('gmp-move-pin-bar').style.display = 'none';
+}
+
+// ── Modal open/close ──────────────────────────────────
+function openGMPModal(id) {
+  const modal = document.getElementById('gmp-modal');
+  const moveBtn = document.getElementById('gmp-move-pin-btn');
+  document.getElementById('gmp-modal-id').value = id || '';
+
+  if (id) {
+    // Edit mode
+    const p = allGMP.find(x => x.id === id);
+    if (!p) return;
+    document.getElementById('gmp-modal-title').textContent = 'Edit GMP Project';
+    document.getElementById('gmp-name').value    = p.name || '';
+    document.getElementById('gmp-status').value  = p.status || 'planning';
+    document.getElementById('gmp-region').value  = p.region || '';
+    document.getElementById('gmp-funding').value = p.funding_source || '';
+    document.getElementById('gmp-amount').value  = p.amount || '';
+    document.getElementById('gmp-wosip').value   = Array.isArray(p.wosip_goals) ? p.wosip_goals.join(',') : (p.wosip_goals||'');
+    document.getElementById('gmp-partners').value= Array.isArray(p.partners) ? p.partners.join(', ') : (p.partners||'');
+    document.getElementById('gmp-notes').value   = p.notes || '';
+    document.getElementById('gmp-lat').value     = p.lat  ?? '';
+    document.getElementById('gmp-lng').value     = p.lng  ?? '';
+    moveBtn.style.display = 'inline-flex';
+  } else {
+    // Add mode
+    document.getElementById('gmp-modal-title').textContent = 'Add GMP Project';
+    ['gmp-name','gmp-region','gmp-funding','gmp-amount','gmp-wosip',
+     'gmp-partners','gmp-notes','gmp-lat','gmp-lng'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+    document.getElementById('gmp-status').value = 'planning';
+    moveBtn.style.display = 'none';
+  }
+  modal.style.display = 'flex';
+}
+
+function closeGMPModal() {
+  document.getElementById('gmp-modal').style.display = 'none';
+}
+
+// ── Save (INSERT or UPDATE) ───────────────────────────
+async function saveGMPProject() {
+  const id      = document.getElementById('gmp-modal-id').value;
+  const name    = document.getElementById('gmp-name').value.trim();
+  const status  = document.getElementById('gmp-status').value;
+  const region  = document.getElementById('gmp-region').value.trim();
+  const funding = document.getElementById('gmp-funding').value.trim();
+  const amtRaw  = document.getElementById('gmp-amount').value.trim();
+  const wosipRaw= document.getElementById('gmp-wosip').value.trim();
+  const partnersRaw = document.getElementById('gmp-partners').value.trim();
+  const notes   = document.getElementById('gmp-notes').value.trim();
+  const lat     = document.getElementById('gmp-lat').value.trim();
+  const lng     = document.getElementById('gmp-lng').value.trim();
+
+  if (!name) { showToast('Project name is required', 'err'); return; }
+
+  // Parse wosip goals to array of numbers
+  const wosip_goals = wosipRaw
+    ? wosipRaw.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n))
+    : [];
+  // Parse partners to array of strings
+  const partners = partnersRaw
+    ? partnersRaw.split(',').map(s => s.trim()).filter(Boolean)
+    : [];
+  const amount = amtRaw ? parseFloat(amtRaw) : null;
+  const latNum = lat !== '' ? parseFloat(lat) : null;
+  const lngNum = lng !== '' ? parseFloat(lng) : null;
+
+  const payload = {
+    name, status,
+    region:         region || null,
+    funding_source: funding || null,
+    amount:         amount,
+    wosip_goals:    wosip_goals,
+    partners:       partners,
+    notes:          notes || null,
+    lat:            latNum,
+    lng:            lngNum,
+  };
+
+  let error;
+  if (id) {
+    // UPDATE
+    ({ error } = await sb.from('greening_projects').update(payload).eq('id', id));
+  } else {
+    // INSERT
+    ({ error } = await sb.from('greening_projects').insert(payload));
+  }
+
+  if (error) { showToast('Error saving project: ' + error.message, 'err'); return; }
+  showToast(id ? '🌿 Project updated ✓' : '🌿 Project added ✓', 'ok');
+  closeGMPModal();
+  await loadGMPProjects();
+  // Enable Move Pin flow for new records — reopen modal in edit mode
+  if (!id) {
+    const { data: newest } = await sb
+      .from('greening_projects')
+      .select('id')
+      .eq('name', name)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+    if (newest) openGMPModal(newest.id);
+  }
+}
+
+// ── Delete ────────────────────────────────────────────
+async function deleteGMPProject(id, name) {
+  if (!confirm(`Delete "${name}"?\n\nThis cannot be undone.`)) return;
+  const { error } = await sb.from('greening_projects').delete().eq('id', id);
+  if (error) { showToast('Delete failed: ' + error.message, 'err'); return; }
+  showToast('🗑 Project deleted', 'ok');
+  await loadGMPProjects();
 }
 
 // ══════════════════════════════════════════════════════

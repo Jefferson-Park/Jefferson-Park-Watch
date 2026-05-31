@@ -7805,17 +7805,161 @@ function toggleGMPLayer() {
     if (sw) sw.classList.remove('on');
   }
 }
+function updateCrimeDateRangeNote(crimes) {
+  const noteEl = document.getElementById('crime-date-range-note');
+  if (!noteEl || !crimes || crimes.length === 0) return;
 
-function gmpFlyTo(lat, lng, name) {
-  map.flyTo([lat, lng], 17, { duration: 0.8 });
+  let earliest = null;
+  let latest = null;
+
+  crimes.forEach(crime => {
+    if (!crime.incident_date) return;
+    const d = new Date(crime.incident_date);
+    if (isNaN(d.getTime())) return;
+    if (!earliest || d < earliest) earliest = d;
+    if (!latest || d > latest) latest = d;
+  });
+
+  if (earliest && latest) {
+    const options = { month: 'short', year: 'numeric' };
+    const startStr = earliest.toLocaleDateString('en-US', options);
+    const endStr = latest.toLocaleDateString('en-US', options);
+    noteEl.innerHTML = `${crimes.length.toLocaleString()} LAPD reported crimes (${startStr} — ${endStr})`;
+  } else {
+    noteEl.innerHTML = `${crimes.length.toLocaleString()} LAPD reported crimes`;
+  }
 }
 
-// Load projects on startup (data is tiny — no egress concern)
-document.addEventListener('DOMContentLoaded', () => {
-  // Defer until Supabase client is ready (sb is initialised synchronously after DOMContentLoaded)
-  setTimeout(loadGMPProjects, 800);
-});
+async function uploadAttachment(file, recordId = null, recordType = null, parentId = null) {
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) throw new Error("You must be logged in to upload attachments.");
 
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${crypto.randomUUID()}.${fileExt}`;
+    const filePath = `attachments/${fileName}`;
+
+    // Upload file to Supabase Storage bucket
+    const { error: uploadError } = await sb.storage
+      .from('neighborhood-assets')
+      .upload(filePath, file);
+
+    if (uploadError) throw uploadError;
+
+    const { data: { publicUrl } } = sb.storage
+      .from('neighborhood-assets')
+      .getPublicUrl(filePath);
+
+    // Insert tracking entry into photos table using clean UUID relations
+    const { data, error: dbError } = await sb
+      .from('photos')
+      .insert([{
+        id: crypto.randomUUID(),
+        public_url: publicUrl,
+        storage_path: filePath,
+        uploaded_by: session.user.id,
+        record_id: recordId,         // Master Record Link (e.g. Tree UUID)
+        record_type: recordType,     // Table class discriminator
+        parent_id: parentId          // Relational hierarchy linking
+      }])
+      .select()
+      .single();
+
+    if (dbError) throw dbError;
+    return data;
+  } catch (err) {
+    console.error("Upload failed:", err.message);
+    alert("Attachment upload failed: " + err.message);
+    return null;
+  }
+}
+
+async function updateMasterRecord(attachmentId, masterId, newClassification = null) {
+  try {
+    // 1. Reassign attachment metadata to link to the Master ID
+    const { error: photoError } = await sb
+      .from('photos')
+      .update({ 
+        record_id: masterId,
+        parent_id: masterId
+      })
+      .eq('id', attachmentId);
+
+    if (photoError) throw photoError;
+
+    // 2. Perform target table classification adjustment if specified
+    if (newClassification) {
+      const { error: assetError } = await sb
+        .from('public_comments') // Update target Master Record table
+        .update({ classification: newClassification })
+        .eq('id', masterId);
+
+      if (assetError) throw assetError;
+    }
+
+    alert("Relational connection completed successfully.");
+    return true;
+  } catch (err) {
+    console.error("Transaction mismatch error:", err.message);
+    alert("Failed to link records cleanly: " + err.message);
+    return false;
+  }
+}
+
+function initMobileLayout() {
+  const isMobile = window.innerWidth <= 768;
+  const sidebar = document.getElementById('sidebar');
+  const toggleBtn = document.getElementById('sb-toggle');
+
+  if (isMobile && sidebar && toggleBtn) {
+    // Check if public user or unauthenticated guest view
+    sb.auth.getSession().then(({ data: { session } }) => {
+      const isAdminOrPM = session?.user?.user_metadata?.role === 'admin' || session?.user?.user_metadata?.role === 'pm';
+      
+      if (!isAdminOrPM) {
+        // Force flyout on load for mobile public layouts to prevent empty base map scroll roaming
+        sidebar.classList.add('open');
+        toggleBtn.classList.add('on');
+        toggleBtn.style.backgroundColor = 'var(--red, #B83232)';
+        toggleBtn.setAttribute('title', 'Move Layers');
+        
+        const labelSpan = toggleBtn.querySelector('.toggle-text');
+        if (labelSpan) labelSpan.textContent = 'Move Layers';
+      }
+    });
+  }
+}
+
+// Global initialization sequence and Leaflet canvas setups
+async function launch() {
+  try {
+    initMobileLayout();
+    
+    // Fetch initial layer states and map dimensions
+    if (typeof loadBoundaries === 'function') await loadBoundaries();
+    
+    // Listen for real-time authentication changes to toggle workspace contextual buttons
+    sb.auth.onAuthStateChange((event, session) => {
+      const reportBtn = document.getElementById('report-obs-btn');
+      if (reportBtn) {
+        if (session) {
+          reportBtn.style.backgroundColor = 'var(--red, #B83232)';
+          reportBtn.style.borderColor = 'var(--red, #B83232)';
+        }
+      }
+    });
+
+    console.log("Jefferson Park Unified Neighborhood Map successfully active.");
+  } catch (outerErr) {
+    console.error("Critical mapping engine crash prevented:", outerErr.message);
+  }
+}
+
+// Fire up mapping routines on document initialization
+document.addEventListener('DOMContentLoaded', () => {
+  if (typeof initMap === 'function') initMap();
+  launch();
+});
 </script>
 </body>
 </html>

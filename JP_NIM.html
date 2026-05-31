@@ -696,11 +696,6 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
           <span class="grp-chevron" id="chv-safety" style="transform:rotate(-90deg)">▾</span>
         </div>
         <div class="grp-body collapsed" id="gb-safety">
-          <!-- Total record count + dynamic date range -->
-          <div id="crime-date-range-note" style="display:none;padding:4px 8px 2px;font-size:10px;color:var(--muted);font-family:var(--mono);background:rgba(184,48,32,.05);border-radius:6px;margin-bottom:4px;line-height:1.5">
-            <span style="color:var(--danger);font-weight:600" id="crime-total-count">—</span> LAPD reported crimes
-            <span id="crime-date-range-text"></span>
-          </div>
           <!-- Date Filter -->
           <div style="padding:4px 4px 2px">
             <div class="sec-label" style="margin-top:0">Date Range</div>
@@ -902,7 +897,7 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
       <!-- Environment & Health group -->
       <div class="layer-group" id="grp-environment">
         <div class="grp-head" onclick="toggleGroup('environment')">
-          <span>🌬 Environment &amp; Health<span class="grp-count" id="cnt-environment" style="display:inline">2</span></span>
+          <span>🌬 Environment &amp; Health<span class="grp-count" id="cnt-environment"></span></span>
           <span class="grp-chevron" id="chv-environment" style="transform:rotate(-90deg)">▾</span>
         </div>
         <div class="grp-body collapsed" id="gb-environment">
@@ -1116,9 +1111,9 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
           <span class="grp-chevron" id="chv-gmp" style="transform:rotate(-90deg)">▾</span>
         </div>
         <div class="grp-body collapsed" id="gb-gmp">
-          <!-- GMP Map link — visible to all logged-in users -->
+          <!-- GMP Map link — PM/Admin only, injected by applyRoleUI() -->
           <div id="gmp-maplink-row" style="display:none;padding:6px 10px 2px">
-            <a id="btn-gmp-map" href="https://www.mappinginnovations.com/UNNC_GMP.html" target="_blank" rel="noopener"
+            <a id="btn-gmp-map" href="unnc_map.html" target="_blank"
                style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;
                       color:var(--accent);text-decoration:none;padding:5px 8px;border-radius:6px;
                       background:rgba(45,80,22,.12);border:1px solid rgba(45,80,22,.25)">
@@ -1126,7 +1121,7 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
                 <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
                 <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
               </svg>
-              Open Greening Master Plan Map ↗
+              Open GMP Public Map ↗
             </a>
           </div>
           <!-- Toggle row -->
@@ -1228,7 +1223,7 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
     <span class="bp-label" id="bp-role-label">MAP</span>
     <div class="bp-sep"></div>
     <!-- Public only -->
-    <button class="bp-btn" id="btn-public-report" onclick="openPublicReport()" style="display:none;background:var(--red);color:#fff;border-color:var(--red)">
+    <button class="bp-btn" id="btn-public-report" onclick="openPublicReport()" style="display:none">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
       Report Observation
     </button>
@@ -2300,9 +2295,9 @@ async function launch() {
   const internalGrp = document.getElementById('grp-internal');
   if (internalGrp) internalGrp.style.display = (isPublic) ? 'none' : 'block';
 
-  // GMP Map ↗ link — visible to ALL users (public residents benefit too)
+  // GMP Map ↗ link — PM/Admin only
   const gmpMapRow = document.getElementById('gmp-maplink-row');
-  if (gmpMapRow) gmpMapRow.style.display = 'block';
+  if (gmpMapRow) gmpMapRow.style.display = isPM ? 'block' : 'none';
 
   // Draw hint
   if (isOfficer || isPM) {
@@ -2327,25 +2322,6 @@ async function launch() {
 
   buildToggles();
   initMap();
-
-  // ── Mobile: for public users, fly the sidebar out so map is visible (not satellite) ──
-  if (isPublic && window.innerWidth <= 640) {
-    // Delay until after map renders
-    setTimeout(() => {
-      const sb    = document.getElementById('sidebar');
-      const tog   = document.getElementById('sb-toggle');
-      const label = document.getElementById('sb-label');
-      if (sb && !sb.classList.contains('open')) {
-        // Sidebar starts collapsed on mobile public view — show the red "Move Layers" toggle
-        if (tog) {
-          tog.style.background = '#B93020';
-          tog.style.color = '#fff';
-          tog.style.borderColor = '#B93020';
-        }
-        if (label) label.textContent = 'Move Layers';
-      }
-    }, 400);
-  }
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -2820,9 +2796,6 @@ async function loadCrimes() {
   }
   crimesData = (data || []).filter(c => c.lng && c.lat);
   renderCrimes();
-
-  // ── Update Safety & Crime sidebar: total count + dynamic date range note ──
-  updateCrimeDateRangeNote(crimesData);
 }
 
 async function loadBoundaries() {
@@ -2830,53 +2803,6 @@ async function loadBoundaries() {
   if (error) { console.error('Boundaries error:', error); return; }
   boundariesData = data || [];
   renderBoundaries();
-}
-
-// ── Crime date range note helper ─────────────────────────────────────
-function updateCrimeDateRangeNote(crimes) {
-  const noteEl  = document.getElementById('crime-date-range-note');
-  const countEl = document.getElementById('crime-total-count');
-  const rangeEl = document.getElementById('crime-date-range-text');
-  if (!noteEl || !countEl || !rangeEl) return;
-
-  const total = crimes.length;
-  if (!total) { noteEl.style.display = 'none'; return; }
-
-  // Parse dates — DB stores MM/DD/YYYY text
-  const parseMDY = s => {
-    if (!s) return null;
-    const parts = String(s).split('/');
-    if (parts.length === 3) {
-      const d = new Date(parseInt(parts[2],10), parseInt(parts[0],10)-1, parseInt(parts[1],10));
-      return isNaN(d.getTime()) ? null : d;
-    }
-    // Fallback: ISO-style
-    const d = new Date(s);
-    return isNaN(d.getTime()) ? null : d;
-  };
-
-  let earliest = null, latest = null;
-  crimes.forEach(c => {
-    const d = parseMDY(c.incident_date);
-    if (!d) return;
-    if (!earliest || d < earliest) earliest = d;
-    if (!latest   || d > latest)   latest   = d;
-  });
-
-  countEl.textContent = total.toLocaleString();
-
-  if (earliest && latest) {
-    const fmtDate = d => d.toLocaleDateString('en-US', { month:'short', year:'numeric' });
-    if (earliest.getFullYear() === latest.getFullYear() && earliest.getMonth() === latest.getMonth()) {
-      rangeEl.textContent = ` (${fmtDate(earliest)})`;
-    } else {
-      rangeEl.textContent = ` (${fmtDate(earliest)} — ${fmtDate(latest)})`;
-    }
-  } else {
-    rangeEl.textContent = '';
-  }
-
-  noteEl.style.display = 'block';
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -4451,19 +4377,12 @@ function toggleSidebar() {
   const mp    = document.getElementById('map');
   const bp    = document.getElementById('bottom-panel');
   const tog   = document.getElementById('sb-toggle');
-  const label = document.getElementById('sb-label');
   const isMobile = window.innerWidth <= 640;
 
   if (isMobile) {
     sb.classList.toggle('open');
     const isOpen = sb.classList.contains('open');
     document.body.classList.toggle('sb-open', isOpen);
-    // On mobile, toggle button reads "Move Layers" when sidebar is closed, "Close" when open
-    if (label) label.textContent = isOpen ? 'Close' : 'Move Layers';
-    // Color the toggle red on mobile to attract attention
-    tog.style.background = isOpen ? 'var(--panel)' : '#B93020';
-    tog.style.color = isOpen ? 'var(--muted)' : '#fff';
-    tog.style.borderColor = isOpen ? 'var(--border)' : '#B93020';
     tog.style.left = ''; // let CSS handle position, clear any inline override
     setTimeout(() => { if (map) map.invalidateSize(); }, 320);
   } else {
@@ -4474,7 +4393,6 @@ function toggleSidebar() {
     mp.style.left = offset;
     bp.style.left = offset;
     tog.style.left = collapsed ? '0' : 'var(--sw)';
-    if (label) label.textContent = collapsed ? 'Layers' : 'Layers';
     setTimeout(() => { if (map) map.invalidateSize(); }, 320);
   }
 }
@@ -5339,23 +5257,13 @@ async function uploadAttachment(e) {
     const { error: ue } = await sb.storage.from('crime-photos')
       .upload(path, file, { contentType: file.type||'image/jpeg', upsert:false });
     if (ue) { showToast('Upload failed: '+ue.message,'err'); fail++; continue; }
-
-    // ── Relational Linking: include record_id, record_type, and parent_id ──
-    // parent_id allows attachments to be linked to a "master" record
-    // even after the original upload (e.g. a tree is reclassified to stump).
-    const photoPayload = {
+    const { error: de } = await sb.from('photos').insert({
       uploaded_by:   currentUser.id,
       storage_path:  path,
       crime_id:      ctx.type==='crime'      ? ctx.id : null,
       annotation_id: ctx.type==='annotation' ? ctx.id : null,
       is_public:     false, // admin sets public via admin portal
-      // Relational columns (schema upgrade required — safe to add even if columns don't exist yet)
-      record_id:     ctx.id   || null,
-      record_type:   ctx.type || null,
-      parent_id:     ctx.parentId || null,  // optional: link to a master record
-    };
-
-    const { error: de } = await sb.from('photos').insert(photoPayload);
+    });
     if (de) { showToast('Photo saved to storage but DB failed: '+de.message,'err'); fail++; }
     else { ok++; }
   }
@@ -7606,92 +7514,6 @@ async function submitFieldPhotos() {
 }
 
 // ══════════════════════════════════════════════════════════════════
-// RELATIONAL LINKING — updateMasterRecord()
-// Associates an attachment to a Master Record (e.g. Tree ID) and
-// optionally reclassifies the target record, all in one transaction.
-//
-// Schema migration required in Supabase SQL Editor:
-//   ALTER TABLE public.photos
-//     ADD COLUMN IF NOT EXISTS record_id   uuid,
-//     ADD COLUMN IF NOT EXISTS record_type text,
-//     ADD COLUMN IF NOT EXISTS parent_id   uuid REFERENCES public.map_annotations(id) ON DELETE SET NULL;
-//   CREATE INDEX IF NOT EXISTS idx_photos_parent_id ON public.photos(parent_id);
-//   CREATE INDEX IF NOT EXISTS idx_photos_record_id ON public.photos(record_id, record_type);
-//
-// Also for Admin Merge (reassigning attachments):
-//   CREATE OR REPLACE FUNCTION public.merge_attachments_to_record(
-//     p_from_annotation_id uuid, p_to_annotation_id uuid
-//   ) RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
-//   BEGIN
-//     UPDATE public.photos SET annotation_id=p_to_annotation_id, parent_id=p_to_annotation_id
-//     WHERE annotation_id=p_from_annotation_id;
-//     UPDATE public.photos SET record_id=p_to_annotation_id
-//     WHERE record_id=p_from_annotation_id;
-//   END; $$;
-//   GRANT EXECUTE ON FUNCTION public.merge_attachments_to_record(uuid,uuid) TO authenticated;
-// ══════════════════════════════════════════════════════════════════
-
-/**
- * updateMasterRecord(photoIds, masterAnnotationId, newClassification?)
- * Associates photos to a Master Record and optionally reclassifies the
- * target annotation — all done in a single logical transaction.
- *
- * @param {string[]}  photoIds          - Array of photo UUIDs to re-link
- * @param {string}    masterAnnotationId - UUID of the "master" annotation (e.g. tree record)
- * @param {string|null} newClassification - Optional: new category for the master record
- */
-async function updateMasterRecord(photoIds, masterAnnotationId, newClassification = null) {
-  if (!currentUser || !photoIds?.length || !masterAnnotationId) {
-    showToast('updateMasterRecord: missing required parameters', 'err');
-    return false;
-  }
-
-  try {
-    // Step 1: Re-associate all photos to the master annotation (the "link" operation)
-    const { error: linkErr } = await sb.from('photos')
-      .update({
-        annotation_id: masterAnnotationId,
-        parent_id:     masterAnnotationId,
-        record_id:     masterAnnotationId,
-        record_type:   'annotation',
-      })
-      .in('id', photoIds);
-    if (linkErr) throw new Error('Link photos: ' + linkErr.message);
-
-    // Step 2: Optionally reclassify the master record (e.g. tree → stump)
-    // This happens in the same logical operation — if it fails we log but don't
-    // roll back the photo link (photos linked to a wrong category is recoverable;
-    // photos lost from the master record is not).
-    if (newClassification) {
-      const { error: catErr } = await sb.from('map_annotations')
-        .update({ category: newClassification })
-        .eq('id', masterAnnotationId);
-      if (catErr) {
-        console.warn('[updateMasterRecord] Classification update failed:', catErr.message);
-        showToast(`📎 ${photoIds.length} photo${photoIds.length!==1?'s':''} linked · ⚠️ classification update failed`, 'err');
-        return false;
-      }
-    }
-
-    showToast(
-      `✓ ${photoIds.length} photo${photoIds.length!==1?'s':''} linked to master record` +
-      (newClassification ? ` · reclassified → ${newClassification}` : ''),
-      'ok'
-    );
-
-    // Refresh layers to reflect the classification change
-    if (newClassification) {
-      await loadPublicAnnotations();
-    }
-    return true;
-  } catch(err) {
-    console.error('[updateMasterRecord]', err);
-    showToast('Error linking record: ' + err.message, 'err');
-    return false;
-  }
-}
-
-// ══════════════════════════════════════════════════════════════════
 // STARTUP — check for existing session
 // ══════════════════════════════════════════════════════════════════
 (async () => {
@@ -7805,209 +7627,17 @@ function toggleGMPLayer() {
     if (sw) sw.classList.remove('on');
   }
 }
-function updateCrimeDateRangeNote(crimes) {
-  const noteEl = document.getElementById('crime-date-range-note');
-  if (!noteEl || !crimes || crimes.length === 0) return;
 
-  let earliest = null;
-  let latest = null;
-
-  crimes.forEach(crime => {
-    if (!crime.incident_date) return;
-    const d = new Date(crime.incident_date);
-    if (isNaN(d.getTime())) return;
-    if (!earliest || d < earliest) earliest = d;
-    if (!latest || d > latest) latest = d;
-  });
-
-  if (earliest && latest) {
-    const options = { month: 'short', year: 'numeric' };
-    const startStr = earliest.toLocaleDateString('en-US', options);
-    const endStr = latest.toLocaleDateString('en-US', options);
-    noteEl.innerHTML = `${crimes.length.toLocaleString()} LAPD reported crimes (${startStr} — ${endStr})`;
-  } else {
-    noteEl.innerHTML = `${crimes.length.toLocaleString()} LAPD reported crimes`;
-  }
+function gmpFlyTo(lat, lng, name) {
+  map.flyTo([lat, lng], 17, { duration: 0.8 });
 }
 
-async function uploadAttachment(file, recordId = null, recordType = null, parentId = null) {
-  try {
-    const { data: { session } } = await sb.auth.getSession();
-    if (!session) throw new Error("You must be logged in to upload attachments.");
-
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${crypto.randomUUID()}.${fileExt}`;
-    const filePath = `attachments/${fileName}`;
-
-    const { error: uploadError } = await sb.storage
-      .from('neighborhood-assets')
-      .upload(filePath, file);
-
-    if (uploadError) throw uploadError;
-
-    const { data: { publicUrl } } = sb.storage
-      .from('neighborhood-assets')
-      .getPublicUrl(filePath);
-
-    const { data, error: dbError } = await sb
-      .from('photos')
-      .insert([{
-        id: crypto.randomUUID(),
-        public_url: publicUrl,
-        storage_path: filePath,
-        uploaded_by: session.user.id,
-        record_id: recordId,
-        record_type: recordType,
-        parent_id: parentId
-      }])
-      .select()
-      .single();
-
-    if (dbError) throw dbError;
-    return data;
-  } catch (err) {
-    console.error("Upload failed:", err.message);
-    alert("Attachment upload failed: " + err.message);
-    return null;
-  }
-}
-
-async function updateMasterRecord(attachmentId, masterId, newClassification = null) {
-  try {
-    const { error: photoError } = await sb
-      .from('photos')
-      .update({ 
-        record_id: masterId,
-        parent_id: masterId
-      })
-      .eq('id', attachmentId);
-
-    if (photoError) throw photoError;
-
-    if (newClassification) {
-      const { error: assetError } = await sb
-        .from('public_comments')
-        .update({ classification: newClassification })
-        .eq('id', masterId);
-
-      if (assetError) throw assetError;
-    }
-
-    alert("Relational connection completed successfully.");
-    return true;
-  } catch (err) {
-    console.error("Transaction mismatch error:", err.message);
-    alert("Failed to link records cleanly: " + err.message);
-    return false;
-  }
-}
-
-// Automatically manages dismissing the login interface and showing the map workspace
-function handleUiTransition(session) {
-  // Find common login container IDs used across these templates
-  const loginOverlay = document.getElementById('login-overlay') || 
-                       document.getElementById('login-screen') || 
-                       document.getElementById('auth-modal');
-                       
-  if (loginOverlay) {
-    loginOverlay.style.display = 'none';
-    console.log("[UI] Login interface dismissed. Displaying map workspace.");
-  }
-
-  // Trigger base layer loads if they exist in the parent script scope
-  if (session) {
-    if (typeof loadAnnotations === 'function') loadAnnotations();
-    if (typeof loadCrimes === 'function') loadCrimes();
-    if (typeof loadGMPProjects === 'function') loadGMPProjects();
-  }
-}
-
-function initMobileLayout() {
-  const isMobile = window.innerWidth <= 768;
-  const sidebar = document.getElementById('sidebar');
-  const toggleBtn = document.getElementById('sb-toggle');
-
-  if (isMobile && sidebar && toggleBtn) {
-    sb.auth.getSession().then(({ data: { session } }) => {
-      const isAdminOrPM = session?.user?.user_metadata?.role === 'admin' || session?.user?.user_metadata?.role === 'pm';
-      
-      if (!isAdminOrPM) {
-        sidebar.classList.add('open');
-        toggleBtn.classList.add('on');
-        toggleBtn.style.backgroundColor = 'var(--red, #B83232)';
-        toggleBtn.setAttribute('title', 'Move Layers');
-        
-        const labelSpan = toggleBtn.querySelector('.toggle-text');
-        if (labelSpan) labelSpan.textContent = 'Move Layers';
-      }
-    });
-  }
-}
-
-// Wire up the submit actions for the login interface elements
-function initAuthenicationListeners() {
-  const loginForm = document.getElementById('login-form');
-  if (loginForm) {
-    loginForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const emailEl = document.getElementById('email') || document.getElementById('login-email');
-      const passwordEl = document.getElementById('password') || document.getElementById('login-password');
-      
-      if (!emailEl || !passwordEl) return;
-      
-      try {
-        const { data, error } = await sb.auth.signInWithPassword({
-          email: emailEl.value,
-          password: passwordEl.value
-        });
-        if (error) throw error;
-        console.log("[Auth] Form sign-in successful.");
-      } catch (err) {
-        alert("Authentication error: " + err.message);
-      }
-    });
-  }
-}
-
-async function launch() {
-  try {
-    initMobileLayout();
-    initAuthenicationListeners();
-    
-    if (typeof loadBoundaries === 'function') await loadBoundaries();
-    
-    // Core authentication monitor state machine
-    sb.auth.onAuthStateChange((event, session) => {
-      console.log(`[Auth Event] State changed to: ${event}`);
-      
-      const reportBtn = document.getElementById('report-obs-btn');
-      if (reportBtn && session) {
-        reportBtn.style.backgroundColor = 'var(--red, #B83232)';
-        reportBtn.style.borderColor = 'var(--red, #B83232)';
-      }
-
-      // If user is logged in or explicitly signs in, move past login screen
-      if (session || event === 'SIGNED_IN') {
-        handleUiTransition(session);
-      }
-    });
-
-    // Check for an active session immediately on startup
-    const { data: { session } } = await sb.auth.getSession();
-    if (session) {
-      handleUiTransition(session);
-    }
-
-    console.log("Jefferson Park Unified Neighborhood Map successfully active.");
-  } catch (outerErr) {
-    console.error("Critical mapping engine crash prevented:", outerErr.message);
-  }
-}
-
+// Load projects on startup (data is tiny — no egress concern)
 document.addEventListener('DOMContentLoaded', () => {
-  if (typeof initMap === 'function') initMap();
-  launch();
+  // Defer until Supabase client is ready (sb is initialised synchronously after DOMContentLoaded)
+  setTimeout(loadGMPProjects, 800);
 });
+
 </script>
 </body>
 </html>

@@ -372,7 +372,6 @@ tbody td{padding:7px 10px;vertical-align:middle}
 
     <div class="nav-r">
       <span class="nav-user" id="nav-user"></span>
-      <button onclick="openMergeModal()" title="Reassign attachments from one record to another" style="border-color:var(--blue);color:var(--blue)">🔀 Merge</button>
       <button onclick="showRLSFix()" title="Fix delete/update permissions" style="border-color:#f0a500;color:#f0a500">🔧 RLS Fix</button>
       <a href="index.html">← Field Map</a>
       <button onclick="doLogout()">Sign out</button>
@@ -386,7 +385,7 @@ tbody td{padding:7px 10px;vertical-align:middle}
       <button class="maptb-btn on" id="mb-street" onclick="setBasemap('street')">🗺 Street</button>
       <button class="maptb-btn" id="mb-sat" onclick="setBasemap('satellite')">🛰 Satellite</button>
       <button class="maptb-btn" id="mb-crimes" onclick="toggleMapLayer('crimes')">● Crimes</button>
-      <button class="maptb-btn" id="mb-ann" onclick="toggleMapLayer('ann')">◈ Annotations</button>
+      <button class="maptb-btn on" id="mb-ann" onclick="toggleMapLayer('ann')">◈ Annotations</button>
       <button class="maptb-btn" id="mb-obs" onclick="toggleMapLayer('obs')">📍 Reports</button>
       <button class="maptb-btn" id="mb-parcel" onclick="toggleParcelLayer()">📋 Parcels</button>
       <button class="maptb-btn" id="mb-slo" onclick="toggleMapLayer('slo')">▭ SLO</button>
@@ -718,12 +717,12 @@ tbody td{padding:7px 10px;vertical-align:middle}
 
 <!-- Edit Annotation Modal -->
 <div id="edit-ann-modal" style="position:fixed;inset:0;z-index:5000;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center">
-  <div class="em" style="width:600px">
+  <div class="em" style="width:560px">
     <div class="em-title">Edit Annotation</div>
     <input type="hidden" id="edit-ann-id">
     <div class="em-grid">
       <div class="em-f full"><label>Label</label><input type="text" id="edit-ann-label"></div>
-      <div class="em-f full"><label>Category — Admin can reclassify (e.g. Tree → Stump)</label>
+      <div class="em-f full"><label>Category</label>
         <select id="edit-ann-cat" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:12px;font-family:var(--font);outline:none"></select>
       </div>
       <div class="em-f full"><label>Status / Approval</label>
@@ -734,93 +733,22 @@ tbody td{padding:7px 10px;vertical-align:middle}
           <option value="rejected">❌ Rejected</option>
         </select>
       </div>
-      <!-- Notes reduced to single-line height for faster triage -->
-      <div class="em-f full"><label>Notes</label>
-        <textarea id="edit-ann-notes" style="min-height:36px;resize:vertical"></textarea>
-      </div>
+      <div class="em-f full"><label>Notes</label><textarea id="edit-ann-notes" style="min-height:80px"></textarea></div>
     </div>
-
-    <!-- Attachments QC section — larger thumbnails + Link + Delete buttons -->
+    <!-- Bug 2: Attachments QC section -->
     <div id="edit-ann-attachments" style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px;display:none">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        <span style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">
-          📎 Attachments &amp; Links
-        </span>
-        <span id="edit-ann-att-count" style="font-family:var(--mono);background:var(--panel2);padding:1px 5px;border-radius:8px;font-size:9px;color:var(--accent)"></span>
-        <button class="btn btn-sm" style="margin-left:auto;color:var(--blue);border-color:var(--blue)"
-          onclick="openLinkPhotoDialog(document.getElementById('edit-ann-id').value)"
-          title="Link a photo to a Master Record (e.g. Tree ID)">
-          🔗 Link to Master Record
-        </button>
+      <div style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">
+        📎 Attachments &amp; Links
+        <span id="edit-ann-att-count" style="font-family:var(--mono);background:var(--panel2);padding:1px 5px;border-radius:8px;margin-left:4px;font-size:9px;color:var(--accent)"></span>
       </div>
-      <!-- Larger thumbnail list -->
-      <div id="edit-ann-att-list" style="display:flex;flex-direction:column;gap:8px;max-height:320px;overflow-y:auto"></div>
+      <div id="edit-ann-att-list" style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto"></div>
     </div>
     <div id="edit-ann-att-empty" style="margin-top:10px;font-size:11px;color:var(--muted);border-top:1px solid var(--border);padding-top:10px;display:none">
       📎 No attachments or links on this record.
     </div>
-
     <div class="em-footer">
       <button class="btn" onclick="document.getElementById('edit-ann-modal').classList.remove('open')">Cancel</button>
       <button class="btn btn-accent" onclick="saveEditAnn()">Save Changes</button>
-    </div>
-  </div>
-</div>
-
-<!-- Link Photo to Master Record Dialog -->
-<div id="link-photo-modal" style="position:fixed;inset:0;z-index:6500;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center">
-  <div class="em" style="width:420px">
-    <div class="em-title">🔗 Link Attachments to Master Record</div>
-    <p style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.5">
-      Enter the ID of the Master Record (e.g. the canonical Tree annotation UUID).
-      All selected attachments will be reassigned and the record classification will update atomically.
-    </p>
-    <div class="em-f full">
-      <label>Master Record ID (annotation UUID)</label>
-      <input type="text" id="link-master-id" placeholder="e.g. 3f7c2e1a-…" style="font-family:var(--mono);font-size:11px">
-    </div>
-    <div class="em-f full">
-      <label>Reclassify Master Record as (optional)</label>
-      <select id="link-new-classification" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:12px;font-family:var(--font);outline:none">
-        <option value="">— keep current classification —</option>
-      </select>
-    </div>
-    <div style="font-size:10px;color:var(--muted);margin-bottom:12px;padding:8px;background:rgba(43,108,176,.07);border-radius:6px;border:1px solid rgba(43,108,176,.2)">
-      ⚡ This runs as a single atomic operation: all attachment links update first, then the classification changes.
-      If classification fails, attachments remain linked — no data mismatch.
-    </div>
-    <input type="hidden" id="link-source-ann-id">
-    <div class="em-footer">
-      <button class="btn" onclick="document.getElementById('link-photo-modal').style.display='none'">Cancel</button>
-      <button class="btn btn-accent" onclick="executeLinkToMaster()">🔗 Link &amp; Update</button>
-    </div>
-  </div>
-</div>
-
-<!-- Merge Attachments Dialog -->
-<div id="merge-modal" style="position:fixed;inset:0;z-index:6500;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center">
-  <div class="em" style="width:440px">
-    <div class="em-title">🔀 Merge: Reassign Attachments</div>
-    <p style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.5">
-      Move all photos and documents from one record to another.
-      Use this to consolidate duplicate entries into a single master record.
-    </p>
-    <div class="em-f full">
-      <label>FROM — Source Record ID (attachments will leave this record)</label>
-      <input type="text" id="merge-from-id" placeholder="UUID of the record to merge FROM" style="font-family:var(--mono);font-size:11px">
-    </div>
-    <div class="em-f full">
-      <label>TO — Master Record ID (attachments will move here)</label>
-      <input type="text" id="merge-to-id" placeholder="UUID of the master record" style="font-family:var(--mono);font-size:11px">
-    </div>
-    <div style="font-size:10px;color:var(--muted);margin-bottom:12px;padding:8px;background:rgba(185,48,32,.07);border-radius:6px;border:1px solid rgba(185,48,32,.2)">
-      ⚠️ This cannot be undone. All photos, documents and links from the source record
-      will be reassigned to the master. The source record itself is not deleted.
-    </div>
-    <div id="merge-status" style="font-size:11px;min-height:16px;color:var(--accent);margin-bottom:8px"></div>
-    <div class="em-footer">
-      <button class="btn" onclick="document.getElementById('merge-modal').style.display='none'">Cancel</button>
-      <button class="btn btn-danger" onclick="executeMerge()">🔀 Merge Attachments</button>
     </div>
   </div>
 </div>
@@ -887,9 +815,8 @@ tbody td{padding:7px 10px;vertical-align:middle}
         <input type="number" id="gmp-lng" placeholder="-118.334…" step="any">
       </div>
     </div>
-    <div id="gmp-coord-hint" style="margin-top:6px;font-size:10px;color:var(--muted);font-family:var(--mono);min-height:14px"></div>
-    <div style="margin-top:8px;padding:8px 10px;background:rgba(45,139,58,.07);border:1px solid rgba(45,139,58,.2);border-radius:6px;font-size:11px;color:var(--muted)">
-      💡 <strong style="color:var(--text)">Tip:</strong> Lat/Lng defaults to map center. Save first, then use <em>Move Pin</em> to drag it to the exact location.
+    <div style="margin-top:10px;padding:8px 10px;background:rgba(45,139,58,.07);border:1px solid rgba(45,139,58,.2);border-radius:6px;font-size:11px;color:var(--muted)">
+      💡 <strong style="color:var(--text)">Tip:</strong> Save first, then use <em>Move Pin</em> to drag it to the exact location on the map.
     </div>
     <div class="em-footer">
       <button class="btn" onclick="closeGMPModal()">Cancel</button>
@@ -959,7 +886,7 @@ let adminMap = null;
 let crimeCluster = null, annLayerGrp = null, sloLayerGrp = null, unncLayerGrp = null;
 let obsLayerGrp = null;
 let tileStreet = null, tileSat = null;
-let layerOn = { crimes:false, ann:false, slo:false, unnc:false, obs:false };
+let layerOn = { crimes:false, ann:true, slo:false, unnc:false, obs:false };
 
 // Parcel layer state
 let TILE_PARCEL = null, parcelOn = false;
@@ -1105,27 +1032,9 @@ async function launch() {
   });
 
   initMap();
-
-  // ── CLEAN MAP ON LOGIN: load data silently but DON'T render layers by default ──
-  // Rationale: prevents egress spikes and gives admin a clean starting view.
-  // Admin clicks the layer toggle buttons or tabs to load specific data.
   await Promise.all([loadCrimes(), loadAnnotations(), loadUsers(), loadObservations()]);
   await loadPhotos();
   setupResize();
-
-  // Default: remove all layers from map so admin sees a clean basemap
-  if (annLayerGrp)  adminMap.removeLayer(annLayerGrp);
-  if (crimeCluster) adminMap.removeLayer(crimeCluster);
-  if (obsLayerGrp)  adminMap.removeLayer(obsLayerGrp);
-  // Update toggle button states to reflect off state
-  ['mb-crimes','mb-annotations','mb-obs'].forEach(id => {
-    const btn = document.getElementById(id);
-    if (btn) btn.classList.remove('on');
-  });
-  // Keep layerOn in sync
-  layerOn.crimes = false;
-  layerOn.annotations = false;
-  showToast('Admin portal ready — map is empty. Use toolbar to load layers.', 'ok');
 }
 
 // ══════════════════════════════════════════════════════
@@ -1143,7 +1052,7 @@ function initMap() {
 
   // Admin map uses plain layer group — no clustering for full data visibility
   crimeCluster = L.layerGroup(); // NOT added to map by default — crimes off
-  annLayerGrp  = L.layerGroup(); // NOT added to map by default — start with clean map
+  annLayerGrp  = L.layerGroup().addTo(adminMap);
   obsLayerGrp  = L.layerGroup(); // public_comments pins — off by default
   gmpLayerGrp  = L.layerGroup(); // GMP project pins — off by default
   sloLayerGrp  = L.layerGroup();
@@ -1186,33 +1095,26 @@ function fitAllData() {
 const starMarkers = {}; // id -> L.Marker
 
 function makeStarIcon(label) {
-  // Star emoji anchor: the bottom-center of the emoji (the point) should align to the coordinate.
-  // Star emoji: 22px tall, ~22px wide. Label box above it.
-  // iconAnchor=[x, y] where x=center of icon width, y=full height (bottom of star)
-  const starSize = 24; // star emoji px
-  const labelH  = label ? 20 : 0;
-  const totalH  = starSize + labelH;
-  const totalW  = label ? 130 : starSize + 4;
-  const anchorX = Math.round(totalW / 2);
-  const anchorY = totalH; // bottom of icon = exact lat/lng point
-
   return L.divIcon({
     html: `<div style="
+        position:absolute;
+        transform:translate(-50%,-100%);
         display:flex;flex-direction:column;align-items:center;
         filter:drop-shadow(0 2px 6px rgba(0,0,0,.7));
-        cursor:pointer; width:${totalW}px;
+        cursor:pointer;
       ">
         ${label ? `<div style="
           background:#fbbf24;color:#000;font-size:9px;font-weight:700;
-          padding:2px 5px;border-radius:3px;white-space:nowrap;margin-bottom:1px;
-          font-family:var(--mono);max-width:${totalW-6}px;overflow:hidden;text-overflow:ellipsis;
-          text-align:center;
+          padding:2px 5px;border-radius:3px;white-space:nowrap;margin-bottom:2px;
+          font-family:var(--mono);max-width:120px;overflow:hidden;text-overflow:ellipsis;
         ">${label}</div>` : ''}
-        <div style="font-size:${starSize}px;line-height:1;display:block">⭐</div>
+        <div style="font-size:22px;line-height:1">⭐</div>
       </div>`,
     className:'',
-    iconSize:  [totalW, totalH],
-    iconAnchor:[anchorX, anchorY],  // bottom-center = exact coordinate point
+    // iconSize matches the rendered box; iconAnchor points to the tip of the star
+    // star emoji sits at bottom of the flex column, anchor = center-x, full-height
+    iconSize:[130,label?46:28],
+    iconAnchor:[65,label?46:28],
   });
 }
 
@@ -1222,23 +1124,23 @@ function toggleStar(lat, lng, id, label) {
     // Already starred — remove it
     adminMap.removeLayer(starMarkers[id]);
     delete starMarkers[id];
-    const row = document.getElementById('row-'+id) || document.getElementById('annrow-'+id);
+    const row = document.getElementById('row-'+id);
     if (row) row.classList.remove('highlighted');
     return;
   }
-  // Add star — use setLatLng precision
+  // Add star
   const m = L.marker([lat,lng], {
     icon: makeStarIcon(label),
     zIndexOffset: 2000,
   }).addTo(adminMap);
   m.bindPopup(`<div style="padding:8px;font-family:var(--font)">
     <b style="font-size:11px">${label||'Selected'}</b><br>
-    <span style="font-size:10px;color:var(--muted)">${parseFloat(lat).toFixed(6)}, ${parseFloat(lng).toFixed(6)}</span><br>
+    <span style="font-size:10px;color:var(--muted)">${lat.toFixed(5)}, ${lng.toFixed(5)}</span><br>
     <button class="btn btn-sm" style="margin-top:6px" onclick="toggleStar(${lat},${lng},'${id}','${(label||'').replace(/'/g,"\'")}')">Remove ★</button>
   </div>`, {closeButton:false});
   starMarkers[id] = m;
 
-  const row = document.getElementById('row-'+id) || document.getElementById('annrow-'+id);
+  const row = document.getElementById('row-'+id);
   if (row) row.classList.add('highlighted');
 }
 
@@ -2034,30 +1936,14 @@ async function loadEditAnnAttachments(annId) {
         <button class="btn btn-sm" style="flex-shrink:0" onclick="openPDFCard('${esc(path)}')">View</button>
       </div>`;
     }
-    // Image — placeholder, URL loaded async — larger thumbnail + delete + link buttons
-    return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;display:flex;align-items:flex-start;gap:10px" id="att-row-${esc(p.id)}">
+    // Image — placeholder, URL loaded async
+    return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px;display:flex;align-items:center;gap:8px" id="att-row-${esc(p.id)}">
       <img data-att-path="${esc(path)}" src="" alt=""
-        style="width:140px;min-height:105px;max-height:130px;object-fit:cover;border-radius:5px;flex-shrink:0;background:var(--panel2);cursor:pointer;opacity:0;transition:opacity .3s;border:1px solid var(--border)"
+        style="width:64px;height:48px;object-fit:cover;border-radius:4px;flex-shrink:0;background:var(--panel2);cursor:pointer;opacity:0;transition:opacity .3s"
         onload="this.style.opacity=1" onclick="openLB(this)">
       <div style="flex:1;min-width:0">
-        <div style="font-size:11px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:3px">${esc(caption || path.split('/').pop().slice(0,36))}</div>
-        <div style="font-size:9px;color:var(--muted);margin-bottom:6px">${esc(dateStr)} · ${esc(author)} · ${pubLabel}</div>
-        <div style="font-size:9px;color:var(--muted);font-family:var(--mono);margin-bottom:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(p.id)}">ID: ${esc(p.id)}</div>
-        <div style="display:flex;gap:5px;flex-wrap:wrap">
-          <button class="btn btn-sm" onclick="togglePhotoPublicInline('${esc(p.id)}',${p.is_public})"
-            title="${p.is_public ? 'Make Private' : 'Make Public'}">
-            ${p.is_public ? '🔒 Make Private' : '🌐 Make Public'}
-          </button>
-          <button class="btn btn-sm" style="color:var(--blue);border-color:var(--blue)"
-            onclick="openLinkSinglePhotoDialog('${esc(p.id)}')"
-            title="Link this photo to a Master Record">
-            🔗 Link
-          </button>
-          <button class="btn btn-sm btn-danger" onclick="deletePhotoFromAnn('${esc(p.id)}','${esc(path)}')"
-            title="Delete this photo permanently">
-            🗑 Delete
-          </button>
-        </div>
+        <div style="font-size:11px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(caption || path.split('/').pop().slice(0,30))}</div>
+        <div style="font-size:9px;color:var(--muted);margin-top:2px">${esc(dateStr)} · ${esc(author)} · ${pubLabel}</div>
       </div>
     </div>`;
   }).join('');
@@ -2118,184 +2004,6 @@ function notifyAuthor(annId) {
   );
   window.open(`mailto:${authorEmail}?subject=${subject}&body=${body}`, '_self');
   showToast(`Opening email to ${authorEmail}`, 'ok');
-}
-
-// ══════════════════════════════════════════════════════
-// RELATIONAL LINKING — Link to Master Record
-// ══════════════════════════════════════════════════════
-
-// Populate classification dropdown in link modal
-function _populateLinkClassificationDropdown() {
-  const sel = document.getElementById('link-new-classification');
-  if (!sel || sel.options.length > 1) return; // already populated
-  Object.values(CATEGORY_MAP).forEach(arr => arr.forEach(c => {
-    if (c.value === '__crime__') return;
-    const opt = document.createElement('option');
-    opt.value = c.value;
-    opt.textContent = `${c.icon || ''} ${c.label}`;
-    sel.appendChild(opt);
-  }));
-}
-
-function openLinkPhotoDialog(sourceAnnotationId) {
-  if (!sourceAnnotationId) { showToast('No annotation selected', 'err'); return; }
-  _populateLinkClassificationDropdown();
-  document.getElementById('link-source-ann-id').value = sourceAnnotationId;
-  document.getElementById('link-master-id').value = '';
-  document.getElementById('link-new-classification').value = '';
-  document.getElementById('link-photo-modal').style.display = 'flex';
-}
-
-async function executeLinkToMaster() {
-  const sourceId = document.getElementById('link-source-ann-id').value.trim();
-  const masterId = document.getElementById('link-master-id').value.trim();
-  const newCat   = document.getElementById('link-new-classification').value || null;
-
-  if (!masterId) { showToast('Enter the master record UUID', 'err'); return; }
-  if (masterId === sourceId) { showToast('Master ID must differ from source ID', 'err'); return; }
-
-  const btn = document.querySelector('#link-photo-modal .btn-accent');
-  if (btn) { btn.disabled = true; btn.textContent = 'Linking…'; }
-
-  try {
-    // Step 1 — Move all photos from source annotation to master annotation
-    const { error: linkErr } = await sb
-      .from('photos')
-      .update({
-        annotation_id: masterId,
-        parent_id:     masterId,
-        record_id:     masterId,
-        record_type:   'annotation',
-      })
-      .eq('annotation_id', sourceId);
-    if (linkErr) throw new Error('Link photos: ' + linkErr.message);
-
-    // Step 2 — Reclassify master record (optional, same logical transaction)
-    if (newCat) {
-      const { error: catErr } = await sb
-        .from('map_annotations')
-        .update({ category: newCat })
-        .eq('id', masterId);
-      if (catErr) {
-        showToast(`Photos linked ✓ — classification failed: ${catErr.message}`, 'err');
-        return;
-      }
-    }
-
-    showToast(
-      `✓ Attachments linked to master record${newCat ? ` · reclassified → ${newCat}` : ''}`,
-      'ok'
-    );
-    document.getElementById('link-photo-modal').style.display = 'none';
-    // Refresh annotations to reflect any classification change
-    await loadAnnotations(); filterAnnotations();
-    await loadPhotos(); filterPhotos();
-  } catch(err) {
-    showToast('Link failed: ' + err.message, 'err');
-    console.error('[executeLinkToMaster]', err);
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '🔗 Link & Update'; }
-  }
-}
-
-// ══════════════════════════════════════════════════════
-// MERGE — Reassign ALL attachments from one record to another
-// ══════════════════════════════════════════════════════
-
-function openMergeModal(prefilledFrom) {
-  document.getElementById('merge-from-id').value = prefilledFrom || '';
-  document.getElementById('merge-to-id').value   = '';
-  document.getElementById('merge-status').textContent = '';
-  document.getElementById('merge-modal').style.display = 'flex';
-}
-
-async function executeMerge() {
-  const fromId = document.getElementById('merge-from-id').value.trim();
-  const toId   = document.getElementById('merge-to-id').value.trim();
-  const statusEl = document.getElementById('merge-status');
-
-  if (!fromId || !toId) { showToast('Both From and To IDs are required', 'err'); return; }
-  if (fromId === toId)  { showToast('From and To must be different records', 'err'); return; }
-  if (!confirm(`Move ALL attachments from\n${fromId}\n→ to →\n${toId}\n\nThis cannot be undone.`)) return;
-
-  statusEl.textContent = 'Merging…';
-  const btn = document.querySelector('#merge-modal .btn-danger');
-  if (btn) btn.disabled = true;
-
-  try {
-    // Use RPC if available (wraps both updates in a DB transaction)
-    const { error: rpcErr } = await sb.rpc('merge_attachments_to_record', {
-      p_from_annotation_id: fromId,
-      p_to_annotation_id:   toId,
-    });
-
-    if (rpcErr) {
-      // RPC not yet created — fall back to two direct updates
-      console.warn('[executeMerge] RPC unavailable, falling back to direct updates:', rpcErr.message);
-      const { error: e1 } = await sb
-        .from('photos')
-        .update({ annotation_id: toId, parent_id: toId, record_id: toId })
-        .eq('annotation_id', fromId);
-      if (e1) throw new Error('Reassign photos: ' + e1.message);
-
-      const { error: e2 } = await sb
-        .from('photos')
-        .update({ record_id: toId })
-        .eq('record_id', fromId);
-      if (e2) throw new Error('Update record_id: ' + e2.message);
-    }
-
-    statusEl.textContent = '✓ Merge complete';
-    showToast('✓ Attachments reassigned to master record', 'ok');
-    document.getElementById('merge-modal').style.display = 'none';
-    await loadPhotos(); filterPhotos();
-  } catch(err) {
-    statusEl.textContent = 'Error: ' + err.message;
-    showToast('Merge failed: ' + err.message, 'err');
-    console.error('[executeMerge]', err);
-  } finally {
-    if (btn) btn.disabled = false;
-  }
-}
-
-// Link a SINGLE photo (by photo UUID) to a master annotation
-// Opens the same Link modal but pre-fills from the photo's current annotation_id
-function openLinkSinglePhotoDialog(photoId) {
-  const photo = allPhotos.find(p => p.id === photoId);
-  const sourceAnnId = photo?.annotation_id || '';
-  _populateLinkClassificationDropdown();
-  document.getElementById('link-source-ann-id').value = sourceAnnId;
-  document.getElementById('link-master-id').value = '';
-  document.getElementById('link-new-classification').value = '';
-  // Override the submit to link only this one photo
-  const btn = document.querySelector('#link-photo-modal .btn-accent');
-  if (btn) {
-    btn.onclick = async () => {
-      const masterId = document.getElementById('link-master-id').value.trim();
-      const newCat   = document.getElementById('link-new-classification').value || null;
-      if (!masterId) { showToast('Enter the master record UUID', 'err'); return; }
-      btn.disabled = true; btn.textContent = 'Linking…';
-      try {
-        const { error } = await sb.from('photos')
-          .update({ annotation_id: masterId, parent_id: masterId, record_id: masterId, record_type: 'annotation' })
-          .eq('id', photoId);
-        if (error) throw error;
-        if (newCat) {
-          await sb.from('map_annotations').update({ category: newCat }).eq('id', masterId);
-        }
-        showToast('✓ Photo linked to master record', 'ok');
-        document.getElementById('link-photo-modal').style.display = 'none';
-        await loadPhotos(); filterPhotos();
-        // Restore default submit handler
-        btn.onclick = executeLinkToMaster;
-      } catch(err) {
-        showToast('Link failed: ' + err.message, 'err');
-      } finally {
-        btn.disabled = false; btn.textContent = '🔗 Link & Update';
-      }
-    };
-  }
-  document.getElementById('link-photo-modal').style.display = 'flex';
 }
 
 // ══════════════════════════════════════════════════════
@@ -2508,48 +2216,6 @@ async function deletePhoto(id,path){
   if (dbErr) { showToast('Error deleting photo: '+dbErr.message, 'err'); return; }
   showToast('Photo deleted','ok');
   await loadPhotos();
-}
-
-// Variant used inside Edit Annotation attachment panel — refreshes ann panel after delete
-async function deletePhotoFromAnn(id, path) {
-  if (!confirm('Delete this photo permanently? This cannot be undone.')) return;
-  const { error: storErr } = await sb.storage.from('crime-photos').remove([path]);
-  if (storErr) console.warn('Storage delete (may already be gone):', storErr.message);
-  const { error: dbErr } = await sb.from('photos').delete().eq('id', id);
-  if (dbErr) { showToast('Delete failed: ' + dbErr.message, 'err'); return; }
-  showToast('🗑 Photo deleted', 'ok');
-  // Remove the card from DOM immediately (no full reload needed)
-  const row = document.getElementById('att-row-' + id);
-  if (row) row.remove();
-  // Update count badge
-  const list    = document.getElementById('edit-ann-att-list');
-  const remaining = list ? list.querySelectorAll('[id^="att-row-"]').length : 0;
-  const badge   = document.getElementById('edit-ann-att-count');
-  if (badge) badge.textContent = remaining;
-  if (!remaining) {
-    document.getElementById('edit-ann-attachments').style.display = 'none';
-    document.getElementById('edit-ann-att-empty').style.display = 'block';
-  }
-  // Also refresh the global photos list
-  allPhotos = allPhotos.filter(p => p.id !== id);
-  filterPhotos();
-}
-
-// Toggle public visibility inline from the annotation attachment panel
-async function togglePhotoPublicInline(id, current) {
-  const newVal = !(current === true || current === 'true');
-  const { error } = await sb.from('photos').update({ is_public: newVal }).eq('id', id);
-  if (error) { showToast('Error: ' + error.message, 'err'); return; }
-  // Patch allPhotos
-  const idx = allPhotos.findIndex(p => p.id === id);
-  if (idx !== -1) allPhotos[idx].is_public = newVal;
-  // Update the button text inline
-  const btn = document.querySelector(`#att-row-${id} button[onclick*="togglePhotoPublicInline"]`);
-  if (btn) {
-    btn.textContent = newVal ? '🔒 Make Private' : '🌐 Make Public';
-    btn.setAttribute('onclick', `togglePhotoPublicInline('${id}',${newVal})`);
-  }
-  showToast(newVal ? '🌐 Photo is now public' : '🔒 Photo made private', 'ok');
 }
 
 // ══════════════════════════════════════════════════════
@@ -3647,22 +3313,14 @@ function openGMPModal(id) {
     document.getElementById('gmp-lng').value     = p.lng  ?? '';
     moveBtn.style.display = 'inline-flex';
   } else {
-    // Add mode — default lat/lng to current map center (can be refined with Move Pin)
+    // Add mode
     document.getElementById('gmp-modal-title').textContent = 'Add GMP Project';
     ['gmp-name','gmp-region','gmp-funding','gmp-amount','gmp-wosip',
-     'gmp-partners','gmp-notes'].forEach(fid => {
-      document.getElementById(fid).value = '';
+     'gmp-partners','gmp-notes','gmp-lat','gmp-lng'].forEach(id => {
+      document.getElementById(id).value = '';
     });
     document.getElementById('gmp-status').value = 'planning';
-    // Pre-fill with map center so admin can Save now, Move Pin later
-    const center = adminMap ? adminMap.getCenter() : { lat: 34.028, lng: -118.334 };
-    document.getElementById('gmp-lat').value = center.lat.toFixed(6);
-    document.getElementById('gmp-lng').value = center.lng.toFixed(6);
-    // Show move-pin button for new records too (save first, then move)
-    moveBtn.style.display = 'none'; // hidden until after first save
-    // Show a hint
-    const hintEl = document.getElementById('gmp-coord-hint');
-    if (hintEl) hintEl.textContent = 'Defaulting to map center — use Move Pin after saving to place precisely.';
+    moveBtn.style.display = 'none';
   }
   modal.style.display = 'flex';
 }

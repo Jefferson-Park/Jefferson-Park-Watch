@@ -7839,7 +7839,6 @@ async function uploadAttachment(file, recordId = null, recordType = null, parent
     const fileName = `${crypto.randomUUID()}.${fileExt}`;
     const filePath = `attachments/${fileName}`;
 
-    // Upload file to Supabase Storage bucket
     const { error: uploadError } = await sb.storage
       .from('neighborhood-assets')
       .upload(filePath, file);
@@ -7850,7 +7849,6 @@ async function uploadAttachment(file, recordId = null, recordType = null, parent
       .from('neighborhood-assets')
       .getPublicUrl(filePath);
 
-    // Insert tracking entry into photos table using clean UUID relations
     const { data, error: dbError } = await sb
       .from('photos')
       .insert([{
@@ -7858,9 +7856,9 @@ async function uploadAttachment(file, recordId = null, recordType = null, parent
         public_url: publicUrl,
         storage_path: filePath,
         uploaded_by: session.user.id,
-        record_id: recordId,         // Master Record Link (e.g. Tree UUID)
-        record_type: recordType,     // Table class discriminator
-        parent_id: parentId          // Relational hierarchy linking
+        record_id: recordId,
+        record_type: recordType,
+        parent_id: parentId
       }])
       .select()
       .single();
@@ -7876,7 +7874,6 @@ async function uploadAttachment(file, recordId = null, recordType = null, parent
 
 async function updateMasterRecord(attachmentId, masterId, newClassification = null) {
   try {
-    // 1. Reassign attachment metadata to link to the Master ID
     const { error: photoError } = await sb
       .from('photos')
       .update({ 
@@ -7887,10 +7884,9 @@ async function updateMasterRecord(attachmentId, masterId, newClassification = nu
 
     if (photoError) throw photoError;
 
-    // 2. Perform target table classification adjustment if specified
     if (newClassification) {
       const { error: assetError } = await sb
-        .from('public_comments') // Update target Master Record table
+        .from('public_comments')
         .update({ classification: newClassification })
         .eq('id', masterId);
 
@@ -7906,18 +7902,36 @@ async function updateMasterRecord(attachmentId, masterId, newClassification = nu
   }
 }
 
+// Automatically manages dismissing the login interface and showing the map workspace
+function handleUiTransition(session) {
+  // Find common login container IDs used across these templates
+  const loginOverlay = document.getElementById('login-overlay') || 
+                       document.getElementById('login-screen') || 
+                       document.getElementById('auth-modal');
+                       
+  if (loginOverlay) {
+    loginOverlay.style.display = 'none';
+    console.log("[UI] Login interface dismissed. Displaying map workspace.");
+  }
+
+  // Trigger base layer loads if they exist in the parent script scope
+  if (session) {
+    if (typeof loadAnnotations === 'function') loadAnnotations();
+    if (typeof loadCrimes === 'function') loadCrimes();
+    if (typeof loadGMPProjects === 'function') loadGMPProjects();
+  }
+}
+
 function initMobileLayout() {
   const isMobile = window.innerWidth <= 768;
   const sidebar = document.getElementById('sidebar');
   const toggleBtn = document.getElementById('sb-toggle');
 
   if (isMobile && sidebar && toggleBtn) {
-    // Check if public user or unauthenticated guest view
     sb.auth.getSession().then(({ data: { session } }) => {
       const isAdminOrPM = session?.user?.user_metadata?.role === 'admin' || session?.user?.user_metadata?.role === 'pm';
       
       if (!isAdminOrPM) {
-        // Force flyout on load for mobile public layouts to prevent empty base map scroll roaming
         sidebar.classList.add('open');
         toggleBtn.classList.add('on');
         toggleBtn.style.backgroundColor = 'var(--red, #B83232)';
@@ -7930,24 +7944,59 @@ function initMobileLayout() {
   }
 }
 
-// Global initialization sequence and Leaflet canvas setups
+// Wire up the submit actions for the login interface elements
+function initAuthenicationListeners() {
+  const loginForm = document.getElementById('login-form');
+  if (loginForm) {
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const emailEl = document.getElementById('email') || document.getElementById('login-email');
+      const passwordEl = document.getElementById('password') || document.getElementById('login-password');
+      
+      if (!emailEl || !passwordEl) return;
+      
+      try {
+        const { data, error } = await sb.auth.signInWithPassword({
+          email: emailEl.value,
+          password: passwordEl.value
+        });
+        if (error) throw error;
+        console.log("[Auth] Form sign-in successful.");
+      } catch (err) {
+        alert("Authentication error: " + err.message);
+      }
+    });
+  }
+}
+
 async function launch() {
   try {
     initMobileLayout();
+    initAuthenicationListeners();
     
-    // Fetch initial layer states and map dimensions
     if (typeof loadBoundaries === 'function') await loadBoundaries();
     
-    // Listen for real-time authentication changes to toggle workspace contextual buttons
+    // Core authentication monitor state machine
     sb.auth.onAuthStateChange((event, session) => {
+      console.log(`[Auth Event] State changed to: ${event}`);
+      
       const reportBtn = document.getElementById('report-obs-btn');
-      if (reportBtn) {
-        if (session) {
-          reportBtn.style.backgroundColor = 'var(--red, #B83232)';
-          reportBtn.style.borderColor = 'var(--red, #B83232)';
-        }
+      if (reportBtn && session) {
+        reportBtn.style.backgroundColor = 'var(--red, #B83232)';
+        reportBtn.style.borderColor = 'var(--red, #B83232)';
+      }
+
+      // If user is logged in or explicitly signs in, move past login screen
+      if (session || event === 'SIGNED_IN') {
+        handleUiTransition(session);
       }
     });
+
+    // Check for an active session immediately on startup
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) {
+      handleUiTransition(session);
+    }
 
     console.log("Jefferson Park Unified Neighborhood Map successfully active.");
   } catch (outerErr) {
@@ -7955,7 +8004,6 @@ async function launch() {
   }
 }
 
-// Fire up mapping routines on document initialization
 document.addEventListener('DOMContentLoaded', () => {
   if (typeof initMap === 'function') initMap();
   launch();

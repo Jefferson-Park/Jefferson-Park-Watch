@@ -478,6 +478,15 @@ html, body { width:100%; height:100%; overflow:hidden; font-family:var(--font); 
     </div>
     <!-- Topbar -->
     <div id="topbar">
+      <!-- Back-link to main JP_NIM app -->
+      <a href="JP_NIM.html" title="Back to Neighborhood Improvement Map"
+         style="display:flex;align-items:center;gap:5px;padding:0 10px 0 4px;height:36px;border:1px solid var(--border);
+                border-radius:8px;background:var(--white);color:var(--green-dark);text-decoration:none;
+                font-size:11px;font-family:var(--mono);font-weight:600;white-space:nowrap;flex-shrink:0;
+                transition:background .15s;" onmouseover="this.style.background='var(--sand)'" onmouseout="this.style.background='var(--white)'">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M15 18l-6-6 6-6"/>
+        </svg>JP NIM</a>
       <div id="search-wrap">
         <span class="search-icon">🔍</span>
         <input id="search-input" type="text" placeholder="Search block group or address…" oninput="handleSearch(this.value)">
@@ -1264,7 +1273,7 @@ async function loadGreeningFromSupabase() {
       .from('v_greening_map_pins')                          // ← was 'greening_projects'
       .select('id,name,region,status,wosip_goals,lat,lng')  // ← pin-only columns
       .order('name');
-    if (error) throw error;
+    if (error) throw new Error(`${error.message || 'DB error'} (code: ${error.code || '?'})`);
     if (!data || data.length === 0) return; // keep hardcoded fallback visible
     // Merge with GREENING_PROJECTS fallback for popup-only fields
     // (desc, funding, area, partners) so the popup stays richly filled even

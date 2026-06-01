@@ -1835,18 +1835,13 @@ function _isInLACounty(lat, lng) {
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
 
-// Dedicated truly-stateless client for anonymous public submissions.
-// null storage adapter = this client physically cannot read or inherit
-// any session from the main `sb` client, regardless of Supabase JS v2
-// GoTrueClient initialization behavior.
-const _nullStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+// Dedicated stateless client for anonymous public submissions.
+// persistSession:false + autoRefreshToken:false means this client
+// NEVER stores or sends a user JWT — it always sends only the anon
+// key, even if a staff member is logged in on the main `sb` client.
+// This is the correct fix for 401/42501 on public_comments inserts.
 const sbPublic = createClient(SUPABASE_URL, SUPABASE_ANON, {
-  auth: {
-    persistSession:     false,
-    autoRefreshToken:   false,
-    detectSessionInUrl: false,
-    storage:            _nullStorage,
-  },
+  auth: { persistSession: false, autoRefreshToken: false, storageKey: 'sb-public-anon' },
 });
 
 // ══════════════════════════════════════════════════════════════════
@@ -4009,44 +4004,22 @@ async function submitPublicReport() {
       msg.textContent = 'Submitting…';
     }
 
-    // Belt-and-suspenders: explicitly clear any session that may have leaked
-    // into sbPublic despite the null storage adapter (Supabase JS v2 edge case).
-    await sbPublic.auth.signOut();
-
-    // Raw fetch insert — bypasses the Supabase JS client's auth header injection
-    // entirely, guaranteeing the anon key is the only credential sent.
-    // This is the definitive fix for 401/42501 when a logged-in session on `sb`
-    // bleeds into `sbPublic` through GoTrueClient shared browser context.
-    const _insertPayload = {
-      lat:             pubReportLat,
-      lng:             pubReportLng,
-      address:         pubReportAddress || null,
-      category:        cat,
-      comment_text:    desc,
-      submitter_email: email || null,
-      status:          'new',
-      notes:           commentNotes,
-      photo_path:      uploadedPhotoPath,
-    };
-    const _insertResp = await fetch(
-      `${SUPABASE_URL}/rest/v1/public_comments`,
-      {
-        method: 'POST',
-        headers: {
-          'apikey':       SUPABASE_ANON,
-          'Authorization': `Bearer ${SUPABASE_ANON}`,
-          'Content-Type': 'application/json',
-          'Prefer':       'return=minimal',
-        },
-        body: JSON.stringify(_insertPayload),
-      }
-    );
-    const error = _insertResp.ok ? null : {
-      message: (await _insertResp.json().catch(() => ({}))).message || `HTTP ${_insertResp.status}`,
-      code:    String(_insertResp.status),
-      details: null,
-      hint:    null,
-    };
+    // Use the dedicated stateless anon client — never carries a user JWT,
+    // so no signOut needed and no race condition between session teardown
+    // and the insert firing.
+const { error } = await sbPublic.from('public_comments').insert([
+  {
+    lat: pubReportLat,
+    lng: pubReportLng,
+    address: pubReportAddress || null,
+    category: cat,
+    comment_text: desc,
+    submitter_email: email || null,
+    status: 'new',
+    notes: commentNotes,
+    photo_path: uploadedPhotoPath
+  }
+]);
 
     if (error) {
       // Log full error object so the raw Supabase message is always visible in console

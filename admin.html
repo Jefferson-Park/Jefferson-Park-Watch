@@ -2938,42 +2938,7 @@ function copyRLSSQL() {
     .then(() => showToast('SQL copied — paste into Supabase SQL Editor', 'ok'))
     .catch(() => showToast('Copy failed — select and copy manually', 'err'));
 }
--- Admin full access to greening_projects
-ALTER TABLE greening_projects ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Admin select greening_projects" ON greening_projects;
-CREATE POLICY "Admin select greening_projects"
-  ON greening_projects FOR SELECT TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
-  ));
-
-DROP POLICY IF EXISTS "Admin insert greening_projects" ON greening_projects;
-CREATE POLICY "Admin insert greening_projects"
-  ON greening_projects FOR INSERT TO authenticated
-  WITH CHECK (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
-  ));
-
-DROP POLICY IF EXISTS "Admin update greening_projects" ON greening_projects;
-CREATE POLICY "Admin update greening_projects"
-  ON greening_projects FOR UPDATE TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
-  )) WITH CHECK (true);
-
-DROP POLICY IF EXISTS "Admin delete greening_projects" ON greening_projects;
-CREATE POLICY "Admin delete greening_projects"
-  ON greening_projects FOR DELETE TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
-  ));
-
--- Public read (so UNNC_GMP can fetch greening points as anon)
-DROP POLICY IF EXISTS "Public read greening_projects" ON greening_projects;
-CREATE POLICY "Public read greening_projects"
-  ON greening_projects FOR SELECT TO anon
-  USING (true);
 // ══════════════════════════════════════════════════════
 // PARCEL LAYER — identify-based (no bulk vector fetch)
 // ══════════════════════════════════════════════════════

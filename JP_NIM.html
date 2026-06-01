@@ -1120,7 +1120,7 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
         <div class="grp-body collapsed" id="gb-gmp">
           <!-- GMP Map link — PM/Admin only, injected by applyRoleUI() -->
           <div id="gmp-maplink-row" style="display:none;padding:6px 10px 2px">
-            <a id="btn-gmp-map" href="unnc_map.html" target="_blank"
+            <a id="btn-gmp-map" href="UNNC_GMP_v3.html" target="_blank"
                style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;
                       color:var(--accent);text-decoration:none;padding:5px 8px;border-radius:6px;
                       background:rgba(45,80,22,.12);border:1px solid rgba(45,80,22,.25)">
@@ -4370,14 +4370,14 @@ async function saveLink() {
   try { new URL(url); } catch { showToast('Invalid URL — check format','err'); return; }
   if (!currentPhotoCtx || !currentUser) { showToast('No context — please retry','err'); return; }
 
-  const { error } = await sb.from('photos'){
+  const { error } = await sb.from('photos').insert([{
     uploaded_by:   currentUser.id,
     storage_path:  'link://' + url,
     caption:       label || url,
     crime_id:      currentPhotoCtx.type === 'crime'      ? currentPhotoCtx.id : null,
     annotation_id: currentPhotoCtx.type === 'annotation' ? currentPhotoCtx.id : null,
     is_public:     false,
-  });
+  }]);
 
   if (error) { showToast('Error saving link: ' + error.message, 'err'); return; }
 

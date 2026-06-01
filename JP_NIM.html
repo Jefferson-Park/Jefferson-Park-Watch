@@ -1835,6 +1835,15 @@ function _isInLACounty(lat, lng) {
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
 
+// Dedicated stateless client for anonymous public submissions.
+// persistSession:false + autoRefreshToken:false means this client
+// NEVER stores or sends a user JWT — it always sends only the anon
+// key, even if a staff member is logged in on the main `sb` client.
+// This is the correct fix for 401/42501 on public_comments inserts.
+const sbPublic = createClient(SUPABASE_URL, SUPABASE_ANON, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
+
 // ══════════════════════════════════════════════════════════════════
 // XSS SANITIZER — use esc() for all user-data in innerHTML
 // ══════════════════════════════════════════════════════════════════
@@ -3977,7 +3986,7 @@ async function submitPublicReport() {
         msg.textContent = 'Uploading photo…';
         const ext  = pubReportPhotoFile.name.split('.').pop().toLowerCase() || 'jpg';
         const storagePath = `public_reports/${photoToken}.${ext}`;
-        const { error: upErr } = await sb.storage
+        const { error: upErr } = await sbPublic.storage
           .from('crime-photos')
           .upload(storagePath, pubReportPhotoFile, {
             contentType: pubReportPhotoFile.type || 'image/jpeg',
@@ -3995,11 +4004,10 @@ async function submitPublicReport() {
       msg.textContent = 'Submitting…';
     }
 
-    // Ensure anon role before insert — photo upload may leave stale session
-    const { data: { session: _activeSession } } = await sb.auth.getSession();
-    if (_activeSession) await sb.auth.signOut();
- 
-const { error } = await sb.from('public_comments').insert([
+    // Use the dedicated stateless anon client — never carries a user JWT,
+    // so no signOut needed and no race condition between session teardown
+    // and the insert firing.
+const { error } = await sbPublic.from('public_comments').insert([
   {
     lat: pubReportLat,
     lng: pubReportLng,

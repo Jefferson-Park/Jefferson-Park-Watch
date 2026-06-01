@@ -61,15 +61,19 @@ html, body { width:100%; height:100%; overflow:hidden; font-family:var(--font); 
 /* ── Sidebar toggle ───────────────────────────── */
 #sb-toggle {
   position:absolute; top:60px; left:var(--sb-width);
-  width:24px; height:48px; background:var(--panel);
-  border:1px solid var(--border); border-left:none;
+  min-width:24px; height:48px;
+  background:#B83232;
+  border:1px solid #8B1A1A; border-left:none;
   border-radius:0 8px 8px 0; cursor:pointer;
-  display:flex; align-items:center; justify-content:center;
+  display:flex; align-items:center; justify-content:center; gap:4px;
+  padding:0 8px 0 6px;
   z-index:201; transition:left .25s cubic-bezier(.4,0,.2,1);
-  color:var(--muted);
+  color:#fff;
+  font-size:10px; font-weight:700; letter-spacing:.03em;
+  white-space:nowrap;
 }
-#sb-toggle:hover { color:var(--green); }
-#sidebar.collapsed ~ #map-wrap #sb-toggle { left:0; border-left:1px solid var(--border); border-radius:8px; }
+#sb-toggle:hover { background:#9B2020; }
+#sidebar.collapsed ~ #map-wrap #sb-toggle { left:0; border-left:1px solid #8B1A1A; border-radius:8px; }
 
 /* ── Sidebar head ─────────────────────────────── */
 .sb-head {
@@ -183,6 +187,19 @@ html, body { width:100%; height:100%; overflow:hidden; font-family:var(--font); 
 }
 #search-input:focus { border-color:var(--green); background:var(--white); }
 .search-icon { position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--muted); font-size:13px; pointer-events:none; }
+/* Locate Me button active state */
+#locate-btn:hover,#locate-btn.active { border-color:var(--green);color:var(--green);background:var(--green-pale); }
+/* ── Zoom controls: right side to avoid address bar on mobile ─────── */
+.ol-zoom-right {
+  top: calc(var(--tb-height) + 8px) !important;
+  right: 10px !important;
+  left: auto !important;
+  bottom: auto !important;
+}
+/* ── Sidebar z-index: must be BELOW the project info popup ─────────── */
+/* popup-panel has z-index 300; sidebar gets 200 so popup always wins */
+#sidebar { z-index: 200 !important; }
+#sb-toggle { z-index: 201 !important; }
 
 /* ── Map overlays ─────────────────────────────── */
 #map-legend {
@@ -193,12 +210,12 @@ html, body { width:100%; height:100%; overflow:hidden; font-family:var(--font); 
 }
 #map-legend .leg-title { font-weight:600; color:var(--text2); margin-bottom:6px; font-size:10px; font-family:var(--mono); text-transform:uppercase; letter-spacing:.05em; }
 
-/* ── Popup panel ──────────────────────────────── */
+/* ── Popup panel — z-index ABOVE sidebar (300 > 200) ─────────────── */
 #popup-panel {
   position:absolute; top:var(--tb-height); right:0; width:320px;
   max-height:calc(100% - var(--tb-height)); overflow-y:auto;
   background:var(--panel); border-left:1px solid var(--border);
-  z-index:150; display:none; box-shadow:var(--shadow-lg);
+  z-index:300; display:none; box-shadow:var(--shadow-lg);
   transform:translateX(100%); transition:transform .22s cubic-bezier(.4,0,.2,1);
 }
 #popup-panel.open { transform:translateX(0); display:block; }
@@ -265,9 +282,12 @@ html, body { width:100%; height:100%; overflow:hidden; font-family:var(--font); 
   #sidebar.open { transform:translateX(0); }
   #sb-toggle {
     position:fixed; top:auto; bottom:68px; left:12px;
-    width:44px; height:44px; border-radius:12px; border:1px solid var(--border);
+    width:44px; height:44px; border-radius:12px;
+    border:1px solid #8B1A1A;
     box-shadow:var(--shadow); z-index:301;
+    writing-mode:horizontal-tb; flex-direction:row;
   }
+  #sb-toggle-label { display:none; } /* hide text label on mobile — icon only */
   #sidebar.open ~ #map-wrap #sb-toggle { left:calc(var(--sb-width) + 8px); }
   #topbar { padding:0 10px 0 10px; }
   #popup-panel { width:100%; top:auto; bottom:0; left:0; right:0; max-height:72vh; border-left:none; border-top:1px solid var(--border); border-radius:16px 16px 0 0; transform:translateY(100%); }
@@ -295,9 +315,9 @@ html, body { width:100%; height:100%; overflow:hidden; font-family:var(--font); 
 
     <div class="sb-scroll">
 
-      <!-- Data Overlay -->
+      <!-- Tree Equity Score Data Overlay (renamed per user request) -->
       <div id="overlay-strip">
-        <div class="ov-label">📊 Data Overlay</div>
+        <div class="ov-label">🌳 Tree Equity Score (TES) Data Overlay</div>
         <div class="ov-btns">
           <button class="ov-btn active" onclick="setOverlay('off')">Off</button>
           <button class="ov-btn" onclick="setOverlay('tes')">TES Score</button>
@@ -321,7 +341,7 @@ html, body { width:100%; height:100%; overflow:hidden; font-family:var(--font); 
         </div>
       </div>
 
-      <!-- 1. Greening Master Plan -->
+      <!-- 1. Greening Master Plan with all 8 WOSIP goals -->
       <div class="layer-group">
         <div class="grp-head" onclick="toggleGroup('greening')">
           <span>🌿 Greening Master Plan<span class="grp-count" id="cnt-greening">6</span></span>
@@ -341,33 +361,54 @@ html, body { width:100%; height:100%; overflow:hidden; font-family:var(--font); 
             <span class="st-chip" data-status="funded" onclick="filterGreeningStatus('funded')">Funded</span>
             <span class="st-chip" data-status="active" onclick="filterGreeningStatus('active')">Active</span>
           </div>
-          <!-- WOSIP filter -->
-          <div style="padding:4px 4px 2px;font-size:9px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em">WOSIP Goals</div>
+          <!-- WOSIP filter — all 8 goals (Watershed Opportunities for Sustained Infrastructure Planning) -->
+          <div style="padding:6px 4px 2px;font-size:9px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em">
+            WOSIP Goals
+            <span style="font-size:8px;color:var(--muted);text-transform:none;letter-spacing:0;display:block;margin-top:1px;line-height:1.4">(Watershed Opportunities for Sustained Infrastructure Planning)</span>
+          </div>
           <div class="wosip-chips" id="wosip-chips">
             <span class="wosip-chip active" data-goal="all" onclick="filterWOSIP('all')">All Goals</span>
-            <span class="wosip-chip" data-goal="1" onclick="filterWOSIP('1')">G1 Safe Communities</span>
-            <span class="wosip-chip" data-goal="2" onclick="filterWOSIP('2')">G2 Park Access</span>
-            <span class="wosip-chip" data-goal="3" onclick="filterWOSIP('3')">G3 Water</span>
-            <span class="wosip-chip" data-goal="5" onclick="filterWOSIP('5')">G5 Urban Forest</span>
-            <span class="wosip-chip" data-goal="7" onclick="filterWOSIP('7')">G7 Heat</span>
+            <span class="wosip-chip" data-goal="1" onclick="filterWOSIP('1')" title="G1: Empower Safe and Resilient Communities">G1 Safe &amp; Resilient Communities</span>
+            <span class="wosip-chip" data-goal="2" onclick="filterWOSIP('2')" title="G2: Increase Access to Parks and Open Spaces">G2 Parks &amp; Open Spaces</span>
+            <span class="wosip-chip" data-goal="3" onclick="filterWOSIP('3')" title="G3: Protect and Manage Water Resources">G3 Water Resources</span>
+            <span class="wosip-chip" data-goal="4" onclick="filterWOSIP('4')" title="G4: Increase Biodiversity">G4 Biodiversity</span>
+            <span class="wosip-chip" data-goal="5" onclick="filterWOSIP('5')" title="G5: Advance Urban Forest Health">G5 Urban Forest Health</span>
+            <span class="wosip-chip" data-goal="6" onclick="filterWOSIP('6')" title="G6: Remediate Degraded Lands">G6 Remediate Lands</span>
+            <span class="wosip-chip" data-goal="7" onclick="filterWOSIP('7')" title="G7: Mitigate Impacts from Extreme Heat">G7 Extreme Heat</span>
+            <span class="wosip-chip" data-goal="8" onclick="filterWOSIP('8')" title="G8: Prevent Wildfire">G8 Wildfire</span>
           </div>
         </div>
       </div>
 
-      <!-- 2. Trees & Green Space -->
+      <!-- 2. Trees & Green Space (pulls from JP_NIM Supabase layers) -->
       <div class="layer-group">
         <div class="grp-head" onclick="toggleGroup('trees')">
           <span>🌳 Trees & Green Space</span>
           <span class="grp-chevron" id="chv-trees" style="transform:rotate(-90deg)">▾</span>
         </div>
         <div class="grp-body" id="gb-trees">
-          <div class="tog-row"><div class="tog-icon" style="background:#E8F5E9">🌲</div><div class="tog-label">Street Trees<span class="tog-sub">Field inventory</span></div><div class="tog-sw" id="sw-trees"></div></div>
-          <div class="tog-row"><div class="tog-icon" style="background:#F1F8E9">🌱</div><div class="tog-label">Planting Sites<span class="tog-sub">Vacant wells & opportunities</span></div><div class="tog-sw" id="sw-planting"></div></div>
-          <div class="tog-row"><div class="tog-icon" style="background:#E8F5E9">🏞</div><div class="tog-label">Parks & Trails<span class="tog-sub">Open space access</span></div><div class="tog-sw" id="sw-parks"></div></div>
+          <div class="tog-row"><div class="tog-icon" style="background:#E8F5E9">🌲</div><div class="tog-label">Street Trees<span class="tog-sub">Trees · from JP_NIM Supabase</span></div><div class="tog-sw" id="sw-trees"></div></div>
+          <div class="tog-row"><div class="tog-icon" style="background:#F1F8E9">🌱</div><div class="tog-label">Planting Sites<span class="tog-sub">Vacant Wells + Planting Sites + Stumps</span></div><div class="tog-sw" id="sw-planting"></div></div>
+          <div class="tog-row"><div class="tog-icon" style="background:#E8F5E9">🏞</div><div class="tog-label">Parks & Trails<span class="tog-sub">Open space access · Parks layer</span></div><div class="tog-sw" id="sw-parks"></div></div>
         </div>
       </div>
 
-      <!-- 3. Stormwater & Infrastructure -->
+      <!-- 3. Traffic Safety & Street Infrastructure (same as JP_NIM) -->
+      <div class="layer-group">
+        <div class="grp-head" onclick="toggleGroup('traffic')">
+          <span>🚗 Traffic Safety & Street Infrastructure</span>
+          <span class="grp-chevron" id="chv-traffic" style="transform:rotate(-90deg)">▾</span>
+        </div>
+        <div class="grp-body" id="gb-traffic">
+          <div class="tog-row"><div class="tog-icon" style="background:rgba(240,165,0,.12)">🚗</div><div class="tog-label">Traffic Accidents<span class="tog-sub">LAPD collision reports · JP_NIM</span></div><div class="tog-sw" id="sw-traffic-acc"></div></div>
+          <div class="tog-row"><div class="tog-icon" style="background:rgba(45,139,255,.12)">💡</div><div class="tog-label">Street Infrastructure<span class="tog-sub">Lighting, signals, sidewalks</span></div><div class="tog-sw" id="sw-traffic-infra"></div></div>
+          <div style="padding:2px 4px 6px;font-size:9px;color:var(--muted);font-family:var(--mono);line-height:1.5">
+            Vision Zero HIN and Active Transportation layers planned · contact DOT for API access
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Stormwater & Infrastructure -->
       <div class="layer-group">
         <div class="grp-head" onclick="toggleGroup('stormwater')">
           <span>💧 Stormwater & Infra</span>
@@ -384,45 +425,35 @@ html, body { width:100%; height:100%; overflow:hidden; font-family:var(--font); 
         </div>
       </div>
 
-      <!-- 4. Environment & Health -->
+      <!-- 5. Environment & Health (Air Quality = PurpleAir, same as JP_NIM) -->
       <div class="layer-group">
         <div class="grp-head" onclick="toggleGroup('env')">
           <span>🌬 Environment & Health</span>
           <span class="grp-chevron" id="chv-env" style="transform:rotate(-90deg)">▾</span>
         </div>
         <div class="grp-body" id="gb-env">
-          <div class="tog-row"><div class="tog-icon" style="background:#FFF8E1">💨</div><div class="tog-label">Air Quality (PurpleAir)<span class="tog-sub">Live sensor data</span></div><div class="tog-sw" id="sw-air"></div></div>
-          <div class="tog-row"><div class="tog-icon" style="background:#FFF3E0">🌡</div><div class="tog-label">Heat Sensors<span class="tog-sub">Add data layer</span></div><div class="tog-sw" id="sw-heat-pts"></div></div>
+          <div class="tog-row"><div class="tog-icon" style="background:#FFF8E1">💨</div><div class="tog-label">Air Quality (PurpleAir)<span class="tog-sub">Live sensor data · same as JP_NIM</span></div><div class="tog-sw" id="sw-air"></div></div>
         </div>
       </div>
 
-      <!-- 4. Traffic Safety & Streets (replaces UNNC boundary toggle freed slot) -->
+      <!-- 6. Community Improvement (same as JP_NIM) -->
       <div class="layer-group">
-        <div class="grp-head" onclick="toggleGroup('traffic')">
-          <span>🚦 Traffic Safety &amp; Streets</span>
-          <span class="grp-chevron" id="chv-traffic" style="transform:rotate(-90deg)">▾</span>
+        <div class="grp-head" onclick="toggleGroup('community')">
+          <span>🏗 Community Improvement</span>
+          <span class="grp-chevron" id="chv-community" style="transform:rotate(-90deg)">▾</span>
         </div>
-        <div class="grp-body" id="gb-traffic">
-          <!-- Metro E Line stations — static markers, always accurate -->
-          <div class="tog-row" onclick="toggleLayer('metro')">
-            <div class="tog-icon" style="background:rgba(235,125,36,.12)">🚇</div>
-            <div class="tog-label">Metro E Line Stops<span class="tog-sub">Jefferson/USC · Expo Park/USC</span></div>
-            <div class="tog-sw" id="sw-metro"></div>
-          </div>
-          <!-- Vision Zero HIN placeholder -->
-          <div class="tog-row" style="opacity:.55;cursor:not-allowed" title="Coming soon — LADOT Vision Zero data">
-            <div class="tog-icon" style="background:rgba(211,47,47,.12)">⚠️</div>
-            <div class="tog-label">Vision Zero HIN<span class="tog-sub">High Injury Network — coming soon</span></div>
-            <div class="tog-sw" id="sw-hin"></div>
-          </div>
+        <div class="grp-body" id="gb-community">
+          <div class="tog-row"><div class="tog-icon" style="background:rgba(93,173,226,.12)">🔨</div><div class="tog-label">Improvements / Projects<span class="tog-sub">From JP_NIM · community layer</span></div><div class="tog-sw" id="sw-community-imp"></div></div>
+          <div class="tog-row"><div class="tog-icon" style="background:rgba(233,30,99,.12)">🎨</div><div class="tog-label">Art / Mural Sites<span class="tog-sub">From JP_NIM · arts layer</span></div><div class="tog-sw" id="sw-community-art"></div></div>
         </div>
       </div>
 
-      <!-- 5. Boundaries -->
+      </div>
 
+      <!-- UNNC Boundary only (Boundaries/Safety/Business removed per redesign) -->
       <div class="layer-group">
         <div class="grp-head" onclick="toggleGroup('bounds')">
-          <span>🗺 Boundaries & Services</span>
+          <span>🗺 UNNC Boundary</span>
           <span class="grp-chevron" id="chv-bounds" style="transform:rotate(-90deg)">▾</span>
         </div>
         <div class="grp-body" id="gb-bounds">
@@ -431,47 +462,9 @@ html, body { width:100%; height:100%; overflow:hidden; font-family:var(--font); 
             <div class="tog-label">UNNC Boundary<span class="tog-sub">6 Planning Regions</span></div>
             <div class="tog-sw" id="sw-unnc"></div>
           </div>
-          <div class="tog-row"><div class="tog-icon" style="background:#F3E5F5">🏛</div><div class="tog-label">Council District 10<span class="tog-sub">Political boundary</span></div><div class="tog-sw" id="sw-council"></div></div>
         </div>
       </div>
 
-      <!-- 6–9: Collapsed placeholder groups -->
-      <div class="layer-group">
-        <div class="grp-head" onclick="toggleGroup('community')">
-          <span>🏗 Community Improvements</span>
-          <span class="grp-chevron" id="chv-community" style="transform:rotate(-90deg)">▾</span>
-        </div>
-        <div class="grp-body" id="gb-community">
-          <div style="padding:8px 4px;font-size:11px;color:var(--muted);font-style:italic">Connect to Neighborhood Improvement Map layers</div>
-        </div>
-      </div>
-      <div class="layer-group">
-        <div class="grp-head" onclick="toggleGroup('arts')">
-          <span>🎨 Arts & Culture</span>
-          <span class="grp-chevron" id="chv-arts" style="transform:rotate(-90deg)">▾</span>
-        </div>
-        <div class="grp-body" id="gb-arts">
-          <div style="padding:8px 4px;font-size:11px;color:var(--muted);font-style:italic">Murals, cultural placemaking sites</div>
-        </div>
-      </div>
-      <div class="layer-group">
-        <div class="grp-head" onclick="toggleGroup('business')">
-          <span>🏪 Business & Econ Dev</span>
-          <span class="grp-chevron" id="chv-business" style="transform:rotate(-90deg)">▾</span>
-        </div>
-        <div class="grp-body" id="gb-business">
-          <div style="padding:8px 4px;font-size:11px;color:var(--muted);font-style:italic">Connect to Neighborhood Improvement Map layers</div>
-        </div>
-      </div>
-      <div class="layer-group">
-        <div class="grp-head" onclick="toggleGroup('safety')">
-          <span>🚨 Safety & Crime</span>
-          <span class="grp-chevron" id="chv-safety" style="transform:rotate(-90deg)">▾</span>
-        </div>
-        <div class="grp-body" id="gb-safety">
-          <div style="padding:8px 4px;font-size:11px;color:var(--muted);font-style:italic">Connect to Neighborhood Improvement Map layers</div>
-        </div>
-      </div>
 
       <div style="height:20px"></div>
     </div><!-- /sb-scroll -->
@@ -479,8 +472,9 @@ html, body { width:100%; height:100%; overflow:hidden; font-family:var(--font); 
 
   <!-- ═══ MAP WRAP ═══ -->
   <div id="map-wrap">
-    <div id="sb-toggle" onclick="toggleSidebar()">
+    <div id="sb-toggle" onclick="toggleSidebar()" title="Move Layers / Toggle sidebar">
       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      <span id="sb-toggle-label" style="writing-mode:vertical-rl;text-orientation:mixed;transform:rotate(180deg);font-size:9px;font-weight:700;letter-spacing:.05em;line-height:1">Move Layers</span>
     </div>
     <!-- Topbar -->
     <div id="topbar">
@@ -488,6 +482,15 @@ html, body { width:100%; height:100%; overflow:hidden; font-family:var(--font); 
         <span class="search-icon">🔍</span>
         <input id="search-input" type="text" placeholder="Search block group or address…" oninput="handleSearch(this.value)">
       </div>
+      <!-- Locate Me button -->
+      <button id="locate-btn" onclick="gmpLocateMe()" title="Show my current location"
+        style="width:36px;height:36px;border:1px solid var(--border);border-radius:8px;
+               background:var(--white);cursor:pointer;display:flex;align-items:center;justify-content:center;
+               flex-shrink:0;transition:all .15s;color:var(--muted)">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+        </svg>
+      </button>
     </div>
     <div id="map"></div>
     <!-- Map legend -->
@@ -761,7 +764,10 @@ const map = new ol.Map({
     center: ol.proj.fromLonLat([CENTER_LON, CENTER_LAT]),
     zoom: 14,
   }),
-  controls: ol.control.defaults.defaults({ attribution: true, zoom: true }),
+  controls: ol.control.defaults.defaults({ attribution: true, zoom: false }).extend([
+    // Zoom on right side — avoids address bar on mobile
+    new ol.control.Zoom({ className: 'ol-zoom ol-zoom-right' }),
+  ]),
 });
 
 // ══════════════════════════════════════════════════
@@ -1110,12 +1116,72 @@ function openPopup(html) {
   const panel = document.getElementById('popup-panel');
   panel.style.display = 'block';
   requestAnimationFrame(() => panel.classList.add('open'));
+
+  // ── Auto-hide sidebar when popup opens so it doesn't cover the info panel ──
+  // On mobile: always collapse. On desktop: collapse only if sidebar overlaps popup area.
+  const sb = document.getElementById('sidebar');
+  if (sb) {
+    if (window.innerWidth <= 600) {
+      // Mobile: sidebar slides out over map, always hide when popup opens
+      sb.classList.remove('open');
+    } else {
+      // Desktop: sidebar is on left, popup is on right — they don't overlap.
+      // But if the sidebar is very wide and screen is narrow, collapse it.
+      if (window.innerWidth < 800) sb.classList.add('collapsed');
+    }
+  }
 }
 
 function closePopup() {
   const panel = document.getElementById('popup-panel');
   panel.classList.remove('open');
   setTimeout(() => { panel.style.display = 'none'; }, 220);
+}
+
+// ── Locate Me ─────────────────────────────────────────────────────
+function gmpLocateMe() {
+  const btn = document.getElementById('locate-btn');
+  if (!navigator.geolocation) {
+    alert('Geolocation is not supported by your browser.');
+    return;
+  }
+  if (btn) { btn.classList.add('active'); btn.title = 'Locating…'; }
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      const { latitude: lat, longitude: lng } = pos.coords;
+      map.getView().animate({ center: ol.proj.fromLonLat([lng, lat]), zoom: 16, duration: 600 });
+      // Drop a temporary "you are here" marker
+      const youAreHereSource = new ol.source.Vector({
+        features: [new ol.Feature({
+          geometry: new ol.geom.Point(ol.proj.fromLonLat([lng, lat])),
+        })],
+      });
+      // Remove any previous "you are here" layer
+      map.getLayers().getArray()
+        .filter(l => l.get('youAreHere'))
+        .forEach(l => map.removeLayer(l));
+      const youAreHereLayer = new ol.layer.Vector({
+        source: youAreHereSource,
+        zIndex: 100,
+        style: new ol.style.Style({
+          image: new ol.style.Circle({
+            radius: 10,
+            fill: new ol.style.Fill({ color: '#1565C0' }),
+            stroke: new ol.style.Stroke({ color: '#fff', width: 3 }),
+          }),
+        }),
+      });
+      youAreHereLayer.set('youAreHere', true);
+      map.addLayer(youAreHereLayer);
+      if (btn) { btn.classList.remove('active'); btn.style.color = '#1565C0'; btn.style.borderColor = '#1565C0'; btn.title = 'Your location'; }
+    },
+    err => {
+      if (btn) { btn.classList.remove('active'); btn.title = 'Location unavailable'; }
+      console.warn('Geolocation error:', err.message);
+      alert('Unable to get your location: ' + err.message);
+    },
+    { enableHighAccuracy: true, timeout: 8000 }
+  );
 }
 
 // Map click handler

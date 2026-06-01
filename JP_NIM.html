@@ -696,6 +696,13 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
           <span class="grp-chevron" id="chv-safety" style="transform:rotate(-90deg)">▾</span>
         </div>
         <div class="grp-body collapsed" id="gb-safety">
+          <!-- Total record count + dynamic date range note -->
+          <div id="crime-date-range-note" style="display:none;padding:5px 8px 4px;font-size:10px;
+            color:var(--muted);font-family:var(--mono);background:rgba(184,48,32,.06);
+            border-radius:6px;margin:4px 0;line-height:1.5">
+            <span style="color:var(--danger);font-weight:600" id="crime-total-count">—</span>
+            <span id="crime-date-range-text"></span>
+          </div>
           <!-- Date Filter -->
           <div style="padding:4px 4px 2px">
             <div class="sec-label" style="margin-top:0">Date Range</div>
@@ -1189,8 +1196,13 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
       <input type="text" id="search-input" placeholder="Search address… (Enter to go)" oninput="onSearch()" onkeydown="onSearchKey(event)">
       <div id="search-results"></div>
     </div>
-    <div class="tb-btn" onclick="locateMe()" title="Locate me">
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+    <!-- Locate Me button — GPS locate -->
+    <div class="tb-btn" id="locate-me-btn" onclick="locateMe()" title="Locate me on map" aria-label="Find my location">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+        <circle cx="12" cy="12" r="8" stroke-dasharray="2 3"/>
+      </svg>
     </div>
     <div id="user-info">
       <span id="ui-email" style="font-size:12px"></span>
@@ -1223,7 +1235,7 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
     <span class="bp-label" id="bp-role-label">MAP</span>
     <div class="bp-sep"></div>
     <!-- Public only -->
-    <button class="bp-btn" id="btn-public-report" onclick="openPublicReport()" style="display:none">
+    <button class="bp-btn" id="btn-public-report" onclick="openPublicReport()" style="display:none;background:var(--danger);color:#fff;border-color:var(--danger)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
       Report Observation
     </button>
@@ -2322,6 +2334,10 @@ async function launch() {
 
   buildToggles();
   initMap();
+  // Mobile layout — fly-out sidebar for public users, red "Move Layers" label
+  if (window.innerWidth <= 768 && isPublic) {
+    initMobileLayout();
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -2796,6 +2812,7 @@ async function loadCrimes() {
   }
   crimesData = (data || []).filter(c => c.lng && c.lat);
   renderCrimes();
+  updateCrimeDateRangeNote(crimesData);
 }
 
 async function loadBoundaries() {
@@ -7637,6 +7654,191 @@ document.addEventListener('DOMContentLoaded', () => {
   // Defer until Supabase client is ready (sb is initialised synchronously after DOMContentLoaded)
   setTimeout(loadGMPProjects, 800);
 });
+
+// ══════════════════════════════════════════════════════════════════
+// CRIME DATE RANGE NOTE — dynamic counter + date span in Safety sidebar
+// Called by loadCrimes() after data is fetched
+// ══════════════════════════════════════════════════════════════════
+function updateCrimeDateRangeNote(crimes) {
+  const noteEl  = document.getElementById('crime-date-range-note');
+  const countEl = document.getElementById('crime-total-count');
+  const textEl  = document.getElementById('crime-date-range-text');
+  if (!noteEl) return;
+
+  if (!crimes || crimes.length === 0) {
+    noteEl.style.display = 'none';
+    return;
+  }
+
+  noteEl.style.display = 'block';
+  if (countEl) countEl.textContent = crimes.length.toLocaleString();
+
+  let earliest = null, latest = null;
+  crimes.forEach(c => {
+    if (!c.incident_date) return;
+    // DB stores MM/DD/YYYY — parse robustly
+    const raw = c.incident_date;
+    let d;
+    if (/^\d{4}-/.test(raw)) {
+      d = new Date(raw);
+    } else {
+      const [m, day, y] = raw.split('/');
+      d = new Date(`${y}-${m.padStart(2,'0')}-${day.padStart(2,'0')}`);
+    }
+    if (isNaN(d.getTime())) return;
+    if (!earliest || d < earliest) earliest = d;
+    if (!latest   || d > latest)   latest   = d;
+  });
+
+  if (textEl) {
+    if (earliest && latest) {
+      const fmt = d => d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      textEl.textContent = ` LAPD reported crimes (${fmt(earliest)} — ${fmt(latest)})`;
+    } else {
+      textEl.textContent = ' LAPD reported crimes';
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// RELATIONAL ATTACHMENT UPLOAD — uploadRelationalAttachment(file, recordId, recordType, parentId)
+// New function for the unified photo linking system. The existing
+// event-based uploader (uploadAttachment(e)) handles the in-map photo
+// flow via the photo-input element and is unchanged.
+// Call this when explicitly linking a File to a master record.
+// ══════════════════════════════════════════════════════════════════
+async function uploadRelationalAttachment(file, recordId = null, recordType = null, parentId = null) {
+  if (!file || !(file instanceof File)) {
+    console.warn('[uploadRelationalAttachment] called with non-File argument — ignoring');
+    return null;
+  }
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) throw new Error('You must be logged in to upload attachments.');
+
+    const fileExt  = (file.name.split('.').pop() || 'bin').toLowerCase();
+    const fileName = `${crypto.randomUUID()}.${fileExt}`;
+    const filePath = `attachments/${fileName}`;
+
+    const { error: uploadError } = await sb.storage
+      .from('neighborhood-assets')
+      .upload(filePath, file, { contentType: file.type || 'application/octet-stream', upsert: false });
+    if (uploadError) throw uploadError;
+
+    const { data: { publicUrl } } = sb.storage
+      .from('neighborhood-assets')
+      .getPublicUrl(filePath);
+
+    const { data, error: dbError } = await sb
+      .from('photos')
+      .insert([{
+        id:           crypto.randomUUID(),
+        public_url:   publicUrl,
+        storage_path: filePath,
+        uploaded_by:  session.user.id,
+        record_id:    recordId,
+        record_type:  recordType,
+        parent_id:    parentId,
+        is_public:    false,
+        caption:      file.name,
+      }])
+      .select()
+      .single();
+    if (dbError) throw dbError;
+
+    showToast('✓ Attachment uploaded', 'ok');
+    return data;
+  } catch (err) {
+    console.error('[uploadRelationalAttachment] failed:', err.message);
+    showToast('Attachment upload failed: ' + err.message, 'err');
+    return null;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// UPDATE MASTER RECORD — relational linking transaction
+// Associates an attachment to a Master Record and optionally reclassifies it.
+// Used by Field Officers, PMs, and Admins to deduplicate photo submissions.
+// ══════════════════════════════════════════════════════════════════
+async function updateMasterRecord(attachmentId, masterId, newClassification = null) {
+  try {
+    // Step 1: repoint the photo to the master record
+    const { error: photoErr } = await sb
+      .from('photos')
+      .update({
+        record_id:   masterId,
+        record_type: 'map_annotations',
+        parent_id:   masterId,
+      })
+      .eq('id', attachmentId);
+    if (photoErr) throw photoErr;
+
+    // Step 2 (optional): update the master record's classification
+    if (newClassification) {
+      const { error: annErr } = await sb
+        .from('map_annotations')
+        .update({ category: newClassification })
+        .eq('id', masterId);
+      if (annErr) throw annErr;
+    }
+
+    showToast('✓ Records linked to master ' + masterId.slice(0, 8) + '…', 'ok');
+    return true;
+  } catch (err) {
+    console.error('[updateMasterRecord] failed:', err.message);
+    showToast('Link failed: ' + err.message, 'err');
+    return false;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// MOBILE LAYOUT — public users: sidebar flies out on load,
+// toggle button reads "Move Layers" in red.
+// ══════════════════════════════════════════════════════════════════
+function initMobileLayout() {
+  const sidebar   = document.getElementById('sidebar');
+  const toggleBtn = document.getElementById('sb-toggle');
+  const labelSpan = document.getElementById('sb-label');
+  if (!sidebar || !toggleBtn) return;
+
+  // For public users on mobile: slide the sidebar open so they see
+  // the layer controls, and relabel the toggle button clearly.
+  sidebar.classList.add('open');        // overrides 'collapsed' if present
+  sidebar.classList.remove('collapsed');
+  toggleBtn.style.background     = 'var(--danger)';
+  toggleBtn.style.color          = '#fff';
+  toggleBtn.style.borderColor    = 'var(--danger)';
+  toggleBtn.title                = 'Move Layers';
+  if (labelSpan) labelSpan.textContent = 'Move Layers';
+  document.body.classList.remove('sb-collapsed');
+  // Update map layout
+  if (map) setTimeout(() => map.invalidateSize(), 350);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// SQL MIGRATION — run once in Supabase SQL editor to add relational
+// linking columns to the photos table.
+//
+// -- Add parent_id, record_id, record_type to photos
+// ALTER TABLE photos
+//   ADD COLUMN IF NOT EXISTS parent_id    UUID REFERENCES photos(id) ON DELETE SET NULL,
+//   ADD COLUMN IF NOT EXISTS record_id    UUID,
+//   ADD COLUMN IF NOT EXISTS record_type  TEXT;   -- e.g. 'map_annotations', 'crimes'
+//
+// -- Index for fast lookups by master record
+// CREATE INDEX IF NOT EXISTS idx_photos_record_id ON photos(record_id);
+// CREATE INDEX IF NOT EXISTS idx_photos_parent_id ON photos(parent_id);
+//
+// -- (Optional) RLS: allow admin + PM to update record linkage columns
+// CREATE POLICY "pm_can_link_photos" ON photos
+//   FOR UPDATE USING (
+//     EXISTS (
+//       SELECT 1 FROM profiles
+//       WHERE id = auth.uid()
+//         AND role IN ('admin','project_manager')
+//     )
+//   );
+// ══════════════════════════════════════════════════════════════════
 
 </script>
 </body>

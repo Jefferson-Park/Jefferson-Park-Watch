@@ -3998,19 +3998,20 @@ async function submitPublicReport() {
     // Ensure anon role before insert — photo upload may leave stale session
     const { data: { session: _activeSession } } = await sb.auth.getSession();
     if (_activeSession) await sb.auth.signOut();
-
-// CHANGE THIS:
-const { error } = await sb.from('public_comments').insert({
-  lat: pubReportLat,
-  lng: pubReportLng,
-  address: pubReportAddress || null,
-  category: cat,
-  comment_text: desc, // <--- UPDATED TO MATCH DB COLUMN
-  submitter_email: email || null,
-  status: 'new',
-  notes: commentNotes,
-  photo_path: uploadedPhotoPath,
-});
+ 
+const { error } = await sb.from('public_comments').insert([
+  {
+    lat: pubReportLat,
+    lng: pubReportLng,
+    address: pubReportAddress || null,
+    category: cat,
+    comment_text: desc,
+    submitter_email: email || null,
+    status: 'new',
+    notes: commentNotes,
+    photo_path: uploadedPhotoPath
+  }
+]);
 
     if (error) {
       // Log full error object so the raw Supabase message is always visible in console

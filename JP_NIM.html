@@ -1835,13 +1835,26 @@ function _isInLACounty(lat, lng) {
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
 
-// Dedicated stateless client for anonymous public submissions.
-// persistSession:false + autoRefreshToken:false means this client
-// NEVER stores or sends a user JWT — it always sends only the anon
-// key, even if a staff member is logged in on the main `sb` client.
-// This is the correct fix for 401/42501 on public_comments inserts.
+// Dedicated truly-stateless client for anonymous public submissions.
+// Uses a null storage adapter so this client CANNOT read, inherit, or
+// store any auth session — it is permanently the anon role regardless
+// of whether a staff member is logged in on the main `sb` client.
+// storageKey alone (previous approach) was insufficient in Supabase JS v2
+// because the GoTrueClient still probes shared storage on init and can
+// pick up an existing authenticated session, causing 401/42501 on
+// policies scoped TO anon.
+const _nullStorage = {
+  getItem:    () => null,
+  setItem:    () => {},
+  removeItem: () => {},
+};
 const sbPublic = createClient(SUPABASE_URL, SUPABASE_ANON, {
-  auth: { persistSession: false, autoRefreshToken: false, storageKey: 'sb-public-anon' },
+  auth: {
+    persistSession:   false,
+    autoRefreshToken: false,
+    detectSessionInUrl: false,
+    storage: _nullStorage,
+  },
 });
 
 // ══════════════════════════════════════════════════════════════════

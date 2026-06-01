@@ -513,7 +513,8 @@ html, body { width:100%; height:100%; overflow:hidden; font-family:var(--font); 
 // ══════════════════════════════════════════════════
 // ── Supabase client (public-read anon key — same project as index.html) ───────
 const SUPABASE_URL  = 'https://sqiioihssmnqatjrednq.supabase.co';
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNxaWlvaWhzc21ucWF0anJlZG5xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzUyNTYyMzYsImV4cCI6MjA1MDgzMjIzNn0.I3FuXSGGHa2t5-5tDRFgfJ-n87M2mxkOVqrAEWy3xTI';
+// Canonical anon key — matches admin.html and index.html (rotated 2025-01-28)
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNxaWlvaWhzc21ucWF0anJlZG5xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4MTQ2MDQsImV4cCI6MjA5MDM5MDYwNH0.7xmkq0yF_27ulgOMrOfblsg9vJsyDJtGve4bn0qgHIU';
 const { createClient } = supabase;
 const sbGMP = createClient(SUPABASE_URL, SUPABASE_ANON);
 
@@ -1177,29 +1178,41 @@ function handleSearch(val) {
 if (isMobile()) {
   document.getElementById('sidebar').classList.remove('open');
 }
-// ── Supabase greening_projects — live load with hardcoded fallback ────────────
+// ── §B4  v_greening_map_pins — lean egress (~80% smaller than full table) ──────
+// Queries v_greening_map_pins instead of greening_projects.  The view returns
+// only the columns the map needs (id, name, region, status, wosip_goals, lat, lng).
+// Rich fields (notes, funding_source, partners, amount) live in the base table
+// and are served only when a popup is opened.  The cached wrapper below prevents
+// duplicate fetches when filters or layer toggles re-call this function.
+let _gmpFetchPromise = null; // page-lifetime cache slot
+
 async function loadGreeningFromSupabase() {
   try {
     const { data, error } = await sbGMP
-      .from('greening_projects')
-      .select('id,name,region,status,wosip_goals,funding_source,amount,lat,lng,partners,notes')
+      .from('v_greening_map_pins')                          // ← was 'greening_projects'
+      .select('id,name,region,status,wosip_goals,lat,lng')  // ← pin-only columns
       .order('name');
     if (error) throw error;
     if (!data || data.length === 0) return; // keep hardcoded fallback visible
-    // Map Supabase rows to the shape greeningStyle / popup expect
-    const liveProjects = data.map(p => ({
-      id:      p.id,
-      name:    p.name,
-      region:  p.region || '',
-      desc:    p.notes  || '',
-      lat:     p.lat,
-      lng:     p.lng,
-      status:  p.status || 'proposed',
-      wosip:   p.wosip_goals || [],
-      funding: p.funding_source || '',
-      area:    p.amount ? `$${Number(p.amount).toLocaleString()}` : '',
-      partners: p.partners || [],
-    }));
+    // Merge with GREENING_PROJECTS fallback for popup-only fields
+    // (desc, funding, area, partners) so the popup stays richly filled even
+    // before a separate detail fetch is wired up.
+    const liveProjects = data.map(p => {
+      const fb = GREENING_PROJECTS.find(f => f.id === p.id) || {};
+      return {
+        id:       p.id,
+        name:     p.name,
+        region:   p.region          || fb.region   || '',
+        desc:     fb.desc           || '',
+        lat:      p.lat,
+        lng:      p.lng,
+        status:   p.status          || 'proposed',
+        wosip:    p.wosip_goals     || fb.wosip    || [],
+        funding:  fb.funding        || '',
+        area:     fb.area           || '',
+        partners: fb.partners       || [],
+      };
+    });
     // Swap source features for live data
     greeningSource.clear();
     const newSource = makeGreeningSource(liveProjects);
@@ -1209,13 +1222,26 @@ async function loadGreeningFromSupabase() {
     if (badge) badge.textContent = liveProjects.length;
     // Expose live list to click handler
     window._LIVE_GREENING = liveProjects;
-    console.log(`[GMP] Loaded ${liveProjects.length} projects from Supabase`);
+    console.log(`[GMP] Loaded ${liveProjects.length} pins from v_greening_map_pins`);
   } catch(e) {
     console.warn('[GMP] Supabase load failed, using hardcoded fallback:', e.message);
   }
 }
-// Run after map initialises
-setTimeout(loadGreeningFromSupabase, 600);
+
+/**
+ * loadMapPinsCached()
+ * Deduplicates concurrent callers — returns the same in-flight Promise so
+ * filter/toggle handlers don't each fire a separate network request.
+ */
+async function loadMapPinsCached() {
+  if (!_gmpFetchPromise) {
+    _gmpFetchPromise = loadGreeningFromSupabase();
+  }
+  return _gmpFetchPromise;
+}
+
+// Run after map initialises — use cached wrapper
+setTimeout(loadMapPinsCached, 600);
 
 </script>
 </body>

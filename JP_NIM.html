@@ -1841,7 +1841,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
 // key, even if a staff member is logged in on the main `sb` client.
 // This is the correct fix for 401/42501 on public_comments inserts.
 const sbPublic = createClient(SUPABASE_URL, SUPABASE_ANON, {
-  auth: { persistSession: false, autoRefreshToken: false },
+  auth: { persistSession: false, autoRefreshToken: false, storageKey: 'sb-public-anon' },
 });
 
 // ══════════════════════════════════════════════════════════════════
@@ -3189,7 +3189,7 @@ async function loadPublicPhotos() {
         .select('id, storage_path, caption, is_public, crime_id, annotation_id')
         .eq('is_public', true));
     }
-    if (error) throw error;
+    if (error) throw new Error(`${error.message || 'DB error'} (code: ${error.code || '?'})`);
 
     const visible = (data || []).filter(p => {
       if (userRole === 'admin') return true;
@@ -6458,7 +6458,7 @@ async function loadLAPDCollisions() {
     const { data, error } = await sb.functions.invoke('lapd-traffic', {
       body: { from, to, ...bbox }
     });
-    if (error) throw error;
+    if (error) throw new Error(`${error.message || 'Edge Function error'} (code: ${error.code || '?'})`);
 
     lapdCollisionsData = (data.records || []).map(r => ({
       ...r,
@@ -7604,7 +7604,7 @@ async function loadGMPProjects() {
       .from('greening_projects')
       .select('id,name,region,status,wosip_goals,funding_source,amount,lat,lng,partners,notes')
       .order('name');
-    if (error) throw error;
+    if (error) throw new Error(`${error.message || 'DB error'} (code: ${error.code || '?'})`);
     gmpProjects = data || [];
     const n = gmpProjects.length;
     if (cnt) cnt.textContent = n;

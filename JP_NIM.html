@@ -1798,7 +1798,7 @@ function _buildNominatimParams(query, limit) {
     state = cityState[1]?.trim() || '';
   }
   
-  const params = new URLSearchParams({ street, city, state, country, format: 'json', limit: String(limit), addressdetails: '1', zoom: '19', email: 'info@mappinginnovations.com' });
+  const params = new URLSearchParams({ street, city, state, country, format: 'json', limit: String(limit), addressdetails: '1', zoom: '19' });
   
   // Soft bias Nominatim towards the app's bounding box
   // Prevents San Pedro matching over Jefferson Park while keeping it portable
@@ -3715,7 +3715,7 @@ async function _pubReportNominatim(query, sug, append, signal) {
   try {
     const params = _buildNominatimParams(query, 4);
     const res  = await fetch('https://nominatim.openstreetmap.org/search?' + params, {
-      headers: { 'Accept-Language': 'en' },
+      headers: { 'Accept-Language': 'en', 'User-Agent': 'JeffersonParkNeighborhoodMap/1.0' },
       signal,
     });
     if (signal && signal.aborted) return;
@@ -3789,7 +3789,7 @@ async function pubReportReverseGeocode(lat, lng) {
   // Stage 2: Nominatim fallback (open land, parks, intersections the assessor won't have)
   try {
     const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, {
-      headers: { 'Accept-Language': 'en' }
+      headers: { 'Accept-Language': 'en', 'User-Agent': 'JeffersonParkNeighborhoodMap/1.0' }
     });
     const data = await res.json();
     if (data?.address) {
@@ -4155,7 +4155,7 @@ async function runAddressSearch(q, autoFly) {
       let nominatimRows = '';
       try {
         const params = _buildNominatimParams(q, 4);
-        const res  = await fetch('https://nominatim.openstreetmap.org/search?' + params, { headers:{ 'Accept-Language':'en' } });
+        const res  = await fetch('https://nominatim.openstreetmap.org/search?' + params, { headers:{ 'Accept-Language':'en', 'User-Agent':'JeffersonParkNeighborhoodMap/1.0' } });
         const data = await res.json();
         nominatimRows = data.filter(r => _isInLACounty(parseFloat(r.lat), parseFloat(r.lon))).map(r => {
           const a = r.address || {};
@@ -4178,7 +4178,7 @@ async function runAddressSearch(q, autoFly) {
     // Uses shared _buildNominatimParams — handles fraction normalisation + city/state parsing.
     const params = _buildNominatimParams(q, 5);
     const url = 'https://nominatim.openstreetmap.org/search?' + params.toString();
-    const res  = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+    const res  = await fetch(url, { headers: { 'Accept-Language': 'en', 'User-Agent': 'JeffersonParkNeighborhoodMap/1.0' } });
     const data = await res.json();
     // Filter to configured city/county — prevents flying to another city on ambiguous streets.
     const inCounty = data.filter(r => _isInLACounty(parseFloat(r.lat), parseFloat(r.lon)));
@@ -4367,8 +4367,7 @@ async function saveLink() {
   document.getElementById('attach-url-label').value = '';
   currentPhotoCtx = null;
   closeModal('attach-modal');
-  // Refresh map for all authenticated roles (admin, project_manager, field_officer) and anonymous
-  await loadCrimes(); loadPublicPhotos();
+  if (userRole === 'admin' || userRole === 'field_officer') { await loadCrimes(); loadPublicPhotos(); }
 }
 
 function toggleSidebar() {
@@ -4922,7 +4921,7 @@ function geocodeAddr() {
     try {
       const params = _buildNominatimParams(nominatimQuery, 3);
       const res  = await fetch('https://nominatim.openstreetmap.org/search?' + params, {
-        headers: { 'Accept-Language': 'en' },
+        headers: { 'Accept-Language': 'en', 'User-Agent': 'JeffersonParkNeighborhoodMap/1.0' },
       });
       const data = await res.json();
       // Filter to configured city/county FIRST — same pattern as the top search bar.
@@ -5069,7 +5068,7 @@ async function onPinDropped(e) {
   try {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
-      { headers: { 'Accept-Language': 'en' } }
+      { headers: { 'Accept-Language': 'en', 'User-Agent': 'JeffersonParkNeighborhoodMap/1.0' } }
     );
     const data = await res.json();
     if (data?.address) {
@@ -5275,8 +5274,8 @@ async function uploadAttachment(e) {
   }
   e.target.value=''; currentPhotoCtx=null;
   // Refresh crimes first so new crime lat/lng is in crimesData, then refresh photo pins
-  // Triggers for all authenticated roles (admin, project_manager, field_officer) and anonymous
-  await loadCrimes(); loadPublicPhotos();
+  // Both admin AND field_officer need photo pin refresh
+  if (userRole === 'admin' || userRole === 'field_officer') { await loadCrimes(); loadPublicPhotos(); }
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -5373,7 +5372,7 @@ async function geocodeAddressForBatch(address, zip) {
   if (zip) params2.set('postalcode', String(zip).trim());
   try {
     const res  = await fetch('https://nominatim.openstreetmap.org/search?' + params2, {
-      headers: { 'Accept-Language': 'en' },
+      headers: { 'Accept-Language': 'en', 'User-Agent': 'NeighborhoodApp/1.0' },
     });
     const data = await res.json();
     // Filter to configured city/county — same guard used in all other geocoder pathways.
@@ -6012,14 +6011,6 @@ function toggleRadiusFilter() {
   document.getElementById('radius-btn').classList.toggle('active', _radiusActive);
 
   if (_radiusActive) {
-    // Clean up GMP layer if visible — it persists independently of the radius filter
-    if (gmpLayerVisible) {
-      gmpLayerGroup.clearLayers();
-      map.removeLayer(gmpLayerGroup);
-      gmpLayerVisible = false;
-      const swGmp = document.getElementById('sw-gmp');
-      if (swGmp) swGmp.classList.remove('on');
-    }
     _enableAllLayers();
     _applyRadiusFilter();
     map.on('moveend', _applyRadiusFilter);

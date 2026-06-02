@@ -3792,7 +3792,7 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT id, role, email FROM public.profiles ORDER BY email NULLS LAST;
 $$;
 GRANT EXECUTE ON FUNCTION public.get_all_profiles() TO authenticated;
-
+`;
 function showRLSFix() {
   document.getElementById('rls-sql').textContent = RLS_SQL;
   document.getElementById('rls-modal').style.display = 'flex';

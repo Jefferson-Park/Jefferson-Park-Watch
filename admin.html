@@ -2998,36 +2998,22 @@ function openObsModal(id) {
       : 'No location provided';
   document.getElementById('obs-modal-desc').textContent = o.description || o.comment_text || o.message || o.comment || '—';
 
-Fix B — Description in card grid preview (renderObsGrid)
+//Fix B — Description in card grid preview (renderObsGrid)
 js<div class=\"obs-desc\">${esc(o.description || o.comment_text || o.message || o.comment) || '—'}</div>
 
-Fix C — Description in map marker popup (renderObsMarkers)
+//Fix C — Description in map marker popup (renderObsMarkers)
 js<div style=\"font-size:11px;line-height:1.5;margin-bottom:6px\">${esc(((o.description || o.comment_text || o.message || o.comment)||'').slice(0,140))}</div>
 
-Fix D — Description in promote-to-annotation (promoteObsToAnnotation)
+//Fix D — Description in promote-to-annotation (promoteObsToAnnotation)
 jsconst annNotes = [o.description || o.comment_text, notes ? `Admin: ${notes}` : null].filter(Boolean).join('\n') || null;
 
-Fix E — Description in search haystack (filterObs)
+//Fix E — Description in search haystack (filterObs)
 jsconst hay = [o.description || o.comment_text || o.message || o.comment, o.category, o.notes, o.submitter_email]
 
 Fix F — CSV export header (column name mismatch)
 jsconst headers = ['id','created_at','lat','lng','category','comment_text','description','submitter_email','status','reviewed_by','notes','photo_path','address','admin_category'];
 
-That's all 6 fixes. Now — what bugs do you want to address in UNNC_GMP.html?You said: The map doesn't load, we need to wire all toggles in layers to supabase data so they function like they do in JP_NIM.The map doesn't load, we need to wire all toggles in layers to supabase data so they function like they do in JP_NIM.html, make sure there's a locate me button at the top of the nav next to address bar if one doesn't exists, and remove the UNNC Boudary layer.11:17 AMClaude responded: Let me read UNNC_GMP.Let me read UNNC_GMP.html fully before touching anything.Read full UNNC_GMP.htmlRead full UNNC_GMP.htmlNow I have a complete picture. Let me analyze what's broken and what needs wiring.Find the critical ordering issue — map.on and map.addLayer called before map is initializedFind the critical ordering issue — map.on and map.addLayer called before map is initializedNow I have the full picture. There are three distinct problems:
 
-Map doesn't load — map is let map; (undefined) when map.addLayer(unncBoundaryLayer) runs at line 1001, map.on('singleclick') at 1317, and map.on('pointermove') at 1351 — all execute synchronously before the DOMContentLoaded callback that actually creates the map.
-Layer toggles for Supabase-backed layers — trees, planting, parks, traffic, community etc. just show a "coming soon" toast. They need real OL layers wired to Supabase queries matching JP_NIM's category values.
-UNNC Boundary section needs removal from the HTML sidebar and its layer/toggle code removed.
-Locate Me already exists in the topbar — ✅ no change needed.
-Read the skill file for frontend-design before buildingRead the skill file for frontend-design before buildingNow I have everything I need. Let me build the fixed file:Ran 2 commandsRan 2 commandsNow make all changes surgically. First, remove the UNNC Boundary layer-group from the HTML sidebar:Edited 2 files, ran a command, viewed a fileEdited 2 files, ran a command, viewed a fileNow find and replace the entire JavaScript section — all the broken code from after the map layers setup through the end of the script:Viewed 3 filesViewed 3 filesNow I have the full picture. The fix is to replace everything from the broken map.addLayer(unncBoundaryLayer) call through the end of </script> with a correctly structured version where all map interaction code lives inside the DOMContentLoaded callback. I also need to wire the Supabase layers. Let me do the big replacement:Fix map init ordering, wire Supabase layers, remove UNNC boundary codeFix map init ordering, wire Supabase layers, remove UNNC boundary codeNow fix the map.updateSize() calls that reference map before it's defined, and replace the broken unncBoundaryLayer/map.addLayer/map.on block with the corrected toggleLayer and remaining helpers:Viewed 2 files, edited a fileViewed 2 files, edited a fileNow find and replace the old broken unncBoundaryLayer block + toggleLayer function that references it:Viewed a file, edited a fileViewed a file, edited a fileNow remove the old map.on('singleclick') and map.on('pointermove') blocks that live outside DOMContentLoaded (they're now duplicates inside the DOMContentLoaded block we added):Viewed 3 files, edited a fileViewed 3 files, edited a fileNow verify the file ends cleanly and has no remaining broken references:Ran 2 commands, viewed a fileRan 2 commands, viewed a fileAll map.on and map.addLayer calls are properly inside the DOMContentLoaded block. Now check the tail end of the file is clean:Check end of file is cleanCheck end of file is cleanClean. Now copy to output:Copy to output and run final sanity checksCopy to output and run final sanity checksAll checks pass. Let me present the file:Presented filePresented fileHere's what was fixed and why each change was necessary:
-Root cause of map not loading: map was declared as let map (undefined) but map.addLayer(unncBoundaryLayer), map.on('singleclick', ...), and map.on('pointermove', ...) all executed synchronously at parse time — before the DOMContentLoaded callback that actually called new ol.Map(...). JavaScript threw immediately on undefined.addLayer() and the entire script crashed, leaving a blank page.
-Fix — all three changes together:
-
-Map init ordering — moved all map.addLayer / map.on / map.getView calls inside the DOMContentLoaded → setTimeout(100ms) block where map is assigned. Added if (map) guards on the resize and load event listeners.
-Supabase-backed layers — replaced the "coming soon" toast stubs with real OL Vector layers (sbOLLayers) backed by ol.source.Vector sources (sbLayerSources). When a toggle turns on, fetchAnnotationLayer(id) queries map_annotations filtered by the matching category values from JP_NIM's category map. Air Quality calls fetchAirLayer() which hits PurpleAir directly. All fetches are deduplicated — toggling off and back on doesn't re-fetch. Click popups on these layers show label, category, notes, and category_data fields. Flood and Bioswale remain stubs (no data source exists yet) but now say so clearly.
-UNNC Boundary removed — deleted the sidebar layer-group block, the UNNC_BOUNDARY_COORDS polygon definition, unncBoundaryFeature, unncBoundaryLayer, and all references to sw-unnc / gb-bounds.
-Locate Me — already existed in the topbar, confirmed working, no change needed.
-Unnc gmpCode · HTML DownloadWant to be notified when Claude responds?NotifySonnet 4.6 HighClaude is AI and can make mistakes. Please double-check responses.
   document.getElementById('obs-modal-contact').textContent = o.submitter_email || '(no contact info)';
   document.getElementById('obs-modal-notes').value = o.notes || '';
   document.getElementById('obs-modal-title').textContent =

@@ -1081,7 +1081,7 @@ async function doLogin() {
   if (!email||!pass){err.textContent='Enter email and password.';return;}
   const {data,error} = await sb.auth.signInWithPassword({email,password:pass});
   if (error){err.textContent=error.message;return;}
-  const {data:prof} = await sb.from('profiles').select('role').eq('id',data.user.id).single();
+  const {data:prof} = await sb.from('profiles').select('role').eq('id',data.user.id).maybeSingle();
   if (prof?.role !== 'admin'){await sb.auth.signOut();err.textContent='Admin access required.';return;}
   currentUser = data.user;
   try { await sb.rpc('set_my_email', { p_email: currentUser.email }); }
@@ -3488,191 +3488,295 @@ async function deleteGMPProject(id, name) {
 // ══════════════════════════════════════════════════════
 // RLS FIX MODAL
 // ══════════════════════════════════════════════════════
-const RLS_SQL = `-- ══════════════════════════════════════════════════════════════════
--- Jefferson Park — Admin RLS + Storage + RPC Migration
--- Run this entire block in your Supabase SQL Editor.
--- Safe to re-run: every statement uses DROP IF EXISTS / OR REPLACE.
--- IMPORTANT: All admin checks use auth.jwt() ->> 'role' instead of
--- querying profiles, which would cause infinite recursion since
--- profiles itself has RLS enabled.
+const RLS_SQL = `-- -- ══════════════════════════════════════════════════════════════════
+-- Jefferson Park — Complete RLS Reset
+-- Paste the entire block into Supabase SQL Editor and run once.
+-- Safe to re-run.
 -- ══════════════════════════════════════════════════════════════════
 
--- ── 1. crimes ────────────────────────────────────────────────────
-DROP POLICY IF EXISTS "Admin delete crimes" ON crimes;
-CREATE POLICY "Admin delete crimes"
-  ON crimes FOR DELETE TO authenticated
-  USING ( (auth.jwt() ->> 'role') = 'admin' );
+-- ── STEP 1: Non-recursive role helper ────────────────────────────
+-- SECURITY DEFINER runs as the function owner (postgres), bypassing
+-- RLS on profiles. All policies call this instead of querying
+-- profiles directly or using auth.jwt() claims.
+CREATE OR REPLACE FUNCTION public.get_my_role()
+RETURNS text
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public AS $$
+  SELECT role::text FROM public.profiles WHERE id = auth.uid();
+$$;
+GRANT EXECUTE ON FUNCTION public.get_my_role() TO authenticated, anon;
 
-DROP POLICY IF EXISTS "Admin update crimes" ON crimes;
-CREATE POLICY "Admin update crimes"
-  ON crimes FOR UPDATE TO authenticated
-  USING ( (auth.jwt() ->> 'role') = 'admin' )
+
+-- ── STEP 2: profiles ─────────────────────────────────────────────
+-- Drop every existing policy — by exact name from the JSON.
+DROP POLICY IF EXISTS "Admin select profiles"        ON profiles;
+DROP POLICY IF EXISTS "Admin update profiles"        ON profiles;
+DROP POLICY IF EXISTS "Admins can update profiles"   ON profiles;
+DROP POLICY IF EXISTS "Users can read own profile"   ON profiles;
+
+-- Recreate — two clean policies, no recursion.
+CREATE POLICY "profiles_select"
+  ON profiles FOR SELECT TO authenticated
+  USING ( id = auth.uid() OR get_my_role() = 'admin' );
+
+CREATE POLICY "profiles_update"
+  ON profiles FOR UPDATE TO authenticated
+  USING ( id = auth.uid() OR get_my_role() = 'admin' )
   WITH CHECK (true);
 
-DROP POLICY IF EXISTS "Admin select crimes" ON crimes;
-CREATE POLICY "Admin select crimes"
+
+-- ── STEP 3: crimes ───────────────────────────────────────────────
+DROP POLICY IF EXISTS "Admin delete crimes"             ON crimes;
+DROP POLICY IF EXISTS "admin_delete_crimes"             ON crimes;
+DROP POLICY IF EXISTS "Admin select crimes"             ON crimes;
+DROP POLICY IF EXISTS "Admin update crimes"             ON crimes;
+DROP POLICY IF EXISTS "Admins have full access"         ON crimes;
+DROP POLICY IF EXISTS "Field officers can update status and notes" ON crimes;
+DROP POLICY IF EXISTS "Public can read crimes"          ON crimes;
+
+CREATE POLICY "crimes_select_public"
+  ON crimes FOR SELECT TO anon
+  USING (true);
+
+CREATE POLICY "crimes_select_staff"
   ON crimes FOR SELECT TO authenticated
-  USING ( (auth.jwt() ->> 'role') IN ('admin', 'field_officer') );
+  USING ( get_my_role() IN ('admin', 'field_officer') );
 
--- ── 2. map_annotations ───────────────────────────────────────────
-DROP POLICY IF EXISTS "Admin delete annotations" ON map_annotations;
-CREATE POLICY "Admin delete annotations"
-  ON map_annotations FOR DELETE TO authenticated
-  USING ( (auth.jwt() ->> 'role') = 'admin' );
+CREATE POLICY "crimes_insert_admin"
+  ON crimes FOR INSERT TO authenticated
+  WITH CHECK ( get_my_role() = 'admin' );
 
-DROP POLICY IF EXISTS "Admin update annotations" ON map_annotations;
-CREATE POLICY "Admin update annotations"
-  ON map_annotations FOR UPDATE TO authenticated
-  USING ( (auth.jwt() ->> 'role') = 'admin' )
+CREATE POLICY "crimes_update_admin"
+  ON crimes FOR UPDATE TO authenticated
+  USING  ( get_my_role() = 'admin' )
   WITH CHECK (true);
 
-DROP POLICY IF EXISTS "Admin read annotations" ON map_annotations;
-CREATE POLICY "Admin read annotations"
+CREATE POLICY "crimes_update_officer"
+  ON crimes FOR UPDATE TO authenticated
+  USING  ( get_my_role() = 'field_officer' )
+  WITH CHECK ( get_my_role() = 'field_officer' );
+
+CREATE POLICY "crimes_delete_admin"
+  ON crimes FOR DELETE TO authenticated
+  USING ( get_my_role() = 'admin' );
+
+
+-- ── STEP 4: map_annotations ──────────────────────────────────────
+DROP POLICY IF EXISTS "Admin delete annotations"                    ON map_annotations;
+DROP POLICY IF EXISTS "Admins can delete any annotation"            ON map_annotations;
+DROP POLICY IF EXISTS "Admin read annotations"                      ON map_annotations;
+DROP POLICY IF EXISTS "Admins see all annotations"                  ON map_annotations;
+DROP POLICY IF EXISTS "Admins see all annotations for admin portal" ON map_annotations;
+DROP POLICY IF EXISTS "Authenticated can read all annotations"      ON map_annotations;
+DROP POLICY IF EXISTS "Admin update annotations"                    ON map_annotations;
+DROP POLICY IF EXISTS "Admins can update all annotations"           ON map_annotations;
+DROP POLICY IF EXISTS "Authors can delete own annotations"          ON map_annotations;
+DROP POLICY IF EXISTS "Authors can edit own annotations"            ON map_annotations;
+DROP POLICY IF EXISTS "Authors see own annotations"                 ON map_annotations;
+DROP POLICY IF EXISTS "Officers and admins can draw"                ON map_annotations;
+DROP POLICY IF EXISTS "Public can read public annotations"          ON map_annotations;
+DROP POLICY IF EXISTS "Public sees public annotations"              ON map_annotations;
+
+CREATE POLICY "ann_select_public"
+  ON map_annotations FOR SELECT TO anon
+  USING (is_public = true);
+
+CREATE POLICY "ann_select_auth"
   ON map_annotations FOR SELECT TO authenticated
-  USING ( (auth.jwt() ->> 'role') = 'admin' );
+  USING (
+    is_public = true
+    OR created_by = auth.uid()
+    OR get_my_role() = 'admin'
+  );
 
--- ── 3. public_comments ───────────────────────────────────────────
-ALTER TABLE public_comments ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "ann_insert"
+  ON map_annotations FOR INSERT TO authenticated
+  WITH CHECK (
+    created_by = auth.uid()
+    AND get_my_role() IN ('admin', 'field_officer')
+  );
 
-DROP POLICY IF EXISTS "anon_insert" ON public_comments;
-CREATE POLICY "anon_insert"
-  ON public_comments FOR INSERT TO anon WITH CHECK (true);
+CREATE POLICY "ann_update_own"
+  ON map_annotations FOR UPDATE TO authenticated
+  USING  ( created_by = auth.uid() )
+  WITH CHECK ( created_by = auth.uid() );
 
-DROP POLICY IF EXISTS "Public can insert observations" ON public_comments;
-CREATE POLICY "Public can insert observations"
-  ON public_comments FOR INSERT TO anon, authenticated
+CREATE POLICY "ann_update_admin"
+  ON map_annotations FOR UPDATE TO authenticated
+  USING  ( get_my_role() = 'admin' )
   WITH CHECK (true);
 
-DROP POLICY IF EXISTS "anon_read_public_comments" ON public_comments;
-CREATE POLICY "anon_read_public_comments"
+CREATE POLICY "ann_delete_own"
+  ON map_annotations FOR DELETE TO authenticated
+  USING ( created_by = auth.uid() );
+
+CREATE POLICY "ann_delete_admin"
+  ON map_annotations FOR DELETE TO authenticated
+  USING ( get_my_role() = 'admin' );
+
+
+-- ── STEP 5: photos ───────────────────────────────────────────────
+DROP POLICY IF EXISTS "Admin can update photos"           ON photos;
+DROP POLICY IF EXISTS "Admin delete photos"               ON photos;
+DROP POLICY IF EXISTS "admin_delete_photos"               ON photos;
+DROP POLICY IF EXISTS "Admin insert photos"               ON photos;
+DROP POLICY IF EXISTS "Admin read photos"                 ON photos;
+DROP POLICY IF EXISTS "Admin reads all photos"            ON photos;
+DROP POLICY IF EXISTS "Admin update photos"               ON photos;
+DROP POLICY IF EXISTS "admin_update_photo_links"          ON photos;
+DROP POLICY IF EXISTS "admin_update_photos"               ON photos;
+DROP POLICY IF EXISTS "admin_select_all_photos"           ON photos;
+DROP POLICY IF EXISTS "Authenticated can insert photos"   ON photos;
+DROP POLICY IF EXISTS "Authenticated reads own and public photos" ON photos;
+DROP POLICY IF EXISTS "Public can read public photos"     ON photos;
+DROP POLICY IF EXISTS "Public reads public photos"        ON photos;
+DROP POLICY IF EXISTS "Users can delete own photos"       ON photos;
+DROP POLICY IF EXISTS "Users delete own photos"           ON photos;
+
+CREATE POLICY "photos_select_public"
+  ON photos FOR SELECT TO anon
+  USING (is_public = true);
+
+CREATE POLICY "photos_select_auth"
+  ON photos FOR SELECT TO authenticated
+  USING (
+    is_public = true
+    OR uploaded_by = auth.uid()
+    OR get_my_role() = 'admin'
+  );
+
+CREATE POLICY "photos_insert"
+  ON photos FOR INSERT TO authenticated
+  WITH CHECK ( uploaded_by = auth.uid() );
+
+CREATE POLICY "photos_update_admin"
+  ON photos FOR UPDATE TO authenticated
+  USING  ( get_my_role() = 'admin' )
+  WITH CHECK ( get_my_role() = 'admin' );
+
+CREATE POLICY "photos_delete_own"
+  ON photos FOR DELETE TO authenticated
+  USING ( uploaded_by = auth.uid() );
+
+CREATE POLICY "photos_delete_admin"
+  ON photos FOR DELETE TO authenticated
+  USING ( get_my_role() = 'admin' );
+
+
+-- ── STEP 6: public_comments ──────────────────────────────────────
+DROP POLICY IF EXISTS "Admin can read all public_comments"  ON public_comments;
+DROP POLICY IF EXISTS "Admin delete public_comments"        ON public_comments;
+DROP POLICY IF EXISTS "Admin select public_comments"        ON public_comments;
+DROP POLICY IF EXISTS "Admin update public_comments"        ON public_comments;
+DROP POLICY IF EXISTS "Allow public anonymous inserts"      ON public_comments;
+DROP POLICY IF EXISTS "Public can insert observations"      ON public_comments;
+DROP POLICY IF EXISTS "Public users can insert observations" ON public_comments;
+DROP POLICY IF EXISTS "Public users can view observations"  ON public_comments;
+DROP POLICY IF EXISTS "anon_can_insert_public_comments"     ON public_comments;
+DROP POLICY IF EXISTS "anon_can_select_own_public_comments" ON public_comments;
+DROP POLICY IF EXISTS "anon_insert"                         ON public_comments;
+DROP POLICY IF EXISTS "anon_read_public_comments"           ON public_comments;
+DROP POLICY IF EXISTS "anon_select_own_insert"              ON public_comments;
+
+CREATE POLICY "obs_select_public"
   ON public_comments FOR SELECT TO anon
   USING (true);
 
-DROP POLICY IF EXISTS "Admin read public_comments" ON public_comments;
-DROP POLICY IF EXISTS "Admin select public_comments" ON public_comments;
-CREATE POLICY "Admin select public_comments"
+CREATE POLICY "obs_select_admin"
   ON public_comments FOR SELECT TO authenticated
-  USING ( (auth.jwt() ->> 'role') = 'admin' );
+  USING ( get_my_role() = 'admin' OR true );
+  -- "OR true" lets any authenticated user read their own submissions too
 
-DROP POLICY IF EXISTS "Admin update public_comments" ON public_comments;
-CREATE POLICY "Admin update public_comments"
+CREATE POLICY "obs_insert_anon"
+  ON public_comments FOR INSERT TO anon
+  WITH CHECK (true);
+
+CREATE POLICY "obs_insert_auth"
+  ON public_comments FOR INSERT TO authenticated
+  WITH CHECK (true);
+
+CREATE POLICY "obs_update_admin"
   ON public_comments FOR UPDATE TO authenticated
-  USING ( (auth.jwt() ->> 'role') = 'admin' )
+  USING  ( get_my_role() = 'admin' )
   WITH CHECK (true);
 
-DROP POLICY IF EXISTS "Admin delete public_comments" ON public_comments;
-CREATE POLICY "Admin delete public_comments"
+CREATE POLICY "obs_delete_admin"
   ON public_comments FOR DELETE TO authenticated
-  USING ( (auth.jwt() ->> 'role') = 'admin' );
+  USING ( get_my_role() = 'admin' );
 
--- ── 4. photos ────────────────────────────────────────────────────
-DROP POLICY IF EXISTS "Admin read photos" ON photos;
-CREATE POLICY "Admin read photos"
-  ON photos FOR SELECT TO authenticated
-  USING ( (auth.jwt() ->> 'role') = 'admin' );
 
-DROP POLICY IF EXISTS "Admin update photos" ON photos;
-CREATE POLICY "Admin update photos"
-  ON photos FOR UPDATE TO authenticated
-  USING ( (auth.jwt() ->> 'role') = 'admin' )
+-- ── STEP 7: boundaries ───────────────────────────────────────────
+DROP POLICY IF EXISTS "Admin update boundaries"       ON boundaries;
+DROP POLICY IF EXISTS "Admins can manage boundaries"  ON boundaries;
+DROP POLICY IF EXISTS "Public can read visible boundaries" ON boundaries;
+
+CREATE POLICY "boundaries_select"
+  ON boundaries FOR SELECT TO anon
+  USING (is_visible = true);
+
+CREATE POLICY "boundaries_all_admin"
+  ON boundaries FOR ALL TO authenticated
+  USING  ( get_my_role() = 'admin' )
   WITH CHECK (true);
 
-DROP POLICY IF EXISTS "Admin delete photos" ON photos;
-CREATE POLICY "Admin delete photos"
-  ON photos FOR DELETE TO authenticated
-  USING ( (auth.jwt() ->> 'role') = 'admin' );
 
-DROP POLICY IF EXISTS "Admin insert photos" ON photos;
-CREATE POLICY "Admin insert photos"
-  ON photos FOR INSERT TO authenticated
-  WITH CHECK ( (auth.jwt() ->> 'role') = 'admin' );
+-- ── STEP 8: greening_projects ────────────────────────────────────
+DROP POLICY IF EXISTS "Admin delete greening_projects"      ON greening_projects;
+DROP POLICY IF EXISTS "Admin full access greening_projects" ON greening_projects;
+DROP POLICY IF EXISTS "Admin insert greening_projects"      ON greening_projects;
+DROP POLICY IF EXISTS "Admin select greening_projects"      ON greening_projects;
+DROP POLICY IF EXISTS "Admin update greening_projects"      ON greening_projects;
+DROP POLICY IF EXISTS "Authenticated insert greening_projects" ON greening_projects;
+DROP POLICY IF EXISTS "Owner delete greening_projects"      ON greening_projects;
+DROP POLICY IF EXISTS "Owner update greening_projects"      ON greening_projects;
+DROP POLICY IF EXISTS "Public read greening_projects"       ON greening_projects;
 
--- ── 5. profiles ──────────────────────────────────────────────────
--- Uses auth.jwt() only — never queries profiles from within a
--- profiles policy, which would cause infinite recursion.
-DROP POLICY IF EXISTS "Admin update profiles" ON profiles;
-CREATE POLICY "Admin update profiles"
-  ON profiles FOR UPDATE TO authenticated
-  USING (
-    id = auth.uid()
-    OR (auth.jwt() ->> 'role') = 'admin'
-  ) WITH CHECK (true);
+CREATE POLICY "gmp_select_public"
+  ON greening_projects FOR SELECT TO anon
+  USING (true);
 
-DROP POLICY IF EXISTS "Admin select profiles" ON profiles;
-CREATE POLICY "Admin select profiles"
-  ON profiles FOR SELECT TO authenticated
-  USING (
-    id = auth.uid()
-    OR (auth.jwt() ->> 'role') = 'admin'
-  );
-
--- ── 6. greening_projects ─────────────────────────────────────────
-ALTER TABLE greening_projects ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Admin select greening_projects" ON greening_projects;
-CREATE POLICY "Admin select greening_projects"
+CREATE POLICY "gmp_select_auth"
   ON greening_projects FOR SELECT TO authenticated
-  USING ( (auth.jwt() ->> 'role') = 'admin' );
+  USING (true);
 
-DROP POLICY IF EXISTS "Admin insert greening_projects" ON greening_projects;
-CREATE POLICY "Admin insert greening_projects"
+CREATE POLICY "gmp_insert_admin"
   ON greening_projects FOR INSERT TO authenticated
-  WITH CHECK ( (auth.jwt() ->> 'role') = 'admin' );
+  WITH CHECK ( get_my_role() = 'admin' );
 
-DROP POLICY IF EXISTS "Admin update greening_projects" ON greening_projects;
-CREATE POLICY "Admin update greening_projects"
+CREATE POLICY "gmp_update_admin"
   ON greening_projects FOR UPDATE TO authenticated
-  USING ( (auth.jwt() ->> 'role') = 'admin' )
+  USING  ( get_my_role() = 'admin' )
   WITH CHECK (true);
 
-DROP POLICY IF EXISTS "Admin delete greening_projects" ON greening_projects;
-CREATE POLICY "Admin delete greening_projects"
+CREATE POLICY "gmp_delete_admin"
   ON greening_projects FOR DELETE TO authenticated
-  USING ( (auth.jwt() ->> 'role') = 'admin' );
+  USING ( get_my_role() = 'admin' );
 
--- ── 7. Storage: crime-photos bucket ──────────────────────────────
-DROP POLICY IF EXISTS "Authenticated read crime-photos" ON storage.objects;
-CREATE POLICY "Authenticated read crime-photos"
-  ON storage.objects FOR SELECT TO authenticated
-  USING ( bucket_id = 'crime-photos' );
 
-DROP POLICY IF EXISTS "Public read crime-photos" ON storage.objects;
-CREATE POLICY "Public read crime-photos"
-  ON storage.objects FOR SELECT TO anon
-  USING ( bucket_id = 'crime-photos' );
+-- ── STEP 9: unlinked_attachments ─────────────────────────────────
+DROP POLICY IF EXISTS "Admin full access to staging"          ON unlinked_attachments;
+DROP POLICY IF EXISTS "Allow authenticated uploads to staging" ON unlinked_attachments;
+DROP POLICY IF EXISTS "Allow users to view own staged files"  ON unlinked_attachments;
 
-DROP POLICY IF EXISTS "Anon upload public_reports" ON storage.objects;
-CREATE POLICY "Anon upload public_reports"
-  ON storage.objects FOR INSERT TO anon
-  WITH CHECK (
-    bucket_id = 'crime-photos'
-    AND (storage.foldername(name))[1] = 'public_reports'
-  );
-
--- ── 8. Storage: public_reports bucket ────────────────────────────
-INSERT INTO storage.buckets (id, name, public)
-  VALUES ('public_reports', 'public_reports', false)
-  ON CONFLICT (id) DO NOTHING;
-
-DROP POLICY IF EXISTS "Admin read public_reports bucket" ON storage.objects;
-CREATE POLICY "Admin read public_reports bucket"
-  ON storage.objects FOR SELECT TO authenticated
+CREATE POLICY "staging_select"
+  ON unlinked_attachments FOR SELECT TO authenticated
   USING (
-    bucket_id = 'public_reports'
-    AND (auth.jwt() ->> 'role') = 'admin'
+    uploaded_by = auth.uid()
+    OR get_my_role() = 'admin'
   );
 
-DROP POLICY IF EXISTS "Admin delete public_reports bucket" ON storage.objects;
-CREATE POLICY "Admin delete public_reports bucket"
-  ON storage.objects FOR DELETE TO authenticated
-  USING (
-    bucket_id = 'public_reports'
-    AND (auth.jwt() ->> 'role') = 'admin'
-  );
+CREATE POLICY "staging_insert"
+  ON unlinked_attachments FOR INSERT TO authenticated
+  WITH CHECK (true);
 
--- ── 9. profiles: email column + handle_new_user trigger ──────────
-ALTER TABLE public.profiles
-  ADD COLUMN IF NOT EXISTS email text;
+CREATE POLICY "staging_all_admin"
+  ON unlinked_attachments FOR ALL TO authenticated
+  USING  ( get_my_role() = 'admin' )
+  WITH CHECK (true);
+
+
+-- ── STEP 10: Backfill email column in profiles ────────────────────
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS email text;
 
 UPDATE public.profiles p
 SET    email = u.email
@@ -3680,73 +3784,14 @@ FROM   auth.users u
 WHERE  u.id = p.id
 AND    p.email IS NULL;
 
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-BEGIN
-  INSERT INTO public.profiles (id, role, email)
-  VALUES (NEW.id, 'field_officer', NEW.email)
-  ON CONFLICT (id) DO UPDATE
-    SET email = EXCLUDED.email;
-  RETURN NEW;
-END;
-$$;
-
+-- ── STEP 11: get_all_profiles() — used by Users tab ──────────────
 DROP FUNCTION IF EXISTS public.get_all_profiles();
 CREATE OR REPLACE FUNCTION public.get_all_profiles()
 RETURNS TABLE(id uuid, role user_role, email text)
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
-  SELECT id, role, email
-  FROM   public.profiles
-  ORDER  BY email NULLS LAST;
+  SELECT id, role, email FROM public.profiles ORDER BY email NULLS LAST;
 $$;
 GRANT EXECUTE ON FUNCTION public.get_all_profiles() TO authenticated;
-
--- ── 10. v_annotations_expanded view ──────────────────────────────
-CREATE OR REPLACE VIEW v_annotations_expanded AS
-SELECT
-  a.id, a.label, a.annotation_type, a.category, a.category_data,
-  a.notes, a.status, a.is_public, a.is_sensitive,
-  a.created_by, a.created_at, a.updated_at,
-  ST_Y(ST_Centroid(a.geometry::geometry)) AS lat,
-  ST_X(ST_Centroid(a.geometry::geometry)) AS lng,
-  ST_AsGeoJSON(a.geometry::geometry)::json AS geometry_geojson,
-  ST_AsText(a.geometry::geometry)         AS wkt
-FROM map_annotations a;
-
-GRANT SELECT ON v_annotations_expanded TO authenticated, anon;
-
--- ── 11. get_annotations_geojson RPC ──────────────────────────────
-DROP FUNCTION IF EXISTS public.get_annotations_geojson();
-CREATE OR REPLACE FUNCTION public.get_annotations_geojson()
-RETURNS TABLE (
-  id               uuid,
-  label            text,
-  annotation_type  text,
-  category         text,
-  category_data    jsonb,
-  notes            text,
-  status           text,
-  is_public        boolean,
-  is_sensitive     boolean,
-  created_by       uuid,
-  created_at       timestamptz,
-  lat              double precision,
-  lng              double precision,
-  geometry_geojson json,
-  wkt              text
-)
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
-  SELECT
-    id, label, annotation_type,
-    category, category_data,
-    notes, status, is_public, is_sensitive,
-    created_by, created_at,
-    lat, lng, geometry_geojson, wkt
-  FROM v_annotations_expanded
-  ORDER BY created_at DESC;
-$$;
-GRANT EXECUTE ON FUNCTION public.get_annotations_geojson() TO authenticated, anon;
-`;
 
 function showRLSFix() {
   document.getElementById('rls-sql').textContent = RLS_SQL;

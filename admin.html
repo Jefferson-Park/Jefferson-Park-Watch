@@ -2886,7 +2886,7 @@ function filterObs() {
     if (statusF && (o.status || 'new') !== statusF) return false;
     if (catF    && (o.category || '')  !== catF)    return false;
     if (q) {
-      const hay = [o.description || o.message || o.comment, o.category, o.notes, o.submitter_email]
+      const hay = [o.description || o.comment_text || o.message || o.comment, o.category, o.notes, o.submitter_email]
         .filter(Boolean).join(' ').toLowerCase();
       if (!hay.includes(q)) return false;
     }
@@ -2932,7 +2932,7 @@ function renderObsGrid() {
         ${statusBadge}
         <span class="obs-date">${esc(dateStr)}</span>
       </div>
-      <div class="obs-desc">${esc(o.description || o.message || o.comment) || '—'}</div>
+      <div class="obs-desc">${esc(o.description || o.comment_text || o.message || o.comment) || '—'}</div>
       <div class="obs-meta">
         ${hasLoc ? `<span>📍 ${parseFloat(o.lat).toFixed(5)}, ${parseFloat(o.lng).toFixed(5)}</span>` : '<span style="color:var(--danger)">No location</span>'}
         ${o.submitter_email ? `<span>✉️ ${esc(o.submitter_email)}</span>` : ''}
@@ -2963,7 +2963,7 @@ function renderObsMarkers() {
     });
     m.bindPopup(`<div style="padding:10px;font-family:var(--font);color:var(--text);max-width:240px">
       <div style="font-weight:600;font-size:12px;color:${color};margin-bottom:4px">${esc(catLabel)}</div>
-      <div style="font-size:11px;line-height:1.5;margin-bottom:6px">${esc(((o.description || o.message || o.comment)||'').slice(0,140))}</div>
+      <div style="font-size:11px;line-height:1.5;margin-bottom:6px">${esc(((o.description || o.comment_text || o.message || o.comment)||'').slice(0,140))}</div>
       <div style="font-size:10px;color:var(--muted);margin-bottom:8px">${o.created_at ? esc(new Date(o.created_at).toLocaleString()) : ''}</div>
       <span class="badge b-${esc(status)}" style="margin-bottom:8px;display:inline-block">${esc(status)}</span>
       <div style="display:flex;gap:5px;margin-top:6px">
@@ -2997,22 +2997,6 @@ function openObsModal(id) {
       ? `${parseFloat(o.lat).toFixed(6)}, ${parseFloat(o.lng).toFixed(6)}`
       : 'No location provided';
   document.getElementById('obs-modal-desc').textContent = o.description || o.comment_text || o.message || o.comment || '—';
-
-//Fix B — Description in card grid preview (renderObsGrid)
-js<div class=\"obs-desc\">${esc(o.description || o.comment_text || o.message || o.comment) || '—'}</div>
-
-//Fix C — Description in map marker popup (renderObsMarkers)
-js<div style=\"font-size:11px;line-height:1.5;margin-bottom:6px\">${esc(((o.description || o.comment_text || o.message || o.comment)||'').slice(0,140))}</div>
-
-//Fix D — Description in promote-to-annotation (promoteObsToAnnotation)
-jsconst annNotes = [o.description || o.comment_text, notes ? `Admin: ${notes}` : null].filter(Boolean).join('\n') || null;
-
-//Fix E — Description in search haystack (filterObs)
-jsconst hay = [o.description || o.comment_text || o.message || o.comment, o.category, o.notes, o.submitter_email]
-
-Fix F — CSV export header (column name mismatch)
-jsconst headers = ['id','created_at','lat','lng','category','comment_text','description','submitter_email','status','reviewed_by','notes','photo_path','address','admin_category'];
-
 
   document.getElementById('obs-modal-contact').textContent = o.submitter_email || '(no contact info)';
   document.getElementById('obs-modal-notes').value = o.notes || '';
@@ -3116,7 +3100,7 @@ async function promoteObsToAnnotation() {
   const notes    = document.getElementById('obs-modal-notes').value.trim();
   const annCat   = document.getElementById('obs-modal-ann-cat')?.value || 'observation';
   const annLabel = OBS_CAT_LABELS[o.category] || o.category || 'Public Report';
-  const annNotes = [o.description, notes ? `Admin: ${notes}` : null].filter(Boolean).join('\n') || null;
+  const annNotes = [o.description || o.comment_text, notes ? `Admin: ${notes}` : null].filter(Boolean).join('\n') || null;
 
   // Use insert_annotation RPC (same as Add Record) - builds PostGIS geometry from GeoJSON
   const geojson = JSON.stringify({ type: 'Point', coordinates: [parseFloat(o.lng), parseFloat(o.lat)] });
@@ -3187,7 +3171,7 @@ async function deleteObs(id) {
 }
 
 function exportObsCSV() {
-  const headers = ['id','created_at','lat','lng','category','description','submitter_email','status','reviewed_by','notes','photo_path','address','admin_category'];
+  const headers = ['id','created_at','lat','lng','category','comment_text','description','submitter_email','status','reviewed_by','notes','photo_path','address','admin_category'];
   const rows = filteredObservations.length ? filteredObservations : allObservations;
   const csv = toCSV(rows, headers);
   const suffix = filteredObservations.length < allObservations.length ? '_filtered' : '';

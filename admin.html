@@ -3488,149 +3488,293 @@ async function deleteGMPProject(id, name) {
 // ══════════════════════════════════════════════════════
 // RLS FIX MODAL
 // ══════════════════════════════════════════════════════
-const RLS_SQL = `-- ══════════════════════════════════════════════════
--- Jefferson Park — Admin RLS + Storage Policies
+const RLS_SQL = `-- ══════════════════════════════════════════════════════════════════
+-- Jefferson Park — Admin RLS + Storage + RPC Migration
 -- Run this entire block in your Supabase SQL Editor.
--- Safe to re-run: DROP IF EXISTS before each CREATE.
--- ══════════════════════════════════════════════════
+-- Safe to re-run: every statement uses DROP IF EXISTS / OR REPLACE.
+-- NOTE: role comparisons use ::user_role cast to match the enum type.
+-- ══════════════════════════════════════════════════════════════════
 
--- ── crimes ───────────────────────────────────────────
+-- ── 1. crimes ────────────────────────────────────────────────────
 DROP POLICY IF EXISTS "Admin delete crimes" ON crimes;
-CREATE POLICY "Admin delete crimes" ON crimes
-  FOR DELETE TO authenticated
+CREATE POLICY "Admin delete crimes"
+  ON crimes FOR DELETE TO authenticated
   USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
   ));
 
 DROP POLICY IF EXISTS "Admin update crimes" ON crimes;
-CREATE POLICY "Admin update crimes" ON crimes
-  FOR UPDATE TO authenticated
+CREATE POLICY "Admin update crimes"
+  ON crimes FOR UPDATE TO authenticated
   USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
   )) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Admin select crimes" ON crimes;
-CREATE POLICY "Admin select crimes" ON crimes
-  FOR SELECT TO authenticated
+CREATE POLICY "Admin select crimes"
+  ON crimes FOR SELECT TO authenticated
   USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin','officer')
+    SELECT 1 FROM profiles WHERE id = auth.uid()
+      AND role IN ('admin'::user_role, 'field_officer'::user_role)
   ));
 
--- ── map_annotations ───────────────────────────────────
+-- ── 2. map_annotations ───────────────────────────────────────────
 DROP POLICY IF EXISTS "Admin delete annotations" ON map_annotations;
-CREATE POLICY "Admin delete annotations" ON map_annotations
-  FOR DELETE TO authenticated
+CREATE POLICY "Admin delete annotations"
+  ON map_annotations FOR DELETE TO authenticated
   USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
   ));
 
 DROP POLICY IF EXISTS "Admin update annotations" ON map_annotations;
-CREATE POLICY "Admin update annotations" ON map_annotations
-  FOR UPDATE TO authenticated
+CREATE POLICY "Admin update annotations"
+  ON map_annotations FOR UPDATE TO authenticated
   USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
   )) WITH CHECK (true);
 
-DROP POLICY IF EXISTS "Admin select annotations" ON map_annotations;
-CREATE POLICY "Admin select annotations" ON map_annotations
-  FOR SELECT TO authenticated
+DROP POLICY IF EXISTS "Admin read annotations" ON map_annotations;
+CREATE POLICY "Admin read annotations"
+  ON map_annotations FOR SELECT TO authenticated
   USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin','officer')
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
   ));
 
--- ── public_comments ───────────────────────────────────
+-- ── 3. public_comments ───────────────────────────────────────────
+ALTER TABLE public_comments ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "anon_insert" ON public_comments;
+CREATE POLICY "anon_insert"
+  ON public_comments FOR INSERT TO anon WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public can insert observations" ON public_comments;
+CREATE POLICY "Public can insert observations"
+  ON public_comments FOR INSERT TO anon, authenticated
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "anon_read_public_comments" ON public_comments;
+CREATE POLICY "anon_read_public_comments"
+  ON public_comments FOR SELECT TO anon
+  USING (true);
+
+DROP POLICY IF EXISTS "Admin read public_comments" ON public_comments;
 DROP POLICY IF EXISTS "Admin select public_comments" ON public_comments;
-CREATE POLICY "Admin select public_comments" ON public_comments
-  FOR SELECT TO authenticated
+CREATE POLICY "Admin select public_comments"
+  ON public_comments FOR SELECT TO authenticated
   USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
   ));
 
 DROP POLICY IF EXISTS "Admin update public_comments" ON public_comments;
-CREATE POLICY "Admin update public_comments" ON public_comments
-  FOR UPDATE TO authenticated
+CREATE POLICY "Admin update public_comments"
+  ON public_comments FOR UPDATE TO authenticated
   USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
   )) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Admin delete public_comments" ON public_comments;
-CREATE POLICY "Admin delete public_comments" ON public_comments
-  FOR DELETE TO authenticated
+CREATE POLICY "Admin delete public_comments"
+  ON public_comments FOR DELETE TO authenticated
   USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
   ));
 
--- Public INSERT (keep — this is intentional for the Report Observation feature)
-DROP POLICY IF EXISTS "Public can insert observations" ON public_comments;
-CREATE POLICY "Public can insert observations" ON public_comments
-  FOR INSERT TO anon, authenticated
-  WITH CHECK (true);
-
--- ── photos ────────────────────────────────────────────
-DROP POLICY IF EXISTS "Admin update photos" ON photos;
-CREATE POLICY "Admin update photos" ON photos
-  FOR UPDATE TO authenticated
+-- ── 4. photos ────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "Admin read photos" ON photos;
+CREATE POLICY "Admin read photos"
+  ON photos FOR SELECT TO authenticated
   USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
+  ));
+
+DROP POLICY IF EXISTS "Admin update photos" ON photos;
+CREATE POLICY "Admin update photos"
+  ON photos FOR UPDATE TO authenticated
+  USING (EXISTS (
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
   )) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Admin delete photos" ON photos;
-CREATE POLICY "Admin delete photos" ON photos
-  FOR DELETE TO authenticated
+CREATE POLICY "Admin delete photos"
+  ON photos FOR DELETE TO authenticated
   USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
   ));
 
-DROP POLICY IF EXISTS "Admin select photos" ON photos;
-CREATE POLICY "Admin select photos" ON photos
-  FOR SELECT TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin','officer')
+DROP POLICY IF EXISTS "Admin insert photos" ON photos;
+CREATE POLICY "Admin insert photos"
+  ON photos FOR INSERT TO authenticated
+  WITH CHECK (EXISTS (
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
   ));
 
--- ── profiles ──────────────────────────────────────────
+-- ── 5. profiles ───────────────────────────────────────────────────
 DROP POLICY IF EXISTS "Admin update profiles" ON profiles;
-CREATE POLICY "Admin update profiles" ON profiles
-  FOR UPDATE TO authenticated
+CREATE POLICY "Admin update profiles"
+  ON profiles FOR UPDATE TO authenticated
   USING (EXISTS (
-    SELECT 1 FROM profiles p2 WHERE p2.id = auth.uid() AND p2.role = 'admin'
+    SELECT 1 FROM profiles p2 WHERE p2.id = auth.uid() AND p2.role = 'admin'::user_role
   )) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Admin select profiles" ON profiles;
-CREATE POLICY "Admin select profiles" ON profiles
-  FOR SELECT TO authenticated
+CREATE POLICY "Admin select profiles"
+  ON profiles FOR SELECT TO authenticated
   USING (
     id = auth.uid()
     OR EXISTS (
-      SELECT 1 FROM profiles p2 WHERE p2.id = auth.uid() AND p2.role = 'admin'
+      SELECT 1 FROM profiles p2 WHERE p2.id = auth.uid() AND p2.role = 'admin'::user_role
     )
   );
 
--- ── Storage buckets ───────────────────────────────────
--- Allows admins to read/delete files (fixes 400 errors on photo load).
+-- ── 6. greening_projects ─────────────────────────────────────────
+ALTER TABLE greening_projects ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Admin select greening_projects" ON greening_projects;
+CREATE POLICY "Admin select greening_projects"
+  ON greening_projects FOR SELECT TO authenticated
+  USING (EXISTS (
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
+  ));
+
+DROP POLICY IF EXISTS "Admin insert greening_projects" ON greening_projects;
+CREATE POLICY "Admin insert greening_projects"
+  ON greening_projects FOR INSERT TO authenticated
+  WITH CHECK (EXISTS (
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
+  ));
+
+DROP POLICY IF EXISTS "Admin update greening_projects" ON greening_projects;
+CREATE POLICY "Admin update greening_projects"
+  ON greening_projects FOR UPDATE TO authenticated
+  USING (EXISTS (
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
+  )) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Admin delete greening_projects" ON greening_projects;
+CREATE POLICY "Admin delete greening_projects"
+  ON greening_projects FOR DELETE TO authenticated
+  USING (EXISTS (
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
+  ));
+
+-- ── 7. Storage: crime-photos bucket ──────────────────────────────
+DROP POLICY IF EXISTS "Authenticated read crime-photos" ON storage.objects;
+CREATE POLICY "Authenticated read crime-photos"
+  ON storage.objects FOR SELECT TO authenticated
+  USING ( bucket_id = 'crime-photos' );
+
+DROP POLICY IF EXISTS "Public read crime-photos" ON storage.objects;
+CREATE POLICY "Public read crime-photos"
+  ON storage.objects FOR SELECT TO anon
+  USING ( bucket_id = 'crime-photos' );
+
+DROP POLICY IF EXISTS "Anon upload public_reports" ON storage.objects;
+CREATE POLICY "Anon upload public_reports"
+  ON storage.objects FOR INSERT TO anon
+  WITH CHECK (
+    bucket_id = 'crime-photos'
+    AND (storage.foldername(name))[1] = 'public_reports'
+  );
+
+-- ── 8. Storage: public_reports bucket ────────────────────────────
 INSERT INTO storage.buckets (id, name, public)
   VALUES ('public_reports', 'public_reports', false)
   ON CONFLICT (id) DO NOTHING;
 
 DROP POLICY IF EXISTS "Admin read public_reports bucket" ON storage.objects;
-CREATE POLICY "Admin read public_reports bucket" ON storage.objects
-  FOR SELECT TO authenticated
+CREATE POLICY "Admin read public_reports bucket"
+  ON storage.objects FOR SELECT TO authenticated
   USING (
     bucket_id = 'public_reports'
     AND EXISTS (
-      SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+      SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
     )
   );
 
 DROP POLICY IF EXISTS "Admin delete public_reports bucket" ON storage.objects;
-CREATE POLICY "Admin delete public_reports bucket" ON storage.objects
-  FOR DELETE TO authenticated
+CREATE POLICY "Admin delete public_reports bucket"
+  ON storage.objects FOR DELETE TO authenticated
   USING (
     bucket_id = 'public_reports'
     AND EXISTS (
-      SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+      SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
     )
   );
+
+-- ── 9. profiles: email column + handle_new_user trigger ──────────
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS email text;
+
+UPDATE public.profiles p
+SET    email = u.email
+FROM   auth.users u
+WHERE  u.id = p.id
+AND    p.email IS NULL;
+
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  INSERT INTO public.profiles (id, role, email)
+  VALUES (NEW.id, 'field_officer', NEW.email)
+  ON CONFLICT (id) DO UPDATE
+    SET email = EXCLUDED.email;
+  RETURN NEW;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.get_all_profiles()
+RETURNS TABLE(id uuid, role user_role, email text)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT id, role, email
+  FROM   public.profiles
+  ORDER  BY email NULLS LAST;
+$$;
+GRANT EXECUTE ON FUNCTION public.get_all_profiles() TO authenticated;
+
+-- ── 10. v_annotations_expanded view ──────────────────────────────
+CREATE OR REPLACE VIEW v_annotations_expanded AS
+SELECT
+  a.id, a.label, a.annotation_type, a.category, a.category_data,
+  a.notes, a.status, a.is_public, a.is_sensitive,
+  a.created_by, a.created_at, a.updated_at,
+  ST_Y(ST_Centroid(a.geometry)) AS lat,
+  ST_X(ST_Centroid(a.geometry)) AS lng,
+  ST_AsGeoJSON(a.geometry)::json AS geometry_geojson,
+  ST_AsText(a.geometry)         AS wkt
+FROM map_annotations a;
+
+GRANT SELECT ON v_annotations_expanded TO authenticated, anon;
+
+-- ── 11. get_annotations_geojson RPC ──────────────────────────────
+CREATE OR REPLACE FUNCTION public.get_annotations_geojson()
+RETURNS TABLE (
+  id               uuid,
+  label            text,
+  annotation_type  text,
+  category         text,
+  category_data    jsonb,
+  notes            text,
+  status           text,
+  is_public        boolean,
+  is_sensitive     boolean,
+  created_by       uuid,
+  created_at       timestamptz,
+  lat              double precision,
+  lng              double precision,
+  geometry_geojson json,
+  wkt              text
+)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT
+    id, label, annotation_type,
+    category, category_data,
+    notes, status, is_public, is_sensitive,
+    created_by, created_at,
+    lat, lng, geometry_geojson, wkt
+  FROM v_annotations_expanded
+  ORDER BY created_at DESC;
+$$;
+GRANT EXECUTE ON FUNCTION public.get_annotations_geojson() TO authenticated, anon;
 `;
 
 function showRLSFix() {

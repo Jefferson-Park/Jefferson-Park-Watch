@@ -2842,7 +2842,7 @@ const OBS_CAT_LABELS = {
 async function loadObservations() {
   try {
     const { data, error } = await sb.from('public_comments')
-      .select('id,created_at,lat,lng,category,description,submitter_email,status,reviewed_by,notes,photo_path,address,admin_category')
+      .select('*')
       .order('created_at', { ascending: false });
     if (error) throw error;
     allObservations = data || [];
@@ -3170,7 +3170,7 @@ async function deleteObs(id) {
 }
 
 function exportObsCSV() {
-  const headers = ['id','created_at','lat','lng','category','description','submitter_email','status','reviewed_by','notes'];
+  const headers = ['id','created_at','lat','lng','category','description','submitter_email','status','reviewed_by','notes','photo_path','address','admin_category'];
   const rows = filteredObservations.length ? filteredObservations : allObservations;
   const csv = toCSV(rows, headers);
   const suffix = filteredObservations.length < allObservations.length ? '_filtered' : '';

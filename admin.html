@@ -3738,10 +3738,10 @@ SELECT
   a.id, a.label, a.annotation_type, a.category, a.category_data,
   a.notes, a.status, a.is_public, a.is_sensitive,
   a.created_by, a.created_at, a.updated_at,
-  ST_Y(ST_Centroid(a.geometry)) AS lat,
-  ST_X(ST_Centroid(a.geometry)) AS lng,
-  ST_AsGeoJSON(a.geometry)::json AS geometry_geojson,
-  ST_AsText(a.geometry)         AS wkt
+  ST_Y(ST_Centroid(a.geometry::geometry)) AS lat,
+  ST_X(ST_Centroid(a.geometry::geometry)) AS lng,
+  ST_AsGeoJSON(a.geometry::geometry)::json AS geometry_geojson,
+  ST_AsText(a.geometry::geometry)         AS wkt
 FROM map_annotations a;
 
 GRANT SELECT ON v_annotations_expanded TO authenticated, anon;

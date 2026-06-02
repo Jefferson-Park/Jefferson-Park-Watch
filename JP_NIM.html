@@ -1839,7 +1839,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
 // persistSession:false + autoRefreshToken:false means this client
 // NEVER stores or sends a user JWT — it always sends only the anon
 // key, even if a staff member is logged in on the main `sb` client.
-// This is the correct fix for 401/42501 on public_comments inserts.
+// This is the correct fix for 401/42501 on  inserts.
 const sbPublic = createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth: { persistSession: false, autoRefreshToken: false, storageKey: 'sb-public-anon' },
 });
@@ -4013,7 +4013,7 @@ const { error } = await sbPublic.from('public_comments').insert([
     lng: pubReportLng,
     address: pubReportAddress || null,
     category: cat,
-    public_comments: desc,
+    comment_text: desc,
     submitter_email: email || null,
     status: 'new',
     notes: commentNotes,

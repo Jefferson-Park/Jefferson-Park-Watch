@@ -3612,18 +3612,17 @@ CREATE POLICY "Admin insert photos"
 DROP POLICY IF EXISTS "Admin update profiles" ON profiles;
 CREATE POLICY "Admin update profiles"
   ON profiles FOR UPDATE TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM profiles p2 WHERE p2.id = auth.uid() AND p2.role = 'admin'::user_role
-  )) WITH CHECK (true);
+  USING (
+    id = auth.uid()
+    OR (auth.jwt() ->> 'role') = 'admin'
+  ) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Admin select profiles" ON profiles;
 CREATE POLICY "Admin select profiles"
   ON profiles FOR SELECT TO authenticated
   USING (
     id = auth.uid()
-    OR EXISTS (
-      SELECT 1 FROM profiles p2 WHERE p2.id = auth.uid() AND p2.role = 'admin'::user_role
-    )
+    OR (auth.jwt() ->> 'role') = 'admin'
   );
 
 -- ── 6. greening_projects ─────────────────────────────────────────

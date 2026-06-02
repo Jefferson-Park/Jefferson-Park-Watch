@@ -899,7 +899,6 @@ window.addEventListener('DOMContentLoaded', () => {
         imperviousLayer,
         ...Object.values(sbOLLayers),
         greeningLayer,
-        metroLayer,
       ],
       view: new ol.View({
         center: ol.proj.fromLonLat([CENTER_LON, CENTER_LAT]),
@@ -986,7 +985,7 @@ window.addEventListener('DOMContentLoaded', () => {
     // Hover cursor — includes all Supabase layers
     map.on('pointermove', e => {
       const hit = map.hasFeatureAtPixel(e.pixel, {
-        layerFilter: l => l === tesLayer || l === greeningLayer || l === metroLayer
+        layerFilter: l => l === tesLayer || l === greeningLayer  
           || Object.values(sbOLLayers).includes(l),
       });
       map.getTargetElement().style.cursor = hit ? 'pointer' : '';
@@ -1171,7 +1170,6 @@ function toggleLayer(id) {
 
   // ── Static OL layers ──
   if (id === 'greening')   { greeningLayer.setVisible(on); return; }
-  if (id === 'metro')      { metroLayer.setVisible(on); return; }
   if (id === 'impervious') { imperviousLayer.setVisible(on); return; }
 
   // ── Supabase-backed annotation layers ──

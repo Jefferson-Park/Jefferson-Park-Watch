@@ -3722,6 +3722,7 @@ BEGIN
 END;
 $$;
 
+DROP FUNCTION IF EXISTS public.get_all_profiles();
 CREATE OR REPLACE FUNCTION public.get_all_profiles()
 RETURNS TABLE(id uuid, role user_role, email text)
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
@@ -3746,6 +3747,7 @@ FROM map_annotations a;
 GRANT SELECT ON v_annotations_expanded TO authenticated, anon;
 
 -- ── 11. get_annotations_geojson RPC ──────────────────────────────
+DROP FUNCTION IF EXISTS public.get_annotations_geojson();
 CREATE OR REPLACE FUNCTION public.get_annotations_geojson()
 RETURNS TABLE (
   id               uuid,

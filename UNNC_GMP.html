@@ -913,34 +913,63 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // ── Wire map event handlers (must be inside this block) ──────────────
 
-    // Map click handler
+ // Map click handler
     map.on('singleclick', function (e) {
-  // 1. Look for greening layer features exclusively first
-  const gfeat = map.forEachFeatureAtPixel(e.pixel, f => f, {
-    layerFilter: l => l === greeningLayer,
-    hitTolerance: 10,
-  });
+      // 1. Look for greening layer features exclusively first
+      const gfeat = map.forEachFeatureAtPixel(e.pixel, f => f, {
+        layerFilter: l => l === greeningLayer,
+        hitTolerance: 10,
+      });
 
-  if (gfeat) {
-    const featureId = gfeat.getId();
-    // Directly match against greening projects
-    const proj = GREENING_PROJECTS.find(p => p.id === featureId);
-    if (proj) {
-      openPopup(buildGreeningPopup(proj));
-      return; // Stop execution here so it doesn't trigger the base layer popup
-    }
-  }
+      if (gfeat) {
+        const featureId = gfeat.getId();
+        // Match against greening projects (handling Supabase OR local fallback)
+        const proj = (window._LIVE_GREENING || GREENING_PROJECTS).find(p => p.id === featureId);
+        if (proj) {
+          openPopup(buildGreeningPopup(proj));
+          return; 
+        }
+      }
 
-  // 2. Fallback: Check base features/building blocks if no greening feature was hit
-  const baseFeat = map.forEachFeatureAtPixel(e.pixel, f => f, {
-    layerFilter: l => l !== greeningLayer,
-    hitTolerance: 2
-  });
+      // 2. Check Supabase annotation layers
+      for (const [layerId, olLayer] of Object.entries(sbOLLayers)) {
+        if (!olLayer.getVisible()) continue;
+        const feat = map.forEachFeatureAtPixel(e.pixel, f => f, {
+          layerFilter: l => l === olLayer, hitTolerance: 8,
+        });
+        if (feat) {
+          const p = feat.getProperties();
+          const catData = p.category_data || {};
+          const details = Object.entries(catData)
+            .filter(([, v]) => v)
+            .map(([k, v]) => `<div class="pop-row"><span class="pop-row-label">${k.replace(/_/g,' ')}</span><span class="pop-row-val">${v}</span></div>`)
+            .join('');
+          openPopup(`
+            <div style="background:var(--green-pale);padding:14px 44px 12px 16px;border-bottom:1px solid var(--border)">
+              <div style="font-size:15px;font-weight:700;color:var(--green-dark)">${p.label || p.category || 'Record'}</div>
+              <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:2px">${p.category || ''} · ${p.annotation_type || 'point'}</div>
+            </div>
+            <div class="pop-section">
+              ${p.notes ? `<div style="font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:8px">${p.notes}</div>` : ''}
+              ${details}
+              <div class="pop-row"><span class="pop-row-label">Coordinates</span><span class="pop-row-val" style="font-family:var(--mono);font-size:10px">${parseFloat(p.lat).toFixed(5)}, ${parseFloat(p.lng).toFixed(5)}</span></div>
+            </div>
+          `);
+          return;
+        }
+      }
 
-  if (baseFeat) {
-    openPopup(buildBGBlocPopup(baseFeat.getProperties()));
-  }
-});
+      // 3. Fallback to TES block groups (Choropleth base map)
+      const tfeat = map.forEachFeatureAtPixel(e.pixel, f => f, {
+        layerFilter: l => l === tesLayer,
+      });
+      if (tfeat) {
+        openPopup(buildTESPopup(tfeat.getProperties()));
+        tesLayer.changed();
+        return;
+      }
+      closePopup();
+    });
 
       // Supabase annotation layers
       for (const [layerId, olLayer] of Object.entries(sbOLLayers)) {

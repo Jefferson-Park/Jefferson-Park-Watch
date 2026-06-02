@@ -1023,11 +1023,12 @@ window.addEventListener('DOMContentLoaded', () => {
     });
 
     // Kick off greening pin load
-    loadMapPinsCached();
+    // Kick off greening pin load
+      loadMapPinsCached();
 
-    setTimeout(() => map.updateSize(), 280);
-  }, 100);
-  
+      setTimeout(() => map.updateSize(), 280);
+    }, 100);
+}); // <--- THIS CLOSES THE DOMContentLoaded LISTENER PROPERLY!
 
 // ══════════════════════════════════════════════════
 // CHOROPLETH COLOR SCALES

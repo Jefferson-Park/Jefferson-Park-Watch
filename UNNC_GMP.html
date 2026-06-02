@@ -720,45 +720,7 @@ function greeningStyle(feature) {
 }
 const greeningLayer = new ol.layer.Vector({ source: greeningSource, style: greeningStyle, zIndex:20 });
 
-// ── Metro E Line stations (static — coordinates verified) ────────────────────
-const METRO_E_STATIONS = [
-  { id: 'jefferson-usc', name: 'Jefferson / USC', lat: 34.0186, lng: -118.2867,
-    lines: ['E Line (Expo)'], connections: 'USC campus connector bus' },
-  { id: 'expo-park-usc', name: 'Expo Park / USC', lat: 34.0157, lng: -118.2868,
-    lines: ['E Line (Expo)'], connections: 'Natural History Museum, CSULA shuttle' },
-];
 
-function metroStationStyle(feature) {
-  return new ol.style.Style({
-    image: new ol.style.Circle({
-      radius: 9,
-      fill: new ol.style.Fill({ color: '#EB7D24' }),
-      stroke: new ol.style.Stroke({ color: '#fff', width: 2 }),
-    }),
-    text: new ol.style.Text({
-      text: 'M',
-      font: 'bold 9px DM Mono, monospace',
-      fill: new ol.style.Fill({ color: '#fff' }),
-      offsetY: 1,
-    }),
-  });
-}
-
-const metroSource = new ol.source.Vector();
-METRO_E_STATIONS.forEach(s => {
-  const f = new ol.Feature({
-    geometry: new ol.geom.Point(ol.proj.fromLonLat([s.lng, s.lat])),
-    ...s,
-  });
-  f.setId(s.id);
-  metroSource.addFeature(f);
-});
-const metroLayer = new ol.layer.Vector({
-  source: metroSource,
-  style: metroStationStyle,
-  visible: false,
-  zIndex: 25,
-});
 
 
 // ══════════════════════════════════════════════════════════════════
@@ -953,25 +915,33 @@ window.addEventListener('DOMContentLoaded', () => {
     // ── Wire map event handlers (must be inside this block) ──────────────
 
     // Map click handler
-    map.on('singleclick', e => {
-      // Greening project markers (highest priority)
-      const gfeat = map.forEachFeatureAtPixel(e.pixel, f => f, {
-        layerFilter: l => l === greeningLayer, hitTolerance: 10,
-      });
-      if (gfeat) {
-        const stationId = gfeat.getId();
-        const station = METRO_E_STATIONS.find(s => s.id === stationId);
-        if (station) {
-          openPopup(`<div style="padding:14px 44px 14px 16px">
-            <div style="font-weight:700;font-size:13px;margin-bottom:4px">🚇 ${station.name}</div>
-            <div style="font-size:10px;color:#EB7D24;font-weight:600;margin-bottom:4px">${station.lines.join(', ')}</div>
-            ${station.connections ? `<div style="font-size:10px;color:var(--text2)">${station.connections}</div>` : ''}
-          </div>`);
-          return;
-        }
-        const proj = (window._LIVE_GREENING || GREENING_PROJECTS).find(p => p.id === gfeat.getId());
-        if (proj) { openPopup(buildGreeningPopup(proj)); return; }
-      }
+    map.on('singleclick', function (e) {
+  // 1. Look for greening layer features exclusively first
+  const gfeat = map.forEachFeatureAtPixel(e.pixel, f => f, {
+    layerFilter: l => l === greeningLayer,
+    hitTolerance: 10,
+  });
+
+  if (gfeat) {
+    const featureId = gfeat.getId();
+    // Directly match against greening projects
+    const proj = GREENING_PROJECTS.find(p => p.id === featureId);
+    if (proj) {
+      openPopup(buildGreeningPopup(proj));
+      return; // Stop execution here so it doesn't trigger the base layer popup
+    }
+  }
+
+  // 2. Fallback: Check base features/building blocks if no greening feature was hit
+  const baseFeat = map.forEachFeatureAtPixel(e.pixel, f => f, {
+    layerFilter: l => l !== greeningLayer,
+    hitTolerance: 2
+  });
+
+  if (baseFeat) {
+    openPopup(buildBGBlocPopup(baseFeat.getProperties()));
+  }
+});
 
       // Supabase annotation layers
       for (const [layerId, olLayer] of Object.entries(sbOLLayers)) {

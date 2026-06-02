@@ -56,7 +56,7 @@ html, body { width:100%; height:100%; overflow:hidden; font-family:var(--font); 
 }
 #sidebar.collapsed { transform:translateX(calc(-1 * var(--sb-width))); }
 #map-wrap { flex:1; position:relative; overflow:hidden; }
-#map { width:100%; height:100%; }
+#map { width:100%; height:100vh; display:block; }
 
 /* ── Sidebar toggle ───────────────────────────── */
 #sb-toggle {
@@ -765,18 +765,51 @@ const metroLayer = new ol.layer.Vector({
 });
 
 
-// Map
-const map = new ol.Map({
-  target: 'map',
-  layers: [basemaps.street, basemaps.satellite, basemaps.parcel, tesLayer, imperviousLayer, greeningLayer, metroLayer],
-  view: new ol.View({
-    center: ol.proj.fromLonLat([CENTER_LON, CENTER_LAT]),
-    zoom: 14,
-  }),
-  controls: ol.control.defaults.defaults({ attribution: true, zoom: false }).extend([
-    // Zoom on right side — avoids address bar on mobile
-    new ol.control.Zoom({ className: 'ol-zoom ol-zoom-right' }),
-  ]),
+// ══════════════════════════════════════════════════════════════════
+// SAFE LAYER & MAP INITIALIZATION
+// ══════════════════════════════════════════════════════════════════
+
+// Declare map variable in the global scope so your data loading functions can still reach it
+let map;
+
+window.addEventListener('DOMContentLoaded', () => {
+  // A minor 100ms delay gives the layout engine time to calculate the height of <div id="map">
+  setTimeout(() => {
+    if (!document.getElementById('map')) {
+      console.error("[GMP] Target div with id 'map' not found in the DOM.");
+      return;
+    }
+
+    // Initialize your map safely inside the delayed window hook
+    map = new ol.Map({
+      target: 'map',
+      layers: [
+        basemaps.street, 
+        basemaps.satellite, 
+        basemaps.parcel, 
+        tesLayer, 
+        imperviousLayer, 
+        greeningLayer, 
+        metroLayer
+      ],
+      view: new ol.View({
+        center: ol.proj.fromLonLat([CENTER_LON, CENTER_LAT]),
+        zoom: 14,
+      }),
+      controls: ol.control.defaults.defaults({ attribution: true, zoom: false }).extend([
+        // Zoom on right side — avoids address bar on mobile
+        new ol.control.Zoom({ className: 'ol-zoom ol-zoom-right' }),
+      ]),
+    });
+
+    // Make map globally accessible if any external caching routines or click handlers call it
+    window.gmpMap = map;
+
+    // Immediately kick off your Supabase cached data pin loader now that the map is active
+    if (typeof loadMapPinsCached === 'function') {
+      loadMapPinsCached();
+    }
+  }, 100);
 });
 
 // ══════════════════════════════════════════════════

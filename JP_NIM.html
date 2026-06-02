@@ -4013,7 +4013,7 @@ const { error } = await sbPublic.from('public_comments').insert([
     lng: pubReportLng,
     address: pubReportAddress || null,
     category: cat,
-    comment_text: desc,
+    public_comments: desc,
     submitter_email: email || null,
     status: 'new',
     notes: commentNotes,

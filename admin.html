@@ -2886,7 +2886,7 @@ function filterObs() {
     if (statusF && (o.status || 'new') !== statusF) return false;
     if (catF    && (o.category || '')  !== catF)    return false;
     if (q) {
-      const hay = [o.description, o.category, o.notes, o.submitter_email]
+      const hay = [o.description || o.message || o.comment, o.category, o.notes, o.submitter_email]
         .filter(Boolean).join(' ').toLowerCase();
       if (!hay.includes(q)) return false;
     }
@@ -2932,7 +2932,7 @@ function renderObsGrid() {
         ${statusBadge}
         <span class="obs-date">${esc(dateStr)}</span>
       </div>
-      <div class="obs-desc">${esc(o.description) || '—'}</div>
+      <div class="obs-desc">${esc(o.description || o.message || o.comment) || '—'}</div>
       <div class="obs-meta">
         ${hasLoc ? `<span>📍 ${parseFloat(o.lat).toFixed(5)}, ${parseFloat(o.lng).toFixed(5)}</span>` : '<span style="color:var(--danger)">No location</span>'}
         ${o.submitter_email ? `<span>✉️ ${esc(o.submitter_email)}</span>` : ''}
@@ -2963,7 +2963,7 @@ function renderObsMarkers() {
     });
     m.bindPopup(`<div style="padding:10px;font-family:var(--font);color:var(--text);max-width:240px">
       <div style="font-weight:600;font-size:12px;color:${color};margin-bottom:4px">${esc(catLabel)}</div>
-      <div style="font-size:11px;line-height:1.5;margin-bottom:6px">${esc((o.description||'').slice(0,140))}</div>
+      <div style="font-size:11px;line-height:1.5;margin-bottom:6px">${esc(((o.description || o.message || o.comment)||'').slice(0,140))}</div>
       <div style="font-size:10px;color:var(--muted);margin-bottom:8px">${o.created_at ? esc(new Date(o.created_at).toLocaleString()) : ''}</div>
       <span class="badge b-${esc(status)}" style="margin-bottom:8px;display:inline-block">${esc(status)}</span>
       <div style="display:flex;gap:5px;margin-top:6px">
@@ -2996,7 +2996,7 @@ function openObsModal(id) {
     : (o.lat != null && o.lng != null)
       ? `${parseFloat(o.lat).toFixed(6)}, ${parseFloat(o.lng).toFixed(6)}`
       : 'No location provided';
-  document.getElementById('obs-modal-desc').textContent = o.description || '—';
+  document.getElementById('obs-modal-desc').textContent = o.description || o.message || o.comment || '—';
   document.getElementById('obs-modal-contact').textContent = o.submitter_email || '(no contact info)';
   document.getElementById('obs-modal-notes').value = o.notes || '';
   document.getElementById('obs-modal-title').textContent =
@@ -3492,53 +3492,44 @@ const RLS_SQL = `-- ════════════════════
 -- Jefferson Park — Admin RLS + Storage + RPC Migration
 -- Run this entire block in your Supabase SQL Editor.
 -- Safe to re-run: every statement uses DROP IF EXISTS / OR REPLACE.
--- NOTE: role comparisons use ::user_role cast to match the enum type.
+-- IMPORTANT: All admin checks use auth.jwt() ->> 'role' instead of
+-- querying profiles, which would cause infinite recursion since
+-- profiles itself has RLS enabled.
 -- ══════════════════════════════════════════════════════════════════
 
 -- ── 1. crimes ────────────────────────────────────────────────────
 DROP POLICY IF EXISTS "Admin delete crimes" ON crimes;
 CREATE POLICY "Admin delete crimes"
   ON crimes FOR DELETE TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
-  ));
+  USING ( (auth.jwt() ->> 'role') = 'admin' );
 
 DROP POLICY IF EXISTS "Admin update crimes" ON crimes;
 CREATE POLICY "Admin update crimes"
   ON crimes FOR UPDATE TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
-  )) WITH CHECK (true);
+  USING ( (auth.jwt() ->> 'role') = 'admin' )
+  WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Admin select crimes" ON crimes;
 CREATE POLICY "Admin select crimes"
   ON crimes FOR SELECT TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid()
-      AND role IN ('admin'::user_role, 'field_officer'::user_role)
-  ));
+  USING ( (auth.jwt() ->> 'role') IN ('admin', 'field_officer') );
 
 -- ── 2. map_annotations ───────────────────────────────────────────
 DROP POLICY IF EXISTS "Admin delete annotations" ON map_annotations;
 CREATE POLICY "Admin delete annotations"
   ON map_annotations FOR DELETE TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
-  ));
+  USING ( (auth.jwt() ->> 'role') = 'admin' );
 
 DROP POLICY IF EXISTS "Admin update annotations" ON map_annotations;
 CREATE POLICY "Admin update annotations"
   ON map_annotations FOR UPDATE TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
-  )) WITH CHECK (true);
+  USING ( (auth.jwt() ->> 'role') = 'admin' )
+  WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Admin read annotations" ON map_annotations;
 CREATE POLICY "Admin read annotations"
   ON map_annotations FOR SELECT TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
-  ));
+  USING ( (auth.jwt() ->> 'role') = 'admin' );
 
 -- ── 3. public_comments ───────────────────────────────────────────
 ALTER TABLE public_comments ENABLE ROW LEVEL SECURITY;
@@ -3561,54 +3552,44 @@ DROP POLICY IF EXISTS "Admin read public_comments" ON public_comments;
 DROP POLICY IF EXISTS "Admin select public_comments" ON public_comments;
 CREATE POLICY "Admin select public_comments"
   ON public_comments FOR SELECT TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
-  ));
+  USING ( (auth.jwt() ->> 'role') = 'admin' );
 
 DROP POLICY IF EXISTS "Admin update public_comments" ON public_comments;
 CREATE POLICY "Admin update public_comments"
   ON public_comments FOR UPDATE TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
-  )) WITH CHECK (true);
+  USING ( (auth.jwt() ->> 'role') = 'admin' )
+  WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Admin delete public_comments" ON public_comments;
 CREATE POLICY "Admin delete public_comments"
   ON public_comments FOR DELETE TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
-  ));
+  USING ( (auth.jwt() ->> 'role') = 'admin' );
 
 -- ── 4. photos ────────────────────────────────────────────────────
 DROP POLICY IF EXISTS "Admin read photos" ON photos;
 CREATE POLICY "Admin read photos"
   ON photos FOR SELECT TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
-  ));
+  USING ( (auth.jwt() ->> 'role') = 'admin' );
 
 DROP POLICY IF EXISTS "Admin update photos" ON photos;
 CREATE POLICY "Admin update photos"
   ON photos FOR UPDATE TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
-  )) WITH CHECK (true);
+  USING ( (auth.jwt() ->> 'role') = 'admin' )
+  WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Admin delete photos" ON photos;
 CREATE POLICY "Admin delete photos"
   ON photos FOR DELETE TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
-  ));
+  USING ( (auth.jwt() ->> 'role') = 'admin' );
 
 DROP POLICY IF EXISTS "Admin insert photos" ON photos;
 CREATE POLICY "Admin insert photos"
   ON photos FOR INSERT TO authenticated
-  WITH CHECK (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
-  ));
+  WITH CHECK ( (auth.jwt() ->> 'role') = 'admin' );
 
--- ── 5. profiles ───────────────────────────────────────────────────
+-- ── 5. profiles ──────────────────────────────────────────────────
+-- Uses auth.jwt() only — never queries profiles from within a
+-- profiles policy, which would cause infinite recursion.
 DROP POLICY IF EXISTS "Admin update profiles" ON profiles;
 CREATE POLICY "Admin update profiles"
   ON profiles FOR UPDATE TO authenticated
@@ -3631,30 +3612,23 @@ ALTER TABLE greening_projects ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Admin select greening_projects" ON greening_projects;
 CREATE POLICY "Admin select greening_projects"
   ON greening_projects FOR SELECT TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
-  ));
+  USING ( (auth.jwt() ->> 'role') = 'admin' );
 
 DROP POLICY IF EXISTS "Admin insert greening_projects" ON greening_projects;
 CREATE POLICY "Admin insert greening_projects"
   ON greening_projects FOR INSERT TO authenticated
-  WITH CHECK (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
-  ));
+  WITH CHECK ( (auth.jwt() ->> 'role') = 'admin' );
 
 DROP POLICY IF EXISTS "Admin update greening_projects" ON greening_projects;
 CREATE POLICY "Admin update greening_projects"
   ON greening_projects FOR UPDATE TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
-  )) WITH CHECK (true);
+  USING ( (auth.jwt() ->> 'role') = 'admin' )
+  WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Admin delete greening_projects" ON greening_projects;
 CREATE POLICY "Admin delete greening_projects"
   ON greening_projects FOR DELETE TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
-  ));
+  USING ( (auth.jwt() ->> 'role') = 'admin' );
 
 -- ── 7. Storage: crime-photos bucket ──────────────────────────────
 DROP POLICY IF EXISTS "Authenticated read crime-photos" ON storage.objects;
@@ -3685,9 +3659,7 @@ CREATE POLICY "Admin read public_reports bucket"
   ON storage.objects FOR SELECT TO authenticated
   USING (
     bucket_id = 'public_reports'
-    AND EXISTS (
-      SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
-    )
+    AND (auth.jwt() ->> 'role') = 'admin'
   );
 
 DROP POLICY IF EXISTS "Admin delete public_reports bucket" ON storage.objects;
@@ -3695,9 +3667,7 @@ CREATE POLICY "Admin delete public_reports bucket"
   ON storage.objects FOR DELETE TO authenticated
   USING (
     bucket_id = 'public_reports'
-    AND EXISTS (
-      SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'::user_role
-    )
+    AND (auth.jwt() ->> 'role') = 'admin'
   );
 
 -- ── 9. profiles: email column + handle_new_user trigger ──────────

@@ -955,23 +955,25 @@ window.addEventListener('DOMContentLoaded', () => {
               <div class="pop-row"><span class="pop-row-label">Coordinates</span><span class="pop-row-val" style="font-family:var(--mono);font-size:10px">${parseFloat(p.lat).toFixed(5)}, ${parseFloat(p.lng).toFixed(5)}</span></div>
             </div>
           `);
-          return;
+          return;// Map click handler
+    map.on('singleclick', function (e) {
+      // 1. Look for greening layer features exclusively first
+      const gfeat = map.forEachFeatureAtPixel(e.pixel, f => f, {
+        layerFilter: l => l === greeningLayer,
+        hitTolerance: 10,
+      });
+
+      if (gfeat) {
+        const featureId = gfeat.getId();
+        // Match against greening projects (handling Supabase OR local fallback)
+        const proj = (window._LIVE_GREENING || GREENING_PROJECTS).find(p => p.id === featureId);
+        if (proj) {
+          openPopup(buildGreeningPopup(proj));
+          return; 
         }
       }
 
-      // 3. Fallback to TES block groups (Choropleth base map)
-      const tfeat = map.forEachFeatureAtPixel(e.pixel, f => f, {
-        layerFilter: l => l === tesLayer,
-      });
-      if (tfeat) {
-        openPopup(buildTESPopup(tfeat.getProperties()));
-        tesLayer.changed();
-        return;
-      }
-      closePopup();
-    });
-
-      // Supabase annotation layers
+      // 2. Check Supabase annotation layers
       for (const [layerId, olLayer] of Object.entries(sbOLLayers)) {
         if (!olLayer.getVisible()) continue;
         const feat = map.forEachFeatureAtPixel(e.pixel, f => f, {
@@ -999,7 +1001,7 @@ window.addEventListener('DOMContentLoaded', () => {
         }
       }
 
-      // TES block groups
+      // 3. Fallback to TES block groups (Choropleth base map)
       const tfeat = map.forEachFeatureAtPixel(e.pixel, f => f, {
         layerFilter: l => l === tesLayer,
       });
@@ -1009,7 +1011,7 @@ window.addEventListener('DOMContentLoaded', () => {
         return;
       }
       closePopup();
-  });
+    });
 
     // Hover cursor — includes all Supabase layers
     map.on('pointermove', e => {

@@ -726,10 +726,10 @@ const greeningLayer = new ol.layer.Vector({ source: greeningSource, style: green
 // ══════════════════════════════════════════════════════════════════
 // SAFE LAYER & MAP INITIALIZATION
 // All code that calls map.addLayer / map.on / map.getView MUST live
-// inside this DOMContentLoaded → setTimeout block, after `map` is assigned.
+// inside this load block, after `map` is assigned.
 // ══════════════════════════════════════════════════════════════════
 
-let map; // global reference — set inside DOMContentLoaded
+let map; // global reference — set inside load handler
 
 // ── Supabase-backed OL layer containers (created before map, populated after) ──
 const sbLayerSources = {
@@ -882,8 +882,7 @@ async function fetchAirLayer() {
   }
 }
 
-window.addEventListener('DOMContentLoaded', () => {
-  setTimeout(() => {
+window.addEventListener('load', () => {
     if (!document.getElementById('map')) {
       console.error("[GMP] Target div #map not found.");
       return;
@@ -983,9 +982,8 @@ window.addEventListener('DOMContentLoaded', () => {
 // Kick off greening pin load
 loadMapPinsCached();
 
-      setTimeout(() => map.updateSize(), 280);
-  }, 150); // end setTimeout
-}); // end DOMContentLoaded
+    map.updateSize();
+}); // end load
 
 // ══════════════════════════════════════════════════
 // CHOROPLETH COLOR SCALES

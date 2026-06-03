@@ -1489,7 +1489,7 @@ let _gmpFetchPromise = null;
 async function loadGreeningFromSupabase() {
   try {
     const { data, error } = await sbGMP
-      .from('v_greening_map_pins')
+      .from('greening_projects')
       .select('id,name,region,status,wosip_goals,lat,lng')
       .order('name');
     if (error) throw new Error(`${error.message || 'DB error'} (code: ${error.code || '?'})`);
@@ -1516,7 +1516,7 @@ async function loadGreeningFromSupabase() {
     const badge = document.getElementById('cnt-greening');
     if (badge) badge.textContent = liveProjects.length;
     window._LIVE_GREENING = liveProjects;
-    console.log(`[GMP] Loaded ${liveProjects.length} pins from v_greening_map_pins`);
+    console.log(`[GMP] Loaded ${liveProjects.length} pins from greening_projects`);
   } catch(e) {
     console.warn('[GMP] Supabase load failed, using hardcoded fallback:', e.message);
   } finally {

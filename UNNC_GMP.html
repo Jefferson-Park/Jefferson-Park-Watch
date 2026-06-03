@@ -1,282 +1,1260 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-  <title>UNNC Greening Master Plan</title>
-  
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>UNNC Greening Master Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@9.2.4/ol.css">
+<script src="https://cdn.jsdelivr.net/npm/ol@9.2.4/dist/ol.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>var json_UNNCTES_0 = {"type":"FeatureCollection","name":"UNNC TES data","crs":{"type":"name","properties":{"name":"urn:ogc:def:crs:OGC:1.3:CRS84"}},"features":[{"type":"Feature","properties":{"GEOID":"060372187021","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":1142,"acs_pop":1222.0,"land_area":0.2369,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.3,"treecanopy":0.1198,"tc_gap":0.1802,"priority_i":0.5029509065768,"pctpoc":0.971358428805237,"pctpocnorm":0.971358428805237,"pctpov":0.402618657937807,"pctpovnorm":0.402618657937807,"unemplrate":0.081081081081081,"unemplnorm":0.141616729852024,"dep_ratio":0.718706047819972,"dep_perc":0.418166939443535,"depratnorm":0.359353023909986,"linguistic":0.184968496849685,"lingnorm":0.298254793469103,"health_nor":0.408850877187142,"temp_diff":-1.67,"temp_norm":0.552010095547143,"tes":69,"tesctyscor":77.0,"holc_grade":"C","child_perc":0.230769230769231,"seniorperc":0.187397708674304,"ej_disadva":"Yes","rank":1974.0,"rankgrpsz":2675,"_bld1200":0.0011,"_veg1200":0.1937,"_tot1200":0.1948,"_bld1500":0.0395,"_veg1500":0.2223,"_tot1500":0.2618,"_bld1800":0.2839,"_veg1800":0.2827,"_tot1800":0.5666},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.33376970391505,34.03495945224197],[-118.333594,34.034968],[-118.329715,34.035135],[-118.32967,34.035137],[-118.329617,34.03514],[-118.329559,34.035143],[-118.328379,34.0352],[-118.328375,34.034336],[-118.329569,34.034331],[-118.330765,34.034328],[-118.331944,34.034323],[-118.3319370879364,34.032612757977546],[-118.33501364504882,34.032606536199246],[-118.33376970391505,34.03495945224197]]],[[[-118.335031393757,34.03259502332632],[-118.33193706008501,34.03260586674929],[-118.331937,34.032591],[-118.332845,34.032587],[-118.333723,34.032584],[-118.3350314168946,34.03257925247861],[-118.335031393757,34.03259502332632]]]]}},{"type":"Feature","properties":{"GEOID":"060372187022","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":1057,"acs_pop":1111.0,"land_area":0.1229,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.25,"treecanopy":0.1168,"tc_gap":0.1332,"priority_i":0.540258120210506,"pctpoc":0.881188118811881,"pctpocnorm":0.881188118811881,"pctpov":0.643564356435644,"pctpovnorm":0.643564356435644,"unemplrate":0.148214285714286,"unemplnorm":0.258872010342598,"dep_ratio":0.7359375,"dep_perc":0.423942394239424,"depratnorm":0.36796875,"linguistic":0.184968496849685,"lingnorm":0.298254793469103,"health_nor":0.408850877187142,"temp_diff":-0.92,"temp_norm":0.565530917613124,"tes":75,"tesctyscor":77.0,"holc_grade":"C","child_perc":0.341134113411341,"seniorperc":0.082808280828083,"ej_disadva":"Yes","rank":1535.0,"rankgrpsz":2675,"_bld1200":0.0018,"_veg1200":0.1835,"_tot1200":0.1853,"_bld1500":0.0774,"_veg1500":0.2003,"_tot1500":0.2777,"_bld1800":0.4231,"_veg1800":0.2132,"_tot1800":0.6363},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.32836904978083,34.03261837006956],[-118.328369,34.032604],[-118.328797,34.031981],[-118.329169,34.031459],[-118.329362,34.031188],[-118.32998,34.030321],[-118.331264,34.030848],[-118.331346,34.030939],[-118.331644,34.031267],[-118.332845,34.032587],[-118.331937,34.032591],[-118.33193706008501,34.03260586674929],[-118.32836904978083,34.03261837006956]]],[[[-118.3319370879364,34.032612757977546],[-118.331944,34.034323],[-118.330765,34.034328],[-118.329569,34.034331],[-118.328375,34.034336],[-118.32836905533605,34.032619973675814],[-118.3319370879364,34.032612757977546]]]]}},{"type":"Feature","properties":{"GEOID":"060372189001","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":1874,"acs_pop":1413.0,"land_area":0.3529,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.3,"treecanopy":0.1697,"tc_gap":0.1303,"priority_i":0.449643857798031,"pctpoc":0.939136588818118,"pctpocnorm":0.939136588818118,"pctpov":0.348571428571429,"pctpovnorm":0.348571428571429,"unemplrate":0.043668122270742,"unemplnorm":0.076271018988717,"dep_ratio":0.296330275229358,"dep_perc":0.228591648973815,"depratnorm":0.148165137614679,"linguistic":0.120195012188262,"lingnorm":0.193809968436727,"health_nor":0.470862425973621,"temp_diff":-2.19,"temp_norm":0.542635658914729,"tes":80,"tesctyscor":77.0,"holc_grade":"D","child_perc":0.152866242038216,"seniorperc":0.075725406935598,"ej_disadva":"Yes","rank":1154.0,"rankgrpsz":2675,"_bld1200":0.0017,"_veg1200":0.236,"_tot1200":0.2377,"_bld1500":0.0564,"_veg1500":0.2661,"_tot1500":0.3224,"_bld1800":0.3776,"_veg1800":0.3052,"_tot1800":0.6828},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.32728696128335,34.03262216201461],[-118.32836905533605,34.032619973675814],[-118.328375,34.034336],[-118.328379,34.0352],[-118.327654,34.035235],[-118.327277,34.035264],[-118.327195,34.03527],[-118.326952,34.035289],[-118.326379,34.035348],[-118.326011,34.035396],[-118.325748,34.03543],[-118.324822,34.03557],[-118.323623,34.035751],[-118.322596,34.035899],[-118.3225,34.035913],[-118.322423,34.035924],[-118.31833,34.036511],[-118.317685,34.036589],[-118.31768444975633,34.036510590277906],[-118.31883685557546,34.03637395440777],[-118.31768906208109,34.03646773041406],[-118.31768030474284,34.03549490922139],[-118.317678,34.034883],[-118.317673,34.033824],[-118.317669,34.032643],[-118.318858,34.032638],[-118.320046,34.032634],[-118.321234,34.032629],[-118.322423,34.032625],[-118.323612,34.032621],[-118.323912,34.03262],[-118.3248,34.032616],[-118.325989,34.032612],[-118.327178,34.032608],[-118.328369,34.032604],[-118.32836904978083,34.03261837006956],[-118.32728696128335,34.03262216201461]]]]}},{"type":"Feature","properties":{"GEOID":"060372189002","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":1470,"acs_pop":1473.0,"land_area":0.1968,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.25,"treecanopy":0.138,"tc_gap":0.112,"priority_i":0.463496399619526,"pctpoc":0.879158180583843,"pctpocnorm":0.879158180583843,"pctpov":0.508486082824168,"pctpovnorm":0.508486082824168,"unemplrate":0.0,"unemplnorm":0.0,"dep_ratio":0.363888888888889,"dep_perc":0.266802443991853,"depratnorm":0.181944444444444,"linguistic":0.120195012188262,"lingnorm":0.193809968436727,"health_nor":0.470862425973621,"temp_diff":0.6,"temp_norm":0.59293311700018,"tes":82,"tesctyscor":77.0,"holc_grade":"D","child_perc":0.195519348268839,"seniorperc":0.071283095723014,"ej_disadva":"Yes","rank":1003.0,"rankgrpsz":2675,"_bld1200":0.0013,"_veg1200":0.2055,"_tot1200":0.2068,"_bld1500":0.0654,"_veg1500":0.2312,"_tot1500":0.2966,"_bld1800":0.4432,"_veg1800":0.2419,"_tot1800":0.6816},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.324124,34.030609],[-118.324076,34.03068],[-118.323928,34.031163],[-118.323905,34.031236],[-118.323912,34.03262],[-118.323612,34.032621],[-118.322423,34.032625],[-118.321234,34.032629],[-118.320046,34.032634],[-118.318858,34.032638],[-118.317669,34.032643],[-118.317665,34.031736],[-118.317662,34.030831],[-118.317661,34.030637],[-118.317658,34.029922],[-118.317657,34.029651],[-118.31874,34.02965],[-118.320034,34.02965],[-118.321209,34.029649],[-118.322397,34.029648],[-118.323586,34.029647],[-118.324774,34.029646],[-118.324774,34.029663],[-118.324124,34.030609]]]]}},{"type":"Feature","properties":{"GEOID":"060372189003","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":1985,"acs_pop":2797.0,"land_area":0.1537,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.25,"treecanopy":0.1197,"tc_gap":0.1303,"priority_i":0.4934664069626,"pctpoc":0.949946371111906,"pctpocnorm":0.949946371111906,"pctpov":0.425098319628173,"pctpovnorm":0.425098319628173,"unemplrate":0.078928312816799,"unemplnorm":0.137856691164184,"dep_ratio":0.560825892857143,"dep_perc":0.359313550232392,"depratnorm":0.280412946428571,"linguistic":0.120195012188262,"lingnorm":0.193809968436727,"health_nor":0.470862425973621,"temp_diff":1.12,"temp_norm":0.602307553632594,"tes":78,"tesctyscor":77.0,"holc_grade":"C","child_perc":0.219163389345727,"seniorperc":0.140150160886664,"ej_disadva":"Yes","rank":1308.0,"rankgrpsz":2675,"_bld1200":0.0025,"_veg1200":0.1981,"_tot1200":0.2006,"_bld1500":0.1002,"_veg1500":0.2121,"_tot1500":0.3123,"_bld1800":0.4426,"_veg1800":0.2321,"_tot1800":0.6747},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.327151,34.029645],[-118.328235,34.029644],[-118.328334,34.029644],[-118.328915,34.029883],[-118.32998,34.030321],[-118.329362,34.031188],[-118.329169,34.031459],[-118.328797,34.031981],[-118.328369,34.032604],[-118.327178,34.032608],[-118.325989,34.032612],[-118.3248,34.032616],[-118.323912,34.03262],[-118.323905,34.031236],[-118.323928,34.031163],[-118.324076,34.03068],[-118.324124,34.030609],[-118.324774,34.029663],[-118.324774,34.029646],[-118.325962,34.029645],[-118.326693,34.029645],[-118.327151,34.029645]]]]}},{"type":"Feature","properties":{"GEOID":"060372190101","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":1223,"acs_pop":1628.0,"land_area":0.1989,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.25,"treecanopy":0.1126,"tc_gap":0.1374,"priority_i":0.462482655666773,"pctpoc":0.890663390663391,"pctpocnorm":0.890663390663391,"pctpov":0.416461916461916,"pctpovnorm":0.416461916461916,"unemplrate":0.0625,"unemplnorm":0.109162895927602,"dep_ratio":0.499079189686924,"dep_perc":0.332923832923833,"depratnorm":0.249539594843462,"linguistic":0.047747141896436,"lingnorm":0.076990483177437,"health_nor":0.447142065236532,"temp_diff":2.62,"temp_norm":0.629349197764557,"tes":78,"tesctyscor":77.0,"holc_grade":"D","child_perc":0.198402948402948,"seniorperc":0.134520884520885,"ej_disadva":"Yes","rank":1308.0,"rankgrpsz":2675,"_bld1200":0.0012,"_veg1200":0.1896,"_tot1200":0.1908,"_bld1500":0.0522,"_veg1500":0.227,"_tot1500":0.2793,"_bld1800":0.3839,"_veg1800":0.2891,"_tot1800":0.6723},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.318859,34.025554],[-118.319482,34.02556],[-118.32005,34.025565],[-118.321236,34.025577],[-118.322396,34.025583],[-118.322396,34.027633],[-118.322397,34.029648],[-118.321209,34.029649],[-118.320034,34.02965],[-118.31874,34.02965],[-118.317657,34.029651],[-118.317655,34.02907],[-118.317651,34.028218],[-118.317648,34.027383],[-118.317645,34.02647],[-118.317641,34.025541],[-118.318859,34.025554]]]]}},{"type":"Feature","properties":{"GEOID":"060372190102","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":1526,"acs_pop":1414.0,"land_area":0.2421,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.3,"treecanopy":0.111,"tc_gap":0.189,"priority_i":0.452182046393276,"pctpoc":0.954031117397454,"pctpocnorm":0.954031117397454,"pctpov":0.293493635077793,"pctpovnorm":0.293493635077793,"unemplrate":0.092592592592593,"unemplnorm":0.161722808781632,"dep_ratio":0.378167641325536,"dep_perc":0.274398868458274,"depratnorm":0.189083820662768,"linguistic":0.047747141896436,"lingnorm":0.076990483177437,"health_nor":0.447142065236532,"temp_diff":1.92,"temp_norm":0.616729763836308,"tes":70,"tesctyscor":77.0,"holc_grade":"C","child_perc":0.094059405940594,"seniorperc":0.18033946251768,"ej_disadva":"Yes","rank":1897.0,"rankgrpsz":2675,"_bld1200":0.0008,"_veg1200":0.1759,"_tot1200":0.1768,"_bld1500":0.0486,"_veg1500":0.2003,"_tot1500":0.249,"_bld1800":0.4052,"_veg1800":0.2177,"_tot1800":0.6228},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.323584,34.025589],[-118.324773,34.025594],[-118.325961,34.0256],[-118.327149,34.025606],[-118.328234,34.025608],[-118.328235,34.027646],[-118.328235,34.029644],[-118.327151,34.029645],[-118.326693,34.029645],[-118.325962,34.029645],[-118.324774,34.029646],[-118.323586,34.029647],[-118.322397,34.029648],[-118.322396,34.027633],[-118.322396,34.025583],[-118.323584,34.025589]]]]}},{"type":"Feature","properties":{"GEOID":"060372190201","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":1944,"acs_pop":1948.0,"land_area":0.2937,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.25,"treecanopy":0.0989,"tc_gap":0.1511,"priority_i":0.540416174965277,"pctpoc":0.934804928131417,"pctpocnorm":0.934804928131417,"pctpov":0.619096509240246,"pctpovnorm":0.619096509240246,"unemplrate":0.13036303630363,"unemplnorm":0.22769290503711,"dep_ratio":0.885769603097774,"dep_perc":0.469712525667351,"depratnorm":0.442884801548887,"linguistic":0.104188157623272,"lingnorm":0.167999513231209,"health_nor":0.408318501981601,"temp_diff":2.36,"temp_norm":0.62466197944835,"tes":72,"tesctyscor":77.0,"holc_grade":"C","child_perc":0.409137577002053,"seniorperc":0.060574948665298,"ej_disadva":"Yes","rank":1755.0,"rankgrpsz":2675,"_bld1200":0.0009,"_veg1200":0.1503,"_tot1200":0.1512,"_bld1500":0.0501,"_veg1500":0.1816,"_tot1500":0.2317,"_bld1800":0.4407,"_veg1800":0.2098,"_tot1800":0.6504},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.322392,34.019951],[-118.32358,34.020226],[-118.324452,34.020437],[-118.32477,34.02051],[-118.324771,34.022925],[-118.325959,34.022931],[-118.327148,34.022936],[-118.328336,34.022942],[-118.328337,34.024834],[-118.328234,34.025608],[-118.327149,34.025606],[-118.325961,34.0256],[-118.324773,34.025594],[-118.323584,34.025589],[-118.322396,34.025583],[-118.321236,34.025577],[-118.321272,34.022908],[-118.321314,34.019701],[-118.322392,34.019951]]]]}},{"type":"Feature","properties":{"GEOID":"060372190202","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":1526,"acs_pop":1901.0,"land_area":0.2346,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.25,"treecanopy":0.0928,"tc_gap":0.1572,"priority_i":0.479722166452633,"pctpoc":0.92004208311415,"pctpocnorm":0.92004208311415,"pctpov":0.358918918918919,"pctpovnorm":0.358918918918919,"unemplrate":0.115563839701771,"unemplnorm":0.201844534501735,"dep_ratio":0.511128775834658,"dep_perc":0.338243029984219,"depratnorm":0.255564387917329,"linguistic":0.104188157623272,"lingnorm":0.167999513231209,"health_nor":0.408318501981601,"temp_diff":3.25,"temp_norm":0.640706688299982,"tes":74,"tesctyscor":77.0,"holc_grade":"D","child_perc":0.216728037874803,"seniorperc":0.121514992109416,"ej_disadva":"Yes","rank":1615.0,"rankgrpsz":2675,"_bld1200":0.0008,"_veg1200":0.146,"_tot1200":0.1467,"_bld1500":0.0499,"_veg1500":0.1843,"_tot1500":0.2343,"_bld1800":0.4575,"_veg1800":0.2145,"_tot1800":0.6716},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.317693,34.01888],[-118.318397,34.019007],[-118.318944,34.019115],[-118.319529,34.019244],[-118.32013,34.019383],[-118.321314,34.019701],[-118.321272,34.022908],[-118.321236,34.025577],[-118.32005,34.025565],[-118.319482,34.02556],[-118.318859,34.025554],[-118.317641,34.025541],[-118.317636,34.023634],[-118.317639,34.022873],[-118.317644,34.021861],[-118.317652,34.02029],[-118.317659,34.019127],[-118.317693,34.01888]]]]}},{"type":"Feature","properties":{"GEOID":"060372190203","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":1120,"acs_pop":1372.0,"land_area":0.198,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.3,"treecanopy":0.0866,"tc_gap":0.2134,"priority_i":0.464493670712119,"pctpoc":0.955539358600583,"pctpocnorm":0.955539358600583,"pctpov":0.403790087463557,"pctpovnorm":0.403790087463557,"unemplrate":0.025276461295419,"unemplnorm":0.044148027420957,"dep_ratio":0.514348785871965,"dep_perc":0.339650145772595,"depratnorm":0.257174392935982,"linguistic":0.104188157623272,"lingnorm":0.167999513231209,"health_nor":0.408318501981601,"temp_diff":0.88,"temp_norm":0.59798089057148,"tes":66,"tesctyscor":77.0,"holc_grade":"D","child_perc":0.165451895043732,"seniorperc":0.174198250728863,"ej_disadva":"Yes","rank":2185.0,"rankgrpsz":2675,"_bld1200":0.0006,"_veg1200":0.134,"_tot1200":0.1347,"_bld1500":0.0467,"_veg1500":0.1604,"_tot1500":0.2072,"_bld1800":0.3064,"_veg1800":0.2105,"_tot1800":0.5168},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.31906100076141,34.018274780511604],[-118.319293,34.018275],[-118.320353,34.018277],[-118.320592,34.018277],[-118.320872,34.018278],[-118.321325,34.01828],[-118.321603,34.018315],[-118.32162172313781,34.01831843257527],[-118.3275235173202,34.01971101564975],[-118.327524,34.019713],[-118.327348,34.020255],[-118.327279,34.020461],[-118.327151,34.02084],[-118.327147,34.021062],[-118.328335,34.021337],[-118.328336,34.022942],[-118.327148,34.022936],[-118.325959,34.022931],[-118.324771,34.022925],[-118.32477,34.02051],[-118.324452,34.020437],[-118.32358,34.020226],[-118.322392,34.019951],[-118.321314,34.019701],[-118.32013,34.019383],[-118.319529,34.019244],[-118.318944,34.019115],[-118.318397,34.019007],[-118.317693,34.01888],[-118.317828,34.018729],[-118.3182238764073,34.01828752018302],[-118.31906100076141,34.018274780511604]]]]}},{"type":"Feature","properties":{"GEOID":"060372193001","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":1094,"acs_pop":1363.0,"land_area":0.2523,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.3,"treecanopy":0.091,"tc_gap":0.209,"priority_i":0.462767406571803,"pctpoc":0.939838591342627,"pctpocnorm":0.939838591342627,"pctpov":0.294203961848863,"pctpovnorm":0.294203961848863,"unemplrate":0.032341526520052,"unemplnorm":0.056487915098371,"dep_ratio":0.601645123384254,"dep_perc":0.375641966250917,"depratnorm":0.300822561692127,"linguistic":0.140646587455098,"lingnorm":0.226787369784618,"health_nor":0.423791301007894,"temp_diff":-0.14,"temp_norm":0.579592572561745,"tes":67,"tesctyscor":77.0,"holc_grade":"C","child_perc":0.280997798972854,"seniorperc":0.094644167278063,"ej_disadva":"Yes","rank":2120.0,"rankgrpsz":2675,"_bld1200":0.0012,"_veg1200":0.1681,"_tot1200":0.1693,"_bld1500":0.0558,"_veg1500":0.1911,"_tot1500":0.247,"_bld1800":0.3799,"_veg1800":0.2252,"_tot1800":0.6044},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.3350439665973,34.02402522984061],[-118.333796,34.023781],[-118.332723,34.023572],[-118.33165,34.023363],[-118.330479,34.023134],[-118.330479,34.025599],[-118.330479,34.027638],[-118.330479,34.029477],[-118.32998,34.030321],[-118.328915,34.029883],[-118.328334,34.029644],[-118.328235,34.029644],[-118.328235,34.027646],[-118.328234,34.025608],[-118.328337,34.024834],[-118.328336,34.022942],[-118.328335,34.021337],[-118.329265,34.021541],[-118.329548,34.021587],[-118.329899,34.021636],[-118.330135,34.021681],[-118.330481,34.021756],[-118.33082,34.021843],[-118.331003,34.021894],[-118.331314,34.021965],[-118.33324,34.022355],[-118.33504595925818,34.02266700910757],[-118.3350439665973,34.02402522984061]]]]}},{"type":"Feature","properties":{"GEOID":"060372193002","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":1005,"acs_pop":827.0,"land_area":0.1915,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.3,"treecanopy":0.0957,"tc_gap":0.2043,"priority_i":0.49460421703859,"pctpoc":0.883917775090689,"pctpocnorm":0.883917775090689,"pctpov":0.399497487437186,"pctpovnorm":0.399497487437186,"unemplrate":0.208,"unemplnorm":0.363294117647059,"dep_ratio":0.353518821603928,"dep_perc":0.261185006045949,"depratnorm":0.176759410801964,"linguistic":0.140646587455098,"lingnorm":0.226787369784618,"health_nor":0.423791301007894,"temp_diff":0.72,"temp_norm":0.595096448530737,"tes":65,"tesctyscor":77.0,"holc_grade":"C","child_perc":0.140266021765417,"seniorperc":0.120918984280532,"ej_disadva":"Yes","rank":2234.0,"rankgrpsz":2675,"_bld1200":0.0006,"_veg1200":0.1852,"_tot1200":0.1858,"_bld1500":0.0545,"_veg1500":0.205,"_tot1500":0.2595,"_bld1800":0.4108,"_veg1800":0.211,"_tot1800":0.6218},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.33503869085762,34.02762123508107],[-118.333796,34.027626],[-118.332724,34.02763],[-118.331651,34.027634],[-118.330479,34.027638],[-118.330479,34.025599],[-118.330479,34.023134],[-118.33165,34.023363],[-118.332723,34.023572],[-118.333796,34.023781],[-118.3350439665973,34.02402522984061],[-118.33503869085762,34.02762123508107]]]]}},{"type":"Feature","properties":{"GEOID":"060372193003","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":1658,"acs_pop":1636.0,"land_area":0.208,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.3,"treecanopy":0.0847,"tc_gap":0.2153,"priority_i":0.495033823488834,"pctpoc":0.916259168704156,"pctpocnorm":0.916259168704156,"pctpov":0.606356968215159,"pctpovnorm":0.606356968215159,"unemplrate":0.031685678073511,"unemplnorm":0.055342406046946,"dep_ratio":0.521860465116279,"dep_perc":0.342909535452323,"depratnorm":0.26093023255814,"linguistic":0.140646587455098,"lingnorm":0.226787369784618,"health_nor":0.423791301007894,"temp_diff":0.05,"temp_norm":0.583017847485127,"tes":63,"tesctyscor":77.0,"holc_grade":"C","child_perc":0.264058679706601,"seniorperc":0.078850855745721,"ej_disadva":"Yes","rank":2338.0,"rankgrpsz":2675,"_bld1200":0.0005,"_veg1200":0.1539,"_tot1200":0.1544,"_bld1500":0.0585,"_veg1500":0.1704,"_tot1500":0.2289,"_bld1800":0.3902,"_veg1800":0.1902,"_tot1800":0.5804},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.3350314168946,34.03257925247861],[-118.333723,34.032584],[-118.332845,34.032587],[-118.331644,34.031267],[-118.331346,34.030939],[-118.331264,34.030848],[-118.32998,34.030321],[-118.330479,34.029477],[-118.330479,34.027638],[-118.331651,34.027634],[-118.332724,34.02763],[-118.333796,34.027626],[-118.33503869085762,34.02762123508107],[-118.3350314168946,34.03257925247861]]]]}},{"type":"Feature","properties":{"GEOID":"060372214011","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":1094,"acs_pop":954.0,"land_area":0.232,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.3,"treecanopy":0.2026,"tc_gap":0.0974,"priority_i":0.489722962159998,"pctpoc":0.936058700209644,"pctpocnorm":0.936058700209644,"pctpov":0.440251572327044,"pctpovnorm":0.440251572327044,"unemplrate":0.034764826175869,"unemplnorm":0.060720465628441,"dep_ratio":0.753676470588235,"dep_perc":0.429769392033543,"depratnorm":0.376838235294118,"linguistic":0.075792224763149,"lingnorm":0.122212131948433,"health_nor":0.557870159081747,"temp_diff":-2.49,"temp_norm":0.537227330088336,"tes":83,"tesctyscor":77.0,"holc_grade":"D","child_perc":0.256813417190776,"seniorperc":0.172955974842767,"ej_disadva":"Yes","rank":925.0,"rankgrpsz":2675,"_bld1200":0.0021,"_veg1200":0.2805,"_tot1200":0.2826,"_bld1500":0.0592,"_veg1500":0.3239,"_tot1500":0.3831,"_bld1800":0.3325,"_veg1800":0.4107,"_tot1800":0.7432},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.31763778149926,34.03263073507636],[-118.31763775767925,34.03262333194189],[-118.31515794143465,34.03264467638257],[-118.315154,34.031748],[-118.315151,34.03084],[-118.317662,34.030831],[-118.317665,34.031736],[-118.317669,34.032643],[-118.317673,34.033824],[-118.317678,34.034883],[-118.31768030474284,34.03549490922139],[-118.31765474812057,34.03265591602196],[-118.31764939868438,34.0326559347679],[-118.31767558654256,34.03651164115157],[-118.31768444975633,34.036510590277906],[-118.317685,34.036589],[-118.316847,34.036691],[-118.316647,34.036715],[-118.315849,34.036799],[-118.315638,34.036818],[-118.31505,34.03687],[-118.314249,34.036931],[-118.313337,34.036981],[-118.313336,34.036835],[-118.313336,34.036758],[-118.313333,34.03598],[-118.313329,34.034908],[-118.313325,34.03385],[-118.31332,34.032668],[-118.315158,34.032658],[-118.31515797056412,34.03265130333676],[-118.31763778149926,34.03263073507636]]]]}},{"type":"Feature","properties":{"GEOID":"060372220011","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":1644,"acs_pop":1635.0,"land_area":0.2333,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.25,"treecanopy":0.1154,"tc_gap":0.1346,"priority_i":0.442502887297823,"pctpoc":0.896636085626911,"pctpocnorm":0.896636085626911,"pctpov":0.344891640866873,"pctpovnorm":0.344891640866873,"unemplrate":0.076673866090713,"unemplnorm":0.133919060230837,"dep_ratio":0.385593220338983,"dep_perc":0.2782874617737,"depratnorm":0.192796610169492,"linguistic":0.066083916083916,"lingnorm":0.106557846762712,"health_nor":0.369315618488311,"temp_diff":2.09,"temp_norm":0.619794483504597,"tes":79,"tesctyscor":77.0,"holc_grade":"D","child_perc":0.175535168195719,"seniorperc":0.102752293577982,"ej_disadva":"Yes","rank":1235.0,"rankgrpsz":2675,"_bld1200":0.0008,"_veg1200":0.1706,"_tot1200":0.1713,"_bld1500":0.0728,"_veg1500":0.1995,"_tot1500":0.2723,"_bld1800":0.3962,"_veg1800":0.2614,"_tot1800":0.6575},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.30897472256764,34.028244981505104],[-118.312038,34.028244],[-118.315142,34.028233],[-118.31761844518124,34.02821819462825],[-118.3176264244485,34.02910102416075],[-118.31762358379414,34.02821816390717],[-118.317651,34.028218],[-118.317655,34.02907],[-118.317657,34.029651],[-118.317658,34.029922],[-118.317661,34.030637],[-118.317662,34.030831],[-118.315151,34.03084],[-118.312068,34.030852],[-118.310053,34.030859],[-118.3089773247024,34.03086189939433],[-118.30897472256764,34.028244981505104]]]]}},{"type":"Feature","properties":{"GEOID":"060372220012","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":1574,"acs_pop":1322.0,"land_area":0.2409,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.25,"treecanopy":0.1407,"tc_gap":0.1093,"priority_i":0.410907487337102,"pctpoc":0.91679273827534,"pctpocnorm":0.91679273827534,"pctpov":0.140695915279879,"pctpovnorm":0.140695915279879,"unemplrate":0.069605568445476,"unemplnorm":0.12157352678712,"dep_ratio":0.276061776061776,"dep_perc":0.216338880484115,"depratnorm":0.138030888030888,"linguistic":0.066083916083916,"lingnorm":0.106557846762712,"health_nor":0.369315618488311,"temp_diff":2.39,"temp_norm":0.62520281233099,"tes":84,"tesctyscor":77.0,"holc_grade":"D","child_perc":0.114220877458396,"seniorperc":0.102118003025719,"ej_disadva":"Yes","rank":855.0,"rankgrpsz":2675,"_bld1200":0.0014,"_veg1200":0.2003,"_tot1200":0.2017,"_bld1500":0.0653,"_veg1500":0.2301,"_tot1500":0.2953,"_bld1800":0.3781,"_veg1800":0.2893,"_tot1800":0.6674},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.30897204568107,34.02555288713248],[-118.311901,34.025549],[-118.312008,34.025549],[-118.31382,34.025547],[-118.315132,34.025545],[-118.315569,34.025544],[-118.31759424853789,34.02554106769034],[-118.31761844518124,34.02821819462825],[-118.315142,34.028233],[-118.312038,34.028244],[-118.30897472256764,34.028244981505104],[-118.30897204568107,34.02555288713248]]],[[[-118.31761496998438,34.02554103768824],[-118.317641,34.025541],[-118.317645,34.02647],[-118.317648,34.027383],[-118.317651,34.028218],[-118.31762358379414,34.02821816390717],[-118.31761496998438,34.02554103768824]]]]}},{"type":"Feature","properties":{"GEOID":"060372220021","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":1202,"acs_pop":1359.0,"land_area":0.1684,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.3,"treecanopy":0.0814,"tc_gap":0.2186,"priority_i":0.510486950350725,"pctpoc":0.988962472406181,"pctpocnorm":0.988962472406181,"pctpov":0.620689655172414,"pctpovnorm":0.620689655172414,"unemplrate":0.058055152394775,"unemplnorm":0.10139949694291,"dep_ratio":0.490131578947368,"dep_perc":0.328918322295806,"depratnorm":0.245065789473684,"linguistic":0.103761885076478,"lingnorm":0.167312164668772,"health_nor":0.43557084101601,"temp_diff":2.86,"temp_norm":0.633675860825672,"tes":61,"tesctyscor":77.0,"holc_grade":"D","child_perc":0.209713024282561,"seniorperc":0.119205298013245,"ej_disadva":"Yes","rank":2436.0,"rankgrpsz":2675,"_bld1200":0.0007,"_veg1200":0.1341,"_tot1200":0.1348,"_bld1500":0.0621,"_veg1500":0.1541,"_tot1500":0.2162,"_bld1800":0.3722,"_veg1800":0.1863,"_tot1800":0.5586},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.3089720336557,34.025540793443405],[-118.3175940795461,34.02552237036666],[-118.31759424853789,34.02554106769034],[-118.315569,34.025544],[-118.315132,34.025545],[-118.31382,34.025547],[-118.312008,34.025549],[-118.311901,34.025549],[-118.30897204568107,34.02555288713248],[-118.3089720336557,34.025540793443405]]],[[[-118.31760883414844,34.02363405254517],[-118.317636,34.023634],[-118.317641,34.025541],[-118.31761496998438,34.02554103768824],[-118.31760883414844,34.02363405254517]]]]}},{"type":"Feature","properties":{"GEOID":"060372220022","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":896,"acs_pop":1191.0,"land_area":0.161,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.3,"treecanopy":0.119,"tc_gap":0.181,"priority_i":0.510740197376789,"pctpoc":0.931150293870697,"pctpocnorm":0.931150293870697,"pctpov":0.371956339210747,"pctpovnorm":0.371956339210747,"unemplrate":0.137630662020906,"unemplnorm":0.240386586154161,"dep_ratio":0.849378881987578,"dep_perc":0.459277917716205,"depratnorm":0.424689440993789,"linguistic":0.103761885076478,"lingnorm":0.167312164668772,"health_nor":0.43557084101601,"temp_diff":2.3,"temp_norm":0.623580313683072,"tes":68,"tesctyscor":77.0,"holc_grade":"D","child_perc":0.256087321578505,"seniorperc":0.203190596137699,"ej_disadva":"Yes","rank":2045.0,"rankgrpsz":2675,"_bld1200":0.001,"_veg1200":0.1856,"_tot1200":0.1866,"_bld1500":0.0507,"_veg1500":0.2151,"_tot1500":0.2658,"_bld1800":0.3614,"_veg1800":0.2757,"_tot1800":0.6371},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.31760312949895,34.02186107784858],[-118.317644,34.021861],[-118.317639,34.022873],[-118.317636,34.023634],[-118.31760883414844,34.02363405254517],[-118.31760312949895,34.02186107784858]]]]}},{"type":"Feature","properties":{"GEOID":"060372220023","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":1163,"acs_pop":1049.0,"land_area":0.1437,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.3,"treecanopy":0.1113,"tc_gap":0.1887,"priority_i":0.528757644658066,"pctpoc":0.950428979980934,"pctpocnorm":0.950428979980934,"pctpov":0.648236415633937,"pctpovnorm":0.648236415633937,"unemplrate":0.046783625730994,"unemplnorm":0.081712577068614,"dep_ratio":0.853356890459364,"dep_perc":0.460438512869399,"depratnorm":0.426678445229682,"linguistic":0.103761885076478,"lingnorm":0.167312164668772,"health_nor":0.43557084101601,"temp_diff":2.37,"temp_norm":0.624842257075897,"tes":65,"tesctyscor":77.0,"holc_grade":"D","child_perc":0.335557673975214,"seniorperc":0.124880838894185,"ej_disadva":"Yes","rank":2234.0,"rankgrpsz":2675,"_bld1200":0.0008,"_veg1200":0.18,"_tot1200":0.1808,"_bld1500":0.046,"_veg1500":0.2119,"_tot1500":0.2579,"_bld1800":0.3816,"_veg1800":0.2586,"_tot1800":0.6402},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.31759807479017,34.020290101268],[-118.317652,34.02029],[-118.317644,34.021861],[-118.31760312949895,34.02186107784858],[-118.31759807479017,34.020290101268]]]]}},{"type":"Feature","properties":{"GEOID":"060372220024","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":1387,"acs_pop":1495.0,"land_area":0.1827,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.3,"treecanopy":0.1021,"tc_gap":0.1979,"priority_i":0.449359957821252,"pctpoc":0.963879598662207,"pctpocnorm":0.963879598662207,"pctpov":0.184615384615385,"pctpovnorm":0.184615384615385,"unemplrate":0.088607594936709,"unemplnorm":0.154762586631537,"dep_ratio":0.391992551210428,"dep_perc":0.281605351170569,"depratnorm":0.195996275605214,"linguistic":0.103761885076478,"lingnorm":0.167312164668772,"health_nor":0.43557084101601,"temp_diff":1.83,"temp_norm":0.61510726518839,"tes":69,"tesctyscor":77.0,"holc_grade":"D","child_perc":0.213377926421405,"seniorperc":0.068227424749164,"ej_disadva":"Yes","rank":1974.0,"rankgrpsz":2675,"_bld1200":0.0007,"_veg1200":0.1706,"_tot1200":0.1713,"_bld1500":0.0445,"_veg1500":0.1984,"_tot1500":0.243,"_bld1800":0.3548,"_veg1800":0.2375,"_tot1800":0.5923},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.31759366408437,34.01891927738632],[-118.31819345660705,34.01828798312292],[-118.3182238764073,34.01828752018302],[-118.317828,34.018729],[-118.317693,34.01888],[-118.317659,34.019127],[-118.317652,34.02029],[-118.31759807479017,34.020290101268],[-118.31759366408437,34.01891927738632]]]]}},{"type":"Feature","properties":{"GEOID":"060372340011","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":701,"acs_pop":757.0,"land_area":0.2186,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.3,"treecanopy":0.158,"tc_gap":0.142,"priority_i":0.421612112790459,"pctpoc":0.912813738441215,"pctpocnorm":0.912813738441215,"pctpov":0.143989431968296,"pctpovnorm":0.143989431968296,"unemplrate":0.026315789473684,"unemplnorm":0.045963324601095,"dep_ratio":0.678492239467849,"dep_perc":0.404227212681638,"depratnorm":0.339246119733925,"linguistic":0.053070175438596,"lingnorm":0.085573675973972,"health_nor":0.407408947456431,"temp_diff":-0.87,"temp_norm":0.566432305750856,"tes":79,"tesctyscor":77.0,"holc_grade":"B","child_perc":0.151915455746367,"seniorperc":0.252311756935271,"ej_disadva":null,"rank":1235.0,"rankgrpsz":2675,"_bld1200":0.0009,"_veg1200":0.2563,"_tot1200":0.2571,"_bld1500":0.0439,"_veg1500":0.2934,"_tot1500":0.3373,"_bld1800":0.4109,"_veg1800":0.3202,"_tot1800":0.7311},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.32162172313781,34.01831843257527],[-118.321603,34.018315],[-118.321325,34.01828],[-118.32132496837892,34.01824841053761],[-118.32162172313781,34.01831843257527]]]]}},{"type":"Feature","properties":{"GEOID":"060372340021","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":1847,"acs_pop":2200.0,"land_area":0.328,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.25,"treecanopy":0.0893,"tc_gap":0.1607,"priority_i":0.519198960840069,"pctpoc":0.968181818181818,"pctpocnorm":0.968181818181818,"pctpov":0.579862700228833,"pctpovnorm":0.579862700228833,"unemplrate":0.008939974457216,"unemplnorm":0.015614616020295,"dep_ratio":0.896551724137931,"dep_perc":0.472727272727273,"depratnorm":0.448275862068966,"linguistic":0.145068394528438,"lingnorm":0.233917368556738,"health_nor":0.407408947456431,"temp_diff":1.39,"temp_norm":0.607175049576348,"tes":71,"tesctyscor":77.0,"holc_grade":"C","child_perc":0.263181818181818,"seniorperc":0.209545454545455,"ej_disadva":"Yes","rank":1823.0,"rankgrpsz":2675,"_bld1200":0.0008,"_veg1200":0.1798,"_tot1200":0.1806,"_bld1500":0.0452,"_veg1500":0.2215,"_tot1500":0.2666,"_bld1800":0.4201,"_veg1800":0.2633,"_tot1800":0.6813},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.32129278425843,34.01824081639588],[-118.32132496837892,34.01824841053761],[-118.321325,34.01828],[-118.320872,34.018278],[-118.320592,34.018277],[-118.320353,34.018277],[-118.319293,34.018275],[-118.31906100076141,34.018274780511604],[-118.32129278425843,34.01824081639588]]]]}},{"type":"Feature","properties":{"GEOID":"060372342001","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":928,"acs_pop":784.0,"land_area":0.2981,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.3,"treecanopy":0.1117,"tc_gap":0.1883,"priority_i":0.480175954076439,"pctpoc":0.969387755102041,"pctpocnorm":0.969387755102041,"pctpov":0.286989795918367,"pctpovnorm":0.286989795918367,"unemplrate":0.104895104895105,"unemplnorm":0.183210454703667,"dep_ratio":1.036363636363636,"dep_perc":0.508928571428571,"depratnorm":0.518181818181818,"linguistic":0.037225042301184,"lingnorm":0.06002399053089,"health_nor":0.365486861971698,"temp_diff":-0.47,"temp_norm":0.573643410852713,"tes":69,"tesctyscor":77.0,"holc_grade":"C","child_perc":0.302295918367347,"seniorperc":0.206632653061224,"ej_disadva":null,"rank":1974.0,"rankgrpsz":2675,"_bld1200":0.0006,"_veg1200":0.2067,"_tot1200":0.2073,"_bld1500":0.0434,"_veg1500":0.2416,"_tot1500":0.285,"_bld1800":0.3839,"_veg1800":0.2767,"_tot1800":0.6606},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.32999429446986,34.02029401843383],[-118.329976,34.020355],[-118.329804,34.02085],[-118.329601,34.021434],[-118.329548,34.021587],[-118.329265,34.021541],[-118.328335,34.021337],[-118.327147,34.021062],[-118.327151,34.02084],[-118.327279,34.020461],[-118.327348,34.020255],[-118.327524,34.019713],[-118.3275235173202,34.01971101564975],[-118.32999429446986,34.02029401843383]]]]}},{"type":"Feature","properties":{"GEOID":"060372342003","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":987,"acs_pop":1046.0,"land_area":0.3909,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.3,"treecanopy":0.1061,"tc_gap":0.1939,"priority_i":0.457996311572826,"pctpoc":0.895793499043977,"pctpocnorm":0.895793499043977,"pctpov":0.255258126195029,"pctpovnorm":0.255258126195029,"unemplrate":0.148351648351648,"unemplnorm":0.259111928795187,"dep_ratio":0.676282051282051,"dep_perc":0.403441682600382,"depratnorm":0.338141025641026,"linguistic":0.037225042301184,"lingnorm":0.06002399053089,"health_nor":0.365486861971698,"temp_diff":1.58,"temp_norm":0.61060032449973,"tes":69,"tesctyscor":77.0,"holc_grade":"C","child_perc":0.170172084130019,"seniorperc":0.233269598470363,"ej_disadva":null,"rank":1974.0,"rankgrpsz":2675,"_bld1200":0.0006,"_veg1200":0.1523,"_tot1200":0.1529,"_bld1500":0.0388,"_veg1500":0.1774,"_tot1500":0.2163,"_bld1800":0.3377,"_veg1800":0.2053,"_tot1800":0.5431},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.3350476913221,34.02148641428966],[-118.33504595925818,34.02266700910757],[-118.33324,34.022355],[-118.331314,34.021965],[-118.331003,34.021894],[-118.33082,34.021843],[-118.330481,34.021756],[-118.330135,34.021681],[-118.329899,34.021636],[-118.329548,34.021587],[-118.329601,34.021434],[-118.329804,34.02085],[-118.329976,34.020355],[-118.32999429446986,34.02029401843383],[-118.3350476913221,34.02148641428966]]]]}},{"type":"Feature","properties":{"GEOID":"060372214012","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":2268,"acs_pop":2279.0,"land_area":0.3103,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.3,"treecanopy":0.1744,"tc_gap":0.1256,"priority_i":0.51854569413398,"pctpoc":0.903027643703379,"pctpocnorm":0.903027643703379,"pctpov":0.702453987730061,"pctpovnorm":0.702453987730061,"unemplrate":0.074074074074074,"unemplnorm":0.129378247025306,"dep_ratio":0.604929577464789,"dep_perc":0.376919701623519,"depratnorm":0.302464788732394,"linguistic":0.075792224763149,"lingnorm":0.122212131948433,"health_nor":0.557870159081747,"temp_diff":-2.45,"temp_norm":0.537948440598522,"tes":77,"tesctyscor":77.0,"holc_grade":"D","child_perc":0.107942079859587,"seniorperc":0.268977621763931,"ej_disadva":"Yes","rank":1374.0,"rankgrpsz":2675,"_bld1200":0.0024,"_veg1200":0.2728,"_tot1200":0.2753,"_bld1500":0.0666,"_veg1500":0.3028,"_tot1500":0.3694,"_bld1800":0.358,"_veg1800":0.3506,"_tot1800":0.7086},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.30898751971654,34.03270248281905],[-118.31515797056412,34.03265130333676],[-118.315158,34.032658],[-118.31332,34.032668],[-118.313325,34.03385],[-118.313329,34.034908],[-118.313333,34.03598],[-118.313336,34.036758],[-118.313336,34.036835],[-118.313337,34.036981],[-118.312275,34.037026],[-118.311471,34.037046],[-118.310667,34.037054],[-118.310288,34.037053],[-118.309862,34.037051],[-118.309271,34.037037],[-118.30899314039763,34.03701854079565],[-118.30898751971654,34.03270248281905]]],[[[-118.30897915029044,34.03269785888805],[-118.3089773247024,34.03086189939433],[-118.310053,34.030859],[-118.312068,34.030852],[-118.315151,34.03084],[-118.315154,34.031748],[-118.31515794143465,34.03264467638257],[-118.30897915029044,34.03269785888805]]]]}},{"type":"Feature","properties":{"GEOID":"060372187011","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":1261,"acs_pop":917.0,"land_area":0.2285,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.3,"treecanopy":0.083,"tc_gap":0.217,"priority_i":0.505599657465255,"pctpoc":0.946564885496183,"pctpocnorm":0.946564885496183,"pctpov":0.586695747001091,"pctpovnorm":0.586695747001091,"unemplrate":0.105990783410138,"unemplnorm":0.185124173738974,"dep_ratio":0.476650563607085,"dep_perc":0.322791712104689,"depratnorm":0.238325281803543,"linguistic":0.15119105493437,"lingnorm":0.243789929808814,"health_nor":0.366819474112696,"temp_diff":0.29,"temp_norm":0.587344510546241,"tes":62,"tesctyscor":77.0,"holc_grade":"C","child_perc":0.221374045801527,"seniorperc":0.101417666303162,"ej_disadva":"Yes","rank":2387.0,"rankgrpsz":2675,"_bld1200":0.0009,"_veg1200":0.1594,"_tot1200":0.1602,"_bld1500":0.0526,"_veg1500":0.1765,"_tot1500":0.2291,"_bld1800":0.2892,"_veg1800":0.2247,"_tot1800":0.5139},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.33359265770912,34.035294335338094],[-118.33348,34.035497],[-118.333457,34.035539],[-118.333211,34.035981],[-118.333046,34.036278],[-118.332776,34.036765],[-118.331863,34.038407],[-118.331544,34.038982],[-118.331053,34.039867],[-118.330334,34.039869],[-118.329738,34.039872],[-118.32852,34.039876],[-118.327239,34.03988],[-118.326635,34.039882],[-118.327567,34.037967],[-118.327867,34.037351],[-118.32823,34.036605],[-118.328383,34.03629],[-118.328383,34.036149],[-118.32838,34.035425],[-118.32837931466457,34.035344130419716],[-118.32966763753832,34.03523822737087],[-118.32837917123723,34.0353272059939],[-118.328379,34.035307],[-118.328379,34.0352],[-118.329559,34.035143],[-118.329617,34.03514],[-118.32967,34.035137],[-118.329715,34.035135],[-118.333594,34.034968],[-118.33376970391505,34.03495945224197],[-118.33359265770912,34.035294335338094]],[[-118.33194855336912,34.03508071238603],[-118.33193269548553,34.035081807496276],[-118.33224072662787,34.03514071444409],[-118.33194855336912,34.03508071238603]]]]}},{"type":"Feature","properties":{"GEOID":"060372187012","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":1194,"acs_pop":1200.0,"land_area":0.3215,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.3,"treecanopy":0.1756,"tc_gap":0.1244,"priority_i":0.43681848717205,"pctpoc":0.8425,"pctpocnorm":0.8425,"pctpov":0.340833333333333,"pctpovnorm":0.340833333333333,"unemplrate":0.059474412171508,"unemplnorm":0.103878385059737,"dep_ratio":0.406799531066823,"dep_perc":0.289166666666667,"depratnorm":0.203399765533411,"linguistic":0.15119105493437,"lingnorm":0.243789929808814,"health_nor":0.366819474112696,"temp_diff":-3.53,"temp_norm":0.518478456823508,"tes":81,"tesctyscor":77.0,"holc_grade":"C","child_perc":0.1575,"seniorperc":0.131666666666667,"ej_disadva":"Yes","rank":1075.0,"rankgrpsz":2675,"_bld1200":0.0021,"_veg1200":0.2659,"_tot1200":0.268,"_bld1500":0.0611,"_veg1500":0.2966,"_tot1500":0.3577,"_bld1800":0.4189,"_veg1800":0.3101,"_tot1800":0.729},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.33354228251623,34.03538962007165],[-118.3335547303192,34.03539200055199],[-118.33109300053107,34.03986688329532],[-118.331053,34.039867],[-118.331544,34.038982],[-118.331863,34.038407],[-118.332776,34.036765],[-118.333046,34.036278],[-118.333211,34.035981],[-118.333457,34.035539],[-118.33348,34.035497],[-118.33359265770912,34.035294335338094],[-118.33354228251623,34.03538962007165]]]]}},{"type":"Feature","properties":{"GEOID":"060372188001","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":1452,"acs_pop":1637.0,"land_area":0.2266,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.3,"treecanopy":0.0939,"tc_gap":0.2061,"priority_i":0.504230805800112,"pctpoc":0.905925473427001,"pctpocnorm":0.905925473427001,"pctpov":0.473065015479876,"pctpovnorm":0.473065015479876,"unemplrate":0.029294274300932,"unemplnorm":0.051165565068596,"dep_ratio":0.798901098901099,"dep_perc":0.444105070250458,"depratnorm":0.399450549450549,"linguistic":0.241478439425051,"lingnorm":0.389374965492037,"health_nor":0.325973253190495,"temp_diff":0.94,"temp_norm":0.599062556336759,"tes":64,"tesctyscor":77.0,"holc_grade":"C","child_perc":0.243738546120953,"seniorperc":0.200366524129505,"ej_disadva":"Yes","rank":2293.0,"rankgrpsz":2675,"_bld1200":0.0008,"_veg1200":0.153,"_tot1200":0.1538,"_bld1500":0.0482,"_veg1500":0.176,"_tot1500":0.2243,"_bld1800":0.4081,"_veg1800":0.2024,"_tot1800":0.61},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.31769572016147,34.03936882847086],[-118.317694,34.038959],[-118.31769,34.038087],[-118.31769,34.038001],[-118.317686,34.037096],[-118.317685,34.036805],[-118.317685,34.036696],[-118.317685,34.036589],[-118.31833,34.036511],[-118.322423,34.035924],[-118.3225,34.035913],[-118.322596,34.035899],[-118.323623,34.035751],[-118.323623,34.035852],[-118.323624,34.035948],[-118.323625,34.036313],[-118.323631,34.03798],[-118.32364,34.039892],[-118.322451,34.039896],[-118.321263,34.0399],[-118.320074,34.039904],[-118.319706,34.039905],[-118.318886,34.039908],[-118.3177027213224,34.03991198410329],[-118.31769572016147,34.03936882847086]]],[[[-118.31769868167646,34.03991199770479],[-118.317698,34.039912],[-118.3176968972736,34.03964927543615],[-118.31769868167646,34.03991199770479]]]]}},{"type":"Feature","properties":{"GEOID":"060372188002","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":1181,"acs_pop":954.0,"land_area":0.185,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.3,"treecanopy":0.1126,"tc_gap":0.1874,"priority_i":0.514854317298596,"pctpoc":0.965408805031446,"pctpocnorm":0.965408805031446,"pctpov":0.442348008385744,"pctpovnorm":0.442348008385744,"unemplrate":0.101952277657267,"unemplnorm":0.178070494007715,"dep_ratio":0.641996557659208,"dep_perc":0.390985324947589,"depratnorm":0.320998278829604,"linguistic":0.241478439425051,"lingnorm":0.389374965492037,"health_nor":0.325973253190495,"temp_diff":1.24,"temp_norm":0.604470885163151,"tes":67,"tesctyscor":77.0,"holc_grade":"C","child_perc":0.192872117400419,"seniorperc":0.19811320754717,"ej_disadva":"Yes","rank":2120.0,"rankgrpsz":2675,"_bld1200":0.0008,"_veg1200":0.1873,"_tot1200":0.1881,"_bld1500":0.0509,"_veg1500":0.2117,"_tot1500":0.2626,"_bld1800":0.4192,"_veg1800":0.2295,"_tot1800":0.6487},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.32725469720467,34.03540485967484],[-118.32836435706808,34.03534535996792],[-118.32837931466457,34.035344130419716],[-118.32838,34.035425],[-118.328383,34.036149],[-118.328383,34.03629],[-118.32823,34.036605],[-118.327867,34.037351],[-118.327567,34.037967],[-118.326635,34.039882],[-118.326017,34.039884],[-118.324827,34.039888],[-118.32364,34.039892],[-118.323631,34.03798],[-118.323625,34.036313],[-118.323624,34.035948],[-118.323623,34.035852],[-118.323623,34.035751],[-118.324822,34.03557],[-118.325748,34.03543],[-118.326011,34.035396],[-118.326379,34.035348],[-118.326952,34.035289],[-118.327195,34.03527],[-118.327277,34.035264],[-118.327654,34.035235],[-118.328379,34.0352],[-118.328379,34.035307],[-118.32837917123723,34.0353272059939],[-118.32725469720467,34.03540485967484]]]]}},{"type":"Feature","properties":{"GEOID":"060372181202","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":1077,"acs_pop":715.0,"land_area":0.1316,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.25,"treecanopy":0.0779,"tc_gap":0.1721,"priority_i":0.511699424720704,"pctpoc":0.909090909090909,"pctpocnorm":0.909090909090909,"pctpov":0.523076923076923,"pctpovnorm":0.523076923076923,"unemplrate":0.086842105263158,"unemplnorm":0.151678971183615,"dep_ratio":0.27906976744186,"dep_perc":0.218181818181818,"depratnorm":0.13953488372093,"linguistic":0.269633507853403,"lingnorm":0.434773961873733,"health_nor":0.413700401868187,"temp_diff":2.67,"temp_norm":0.63025058590229,"tes":69,"tesctyscor":77.0,"holc_grade":"C","child_perc":0.160839160839161,"seniorperc":0.057342657342657,"ej_disadva":"Yes","rank":1974.0,"rankgrpsz":2675,"_bld1200":0.0012,"_veg1200":0.1686,"_tot1200":0.1698,"_bld1500":0.0607,"_veg1500":0.1889,"_tot1500":0.2496,"_bld1800":0.4615,"_veg1800":0.1932,"_tot1800":0.6543},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.31770285424369,34.03992229624281],[-118.3177027213224,34.03991198410329],[-118.318886,34.039908],[-118.319706,34.039905],[-118.320074,34.039904],[-118.320078,34.040897],[-118.320082,34.041817],[-118.32127,34.041813],[-118.322459,34.041809],[-118.322466,34.043556],[-118.321278,34.043559],[-118.320089,34.043563],[-118.3189,34.043566],[-118.317711,34.04357],[-118.317708,34.042691],[-118.317705,34.041825],[-118.317701,34.040904],[-118.317699,34.040301],[-118.31769802652433,34.03992231796343],[-118.31770285424369,34.03992229624281]]],[[[-118.3176987400462,34.03992059163255],[-118.31769802209196,34.03992059377665],[-118.317698,34.039912],[-118.31769868167646,34.03991199770479],[-118.3176987400462,34.03992059163255]]]]}},{"type":"Feature","properties":{"GEOID":"060372213021","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 34","cbg_pop":2392,"acs_pop":2032.0,"land_area":0.228,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.25,"treecanopy":0.134,"tc_gap":0.116,"priority_i":0.509689079995135,"pctpoc":0.952263779527559,"pctpocnorm":0.952263779527559,"pctpov":0.6705,"pctpovnorm":0.6705,"unemplrate":0.051039697542533,"unemplnorm":0.089146259056189,"dep_ratio":0.377627118644068,"dep_perc":0.274114173228346,"depratnorm":0.188813559322034,"linguistic":0.157142857142857,"lingnorm":0.253386988598256,"health_nor":0.433117201716037,"temp_diff":0.95,"temp_norm":0.599242833964305,"tes":79,"tesctyscor":77.0,"holc_grade":"C","child_perc":0.191437007874016,"seniorperc":0.082677165354331,"ej_disadva":"Yes","rank":1235.0,"rankgrpsz":2675,"_bld1200":0.0013,"_veg1200":0.2291,"_tot1200":0.2304,"_bld1500":0.0693,"_veg1500":0.2499,"_tot1500":0.3192,"_bld1800":0.5058,"_veg1800":0.2244,"_tot1800":0.7296},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.31769802652433,34.03992231796343],[-118.317699,34.040301],[-118.317701,34.040904],[-118.317705,34.041825],[-118.317708,34.042691],[-118.317711,34.04357],[-118.316385,34.043544],[-118.315685,34.043546],[-118.31545,34.043546],[-118.314463,34.043549],[-118.313022,34.043553],[-118.313013,34.041738],[-118.311571,34.041742],[-118.310131,34.041745],[-118.310124,34.040239],[-118.31012214080914,34.0399564029884],[-118.31769802652433,34.03992231796343]]],[[[-118.31012205406986,34.03994321861932],[-118.310122,34.039935],[-118.311562,34.03993],[-118.313005,34.039924],[-118.313348,34.039923],[-118.314444,34.03992],[-118.315436,34.039918],[-118.315523,34.039918],[-118.316369,34.039916],[-118.317698,34.039912],[-118.31769802209196,34.03992059377665],[-118.31012205406986,34.03994321861932]]]]}},{"type":"Feature","properties":{"GEOID":"060372213022","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 34","cbg_pop":1938,"acs_pop":1900.0,"land_area":0.2342,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.25,"treecanopy":0.0971,"tc_gap":0.1529,"priority_i":0.506869654693236,"pctpoc":0.93578947368421,"pctpocnorm":0.93578947368421,"pctpov":0.613182063749325,"pctpovnorm":0.613182063749325,"unemplrate":0.025911708253359,"unemplnorm":0.045257553781885,"dep_ratio":0.517571884984026,"dep_perc":0.341052631578947,"depratnorm":0.258785942492013,"linguistic":0.157142857142857,"lingnorm":0.253386988598256,"health_nor":0.433117201716037,"temp_diff":2.38,"temp_norm":0.625022534703443,"tes":73,"tesctyscor":77.0,"holc_grade":"C","child_perc":0.226842105263158,"seniorperc":0.114210526315789,"ej_disadva":"Yes","rank":1695.0,"rankgrpsz":2675,"_bld1200":0.0009,"_veg1200":0.1892,"_tot1200":0.1901,"_bld1500":0.0685,"_veg1500":0.2093,"_tot1500":0.2778,"_bld1800":0.4512,"_veg1800":0.1885,"_tot1800":0.6386},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.30897889029781,34.03996154664073],[-118.31012214080914,34.0399564029884],[-118.310124,34.040239],[-118.310131,34.041745],[-118.311571,34.041742],[-118.313013,34.041738],[-118.313022,34.043553],[-118.31158,34.043558],[-118.310139,34.043563],[-118.30901958672636,34.04356698722449],[-118.30897889029781,34.03996154664073]]],[[[-118.30899695349906,34.03994657861547],[-118.3089969436389,34.039939007115436],[-118.308999,34.039939],[-118.310122,34.039935],[-118.31012205406986,34.03994321861932],[-118.30899695349906,34.03994657861547]]],[[[-118.30900926427913,34.043567024800154],[-118.307658,34.043572],[-118.30655,34.043576],[-118.305282,34.043581],[-118.305268,34.039952],[-118.305721,34.03995],[-118.306535,34.039947],[-118.307641,34.039943],[-118.307843,34.039943],[-118.30897767015284,34.0399390738057],[-118.30900926427913,34.043567024800154]]]]}},{"type":"Feature","properties":{"GEOID":"060372214021","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 34","cbg_pop":1586,"acs_pop":1587.0,"land_area":0.2652,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.3,"treecanopy":0.1268,"tc_gap":0.1732,"priority_i":0.550520872874541,"pctpoc":0.916824196597354,"pctpocnorm":0.916824196597354,"pctpov":0.418481848184818,"pctpovnorm":0.418481848184818,"unemplrate":0.185826771653543,"unemplnorm":0.324566216553248,"dep_ratio":0.921307506053269,"dep_perc":0.479521109010712,"depratnorm":0.460653753026634,"linguistic":0.255139500734214,"lingnorm":0.411402916676851,"health_nor":0.389645287827256,"temp_diff":0.02,"temp_norm":0.582477014602488,"tes":67,"tesctyscor":77.0,"holc_grade":"D","child_perc":0.202898550724638,"seniorperc":0.276622558286074,"ej_disadva":"Yes","rank":2120.0,"rankgrpsz":2675,"_bld1200":0.0017,"_veg1200":0.2133,"_tot1200":0.215,"_bld1500":0.0568,"_veg1500":0.2473,"_tot1500":0.3041,"_bld1800":0.3611,"_veg1800":0.2688,"_tot1800":0.63},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.30899610735267,34.03929683229363],[-118.308999,34.039939],[-118.3089969436389,34.039939007115436],[-118.30899610735267,34.03929683229363]]],[[[-118.30029003192716,34.03695511229744],[-118.30282681467061,34.03695885423557],[-118.303875,34.036967],[-118.308827,34.037027],[-118.30895224813572,34.03701986561253],[-118.30897767015284,34.0399390738057],[-118.307843,34.039943],[-118.307641,34.039943],[-118.306535,34.039947],[-118.305721,34.03995],[-118.305268,34.039952],[-118.304298,34.039955],[-118.303345,34.039958],[-118.302768,34.03996],[-118.301777,34.039964],[-118.301624,34.039964],[-118.300786,34.039966],[-118.300349,34.039969],[-118.300323,34.039782],[-118.300312,34.039594],[-118.300308,34.039061],[-118.300285,34.038149],[-118.3002781699304,34.03778079715655],[-118.30029003192716,34.03695511229744]]]]}},{"type":"Feature","properties":{"GEOID":"060372214022","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 34","cbg_pop":1114,"acs_pop":1354.0,"land_area":0.2673,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.3,"treecanopy":0.1466,"tc_gap":0.1534,"priority_i":0.521927347691872,"pctpoc":0.842688330871492,"pctpocnorm":0.842688330871492,"pctpov":0.580566801619433,"pctpovnorm":0.580566801619433,"unemplrate":0.118461538461538,"unemplnorm":0.206905673512008,"dep_ratio":0.579929988331389,"dep_perc":0.367060561299852,"depratnorm":0.289964994165694,"linguistic":0.255139500734214,"lingnorm":0.411402916676851,"health_nor":0.389645287827256,"temp_diff":-1.2,"temp_norm":0.560483144041824,"tes":72,"tesctyscor":77.0,"holc_grade":"C","child_perc":0.250369276218611,"seniorperc":0.116691285081241,"ej_disadva":"Yes","rank":1755.0,"rankgrpsz":2675,"_bld1200":0.0016,"_veg1200":0.2116,"_tot1200":0.2132,"_bld1500":0.0513,"_veg1500":0.2411,"_tot1500":0.2924,"_bld1800":0.3133,"_veg1800":0.3012,"_tot1800":0.6145},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.31769418197172,34.039249494486505],[-118.3176968972736,34.03964927543615],[-118.317698,34.039912],[-118.316369,34.039916],[-118.315523,34.039918],[-118.315436,34.039918],[-118.314444,34.03992],[-118.313348,34.039923],[-118.313005,34.039924],[-118.311562,34.03993],[-118.310122,34.039935],[-118.308999,34.039939],[-118.30899610735267,34.03929683229363],[-118.30899314039763,34.03701854079565],[-118.309271,34.037037],[-118.309862,34.037051],[-118.310288,34.037053],[-118.310667,34.037054],[-118.311471,34.037046],[-118.312275,34.037026],[-118.313337,34.036981],[-118.314249,34.036931],[-118.31505,34.03687],[-118.315638,34.036818],[-118.315849,34.036799],[-118.316647,34.036715],[-118.316847,34.036691],[-118.317685,34.036589],[-118.317685,34.036696],[-118.317685,34.036805],[-118.317686,34.037096],[-118.31769,34.038001],[-118.31769,34.038087],[-118.317694,34.038959],[-118.31769572016147,34.03936882847086],[-118.31769418197172,34.039249494486505]]]]}},{"type":"Feature","properties":{"GEOID":"060372212101","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 34","cbg_pop":1093,"acs_pop":1006.0,"land_area":0.1379,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.25,"treecanopy":0.1023,"tc_gap":0.1477,"priority_i":0.542158789079774,"pctpoc":0.95427435387674,"pctpocnorm":0.95427435387674,"pctpov":0.524672708962739,"pctpovnorm":0.524672708962739,"unemplrate":0.064272211720227,"unemplnorm":0.11225825214483,"dep_ratio":0.49479940564636,"dep_perc":0.331013916500994,"depratnorm":0.24739970282318,"linguistic":0.365807067812798,"lingnorm":0.589850235679365,"health_nor":0.389140568314429,"temp_diff":2.18,"temp_norm":0.621416982152515,"tes":72,"tesctyscor":77.0,"holc_grade":"D","child_perc":0.223658051689861,"seniorperc":0.107355864811133,"ej_disadva":"Yes","rank":1755.0,"rankgrpsz":2675,"_bld1200":0.0014,"_veg1200":0.2026,"_tot1200":0.204,"_bld1500":0.0733,"_veg1500":0.2326,"_tot1500":0.3059,"_bld1800":0.4393,"_veg1800":0.2571,"_tot1800":0.6964},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.30030097996787,34.04456089188793],[-118.30252,34.044552],[-118.304143,34.044546],[-118.305286,34.044527],[-118.305289,34.045379],[-118.305293,34.046336],[-118.305296,34.047098],[-118.30524557833094,34.04716846105034],[-118.30000154590427,34.047184553954864],[-118.3000334716064,34.04710886906905],[-118.300198,34.046814],[-118.300248,34.046686],[-118.300265,34.046554],[-118.300279,34.046521],[-118.30028,34.04632],[-118.300277,34.04544],[-118.3002758669744,34.04510802350176],[-118.30030097996787,34.04456089188793]]]]}},{"type":"Feature","properties":{"GEOID":"060372212102","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 34","cbg_pop":1824,"acs_pop":2272.0,"land_area":0.2208,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.25,"treecanopy":0.1,"tc_gap":0.15,"priority_i":0.522977617862312,"pctpoc":0.922535211267606,"pctpocnorm":0.922535211267606,"pctpov":0.429577464788732,"pctpovnorm":0.429577464788732,"unemplrate":0.062172284644195,"unemplnorm":0.108590506211127,"dep_ratio":0.454545454545454,"dep_perc":0.3125,"depratnorm":0.227272727272727,"linguistic":0.365807067812798,"lingnorm":0.589850235679365,"health_nor":0.389140568314429,"temp_diff":2.26,"temp_norm":0.622859203172886,"tes":73,"tesctyscor":77.0,"holc_grade":"D","child_perc":0.193221830985915,"seniorperc":0.119278169014085,"ej_disadva":"Yes","rank":1695.0,"rankgrpsz":2675,"_bld1200":0.0008,"_veg1200":0.2084,"_tot1200":0.2092,"_bld1500":0.0746,"_veg1500":0.2357,"_tot1500":0.3102,"_bld1800":0.549,"_veg1800":0.2026,"_tot1800":0.7513},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.3003231573861,34.0440777170469],[-118.300329,34.044046],[-118.30038,34.04386],[-118.300423,34.043738],[-118.300652,34.043081],[-118.30067710013071,34.04298059947714],[-118.30068947460298,34.04294983849991],[-118.30068910887495,34.04293256450017],[-118.300699,34.042893],[-118.300731,34.042703],[-118.300747,34.042479],[-118.300744,34.041498],[-118.300728,34.041307],[-118.300695,34.041117],[-118.300647,34.040929],[-118.30064666778466,34.040927994611465],[-118.30064509208347,34.04085357137846],[-118.3005745842715,34.04071075281453],[-118.300408,34.040211],[-118.300367,34.040062],[-118.300349,34.039969],[-118.300786,34.039966],[-118.301624,34.039964],[-118.301777,34.039964],[-118.302768,34.03996],[-118.303345,34.039958],[-118.304298,34.039955],[-118.305268,34.039952],[-118.305282,34.043581],[-118.305286,34.044527],[-118.304143,34.044546],[-118.30252,34.044552],[-118.30030097996787,34.04456089188793],[-118.3003231573861,34.0440777170469]]]]}},{"type":"Feature","properties":{"GEOID":"060372212201","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 34","cbg_pop":1228,"acs_pop":1025.0,"land_area":0.2154,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.3,"treecanopy":0.066,"tc_gap":0.234,"priority_i":0.54212811748294,"pctpoc":0.957073170731707,"pctpocnorm":0.957073170731707,"pctpov":0.634146341463415,"pctpovnorm":0.634146341463415,"unemplrate":0.03125,"unemplnorm":0.054581447963801,"dep_ratio":0.417704011065007,"dep_perc":0.294634146341463,"depratnorm":0.208852005532503,"linguistic":0.330988274706868,"lingnorm":0.533706232113763,"health_nor":0.41872224236168,"temp_diff":2.75,"temp_norm":0.631692806922661,"tes":56,"tesctyscor":77.0,"holc_grade":"D","child_perc":0.183414634146341,"seniorperc":0.111219512195122,"ej_disadva":"Yes","rank":2585.0,"rankgrpsz":2675,"_bld1200":0.0021,"_veg1200":0.1487,"_tot1200":0.1508,"_bld1500":0.0505,"_veg1500":0.164,"_tot1500":0.2145,"_bld1800":0.3336,"_veg1800":0.1921,"_tot1800":0.5246},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.3002758669744,34.04510802350176],[-118.300277,34.04544],[-118.30028,34.04632],[-118.300279,34.046521],[-118.300265,34.046554],[-118.300248,34.046686],[-118.300198,34.046814],[-118.3000334716064,34.04710886906905],[-118.30020241213043,34.046708369051224],[-118.3002758669744,34.04510802350176]]],[[[-118.30033441444672,34.04383246178675],[-118.30036940163802,34.04374548917313],[-118.300423,34.043738],[-118.30038,34.04386],[-118.300329,34.044046],[-118.3003231573861,34.0440777170469],[-118.30033441444672,34.04383246178675]]]]}},{"type":"Feature","properties":{"GEOID":"060372212202","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 34","cbg_pop":1915,"acs_pop":2101.0,"land_area":0.4439,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.3,"treecanopy":0.1079,"tc_gap":0.1921,"priority_i":0.533655340323483,"pctpoc":0.973346025702047,"pctpocnorm":0.973346025702047,"pctpov":0.445835339431873,"pctpovnorm":0.445835339431873,"unemplrate":0.057591623036649,"unemplnorm":0.100589893629623,"dep_ratio":0.46513249651325,"dep_perc":0.317467872441694,"depratnorm":0.232566248256625,"linguistic":0.330988274706868,"lingnorm":0.533706232113763,"health_nor":0.41872224236168,"temp_diff":4.77,"temp_norm":0.668108887687038,"tes":65,"tesctyscor":77.0,"holc_grade":"D","child_perc":0.211803902903379,"seniorperc":0.105663969538315,"ej_disadva":"Yes","rank":2234.0,"rankgrpsz":2675,"_bld1200":0.0004,"_veg1200":0.2192,"_tot1200":0.2195,"_bld1500":0.0253,"_veg1500":0.2641,"_tot1500":0.2894,"_bld1800":0.2011,"_veg1800":0.4468,"_tot1800":0.6479},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.30067710013071,34.04298059947714],[-118.300652,34.043081],[-118.300423,34.043738],[-118.30036940163802,34.04374548917313],[-118.30067710013071,34.04298059947714]]],[[[-118.30064666778466,34.040927994611465],[-118.300647,34.040929],[-118.300695,34.041117],[-118.300728,34.041307],[-118.300744,34.041498],[-118.300747,34.042479],[-118.300731,34.042703],[-118.300699,34.042893],[-118.30068910887495,34.04293256450017],[-118.30064666778466,34.040927994611465]]],[[[-118.30024564940763,34.04004447196454],[-118.30024672775917,34.039969410525806],[-118.300349,34.039969],[-118.300367,34.040062],[-118.300408,34.040211],[-118.3005745842715,34.04071075281453],[-118.30024564940763,34.04004447196454]]]]}},{"type":"Feature","properties":{"GEOID":"060372213031","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 34","cbg_pop":1397,"acs_pop":1442.0,"land_area":0.1387,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.25,"treecanopy":0.0884,"tc_gap":0.1616,"priority_i":0.578525518495063,"pctpoc":0.921636615811373,"pctpocnorm":0.921636615811373,"pctpov":0.630007283321194,"pctpovnorm":0.630007283321194,"unemplrate":0.067047075606277,"unemplnorm":0.117104846986528,"dep_ratio":0.468431771894094,"dep_perc":0.319001386962552,"depratnorm":0.234215885947047,"linguistic":0.477441962330267,"lingnorm":0.769857334051963,"health_nor":0.413023707748609,"temp_diff":2.99,"temp_norm":0.636019469983775,"tes":68,"tesctyscor":77.0,"holc_grade":"D","child_perc":0.224687933425797,"seniorperc":0.094313453536754,"ej_disadva":"Yes","rank":2045.0,"rankgrpsz":2675,"_bld1200":0.0022,"_veg1200":0.1862,"_tot1200":0.1884,"_bld1500":0.0834,"_veg1500":0.2037,"_tot1500":0.2871,"_bld1800":0.4495,"_veg1800":0.2007,"_tot1800":0.6502},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.3090249696154,34.04537046730744],[-118.309025,34.045377],[-118.309029,34.046321],[-118.30903283852443,34.0471568386934],[-118.30524557833094,34.04716846105034],[-118.305296,34.047098],[-118.305293,34.046336],[-118.305289,34.045379],[-118.305286,34.044527],[-118.305282,34.043581],[-118.30655,34.043576],[-118.307658,34.043572],[-118.30900926427913,34.043567024800154],[-118.3090249696154,34.04537046730744]]]]}},{"type":"Feature","properties":{"GEOID":"060372213032","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 34","cbg_pop":987,"acs_pop":1006.0,"land_area":0.0952,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.3,"treecanopy":0.0984,"tc_gap":0.2016,"priority_i":0.57666273183389,"pctpoc":0.936381709741551,"pctpocnorm":0.936381709741551,"pctpov":0.615308151093439,"pctpovnorm":0.615308151093439,"unemplrate":0.09126213592233,"unemplnorm":0.15939902473312,"dep_ratio":0.372442019099591,"dep_perc":0.271371769383698,"depratnorm":0.186221009549795,"linguistic":0.477441962330267,"lingnorm":0.769857334051963,"health_nor":0.413023707748609,"temp_diff":2.5,"temp_norm":0.627185866234,"tes":60,"tesctyscor":77.0,"holc_grade":"C","child_perc":0.218687872763419,"seniorperc":0.052683896620278,"ej_disadva":"Yes","rank":2471.0,"rankgrpsz":2675,"_bld1200":0.0032,"_veg1200":0.2003,"_tot1200":0.2035,"_bld1500":0.0747,"_veg1500":0.2275,"_tot1500":0.3022,"_bld1800":0.5364,"_veg1800":0.2089,"_tot1800":0.7454},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.30906005474267,34.04715219195873],[-118.30901958672636,34.04356698722449],[-118.310139,34.043563],[-118.31158,34.043558],[-118.311589,34.045371],[-118.31159588316507,34.04715472306524],[-118.30906005474267,34.04715219195873]]],[[[-118.3090405260818,34.04715681510179],[-118.30903283852443,34.0471568386934],[-118.309029,34.046321],[-118.309025,34.045377],[-118.3090249696154,34.04537046730744],[-118.3090405260818,34.04715681510179]]]]}},{"type":"Feature","properties":{"GEOID":"060372215002","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":1576,"acs_pop":1975.0,"land_area":0.17,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.3,"treecanopy":0.1178,"tc_gap":0.1822,"priority_i":0.489740824300977,"pctpoc":0.829367088607595,"pctpocnorm":0.829367088607595,"pctpov":0.417215189873418,"pctpovnorm":0.417215189873418,"unemplrate":0.065502183406113,"unemplnorm":0.114406528483076,"dep_ratio":0.533385093167702,"dep_perc":0.347848101265823,"depratnorm":0.266692546583851,"linguistic":0.192076830732293,"lingnorm":0.309716716392062,"health_nor":0.511081882543351,"temp_diff":0.04,"temp_norm":0.582837569857581,"tes":69,"tesctyscor":77.0,"holc_grade":"C","child_perc":0.169113924050633,"seniorperc":0.17873417721519,"ej_disadva":"Yes","rank":1974.0,"rankgrpsz":2675,"_bld1200":0.0008,"_veg1200":0.1905,"_tot1200":0.1913,"_bld1500":0.0538,"_veg1500":0.2191,"_tot1500":0.2729,"_bld1800":0.2947,"_veg1800":0.2901,"_tot1800":0.5848},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.30895179549597,34.03696788902555],[-118.30895224813572,34.03701986561253],[-118.308827,34.037027],[-118.303875,34.036967],[-118.30282681467061,34.03695885423557],[-118.30895179549597,34.03696788902555]]]]}},{"type":"Feature","properties":{"GEOID":"060372216021","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 34","cbg_pop":1361,"acs_pop":1050.0,"land_area":0.2775,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.25,"treecanopy":0.0862,"tc_gap":0.1638,"priority_i":0.573807277151123,"pctpoc":0.954285714285714,"pctpocnorm":0.954285714285714,"pctpov":0.578095238095238,"pctpovnorm":0.578095238095238,"unemplrate":0.09927797833935,"unemplnorm":0.173399545877779,"dep_ratio":0.666666666666667,"dep_perc":0.4,"depratnorm":0.333333333333333,"linguistic":0.362055335968379,"lingnorm":0.58380070818973,"health_nor":0.449128960108227,"temp_diff":1.72,"temp_norm":0.613124211285379,"tes":67,"tesctyscor":77.0,"holc_grade":"D","child_perc":0.20952380952381,"seniorperc":0.19047619047619,"ej_disadva":"Yes","rank":2120.0,"rankgrpsz":2675,"_bld1200":0.0004,"_veg1200":0.1759,"_tot1200":0.1763,"_bld1500":0.0449,"_veg1500":0.1933,"_tot1500":0.2382,"_bld1800":0.2852,"_veg1800":0.2332,"_tot1800":0.5184},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.3002781699304,34.03778079715655],[-118.300285,34.038149],[-118.300308,34.039061],[-118.300312,34.039594],[-118.300323,34.039782],[-118.300349,34.039969],[-118.30024672775917,34.039969410525806],[-118.3002781699304,34.03778079715655]]]]}},{"type":"Feature","properties":{"GEOID":"060372128001","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":1674,"acs_pop":1617.0,"land_area":0.3225,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.3,"treecanopy":0.1502,"tc_gap":0.1498,"priority_i":0.435382687779324,"pctpoc":0.895485466914038,"pctpocnorm":0.895485466914038,"pctpov":0.244897959183673,"pctpovnorm":0.244897959183673,"unemplrate":0.069656488549618,"unemplnorm":0.121662464163587,"dep_ratio":0.55930568948891,"dep_perc":0.358688930117502,"depratnorm":0.279652844744455,"linguistic":0.175793403858121,"lingnorm":0.283460298666658,"health_nor":0.251553981127053,"temp_diff":-2.79,"temp_norm":0.531819001261943,"tes":77,"tesctyscor":77.0,"holc_grade":"C","child_perc":0.114409400123686,"seniorperc":0.244279529993816,"ej_disadva":"Yes","rank":1374.0,"rankgrpsz":2675,"_bld1200":0.0012,"_veg1200":0.259,"_tot1200":0.2602,"_bld1500":0.0566,"_veg1500":0.2951,"_tot1500":0.3517,"_bld1800":0.4124,"_veg1800":0.315,"_tot1800":0.7274},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.32671042482329,34.047833440998225],[-118.32669735660436,34.04783230121413],[-118.326704,34.04782],[-118.32671715761387,34.04782120226735],[-118.32671042482329,34.047833440998225]]]]}},{"type":"Feature","properties":{"GEOID":"060372129001","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":1218,"acs_pop":1400.0,"land_area":0.1815,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.3,"treecanopy":0.1314,"tc_gap":0.1686,"priority_i":0.4195952662427,"pctpoc":0.754285714285714,"pctpocnorm":0.754285714285714,"pctpov":0.171942446043165,"pctpovnorm":0.171942446043165,"unemplrate":0.12046783625731,"unemplnorm":0.210409885951682,"dep_ratio":0.356589147286822,"dep_perc":0.262857142857143,"depratnorm":0.178294573643411,"linguistic":0.156582705790704,"lingnorm":0.25248376546192,"health_nor":0.353334489549064,"temp_diff":-0.95,"temp_norm":0.564990084730485,"tes":75,"tesctyscor":77.0,"holc_grade":"C","child_perc":0.103571428571428,"seniorperc":0.159285714285714,"ej_disadva":"Yes","rank":1535.0,"rankgrpsz":2675,"_bld1200":0.0028,"_veg1200":0.2438,"_tot1200":0.2466,"_bld1500":0.0799,"_veg1500":0.2865,"_tot1500":0.3664,"_bld1800":0.5033,"_veg1800":0.2858,"_tot1800":0.7835},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.31997367934127,34.047234153107524],[-118.3190037101758,34.047169857602896],[-118.319544,34.047169],[-118.320087,34.047219],[-118.321293,34.047328],[-118.322452,34.047434],[-118.32244192859655,34.04745507544352],[-118.31997367934127,34.047234153107524]]]]}},{"type":"Feature","properties":{"GEOID":"060372129002","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":2503,"acs_pop":2545.0,"land_area":0.1921,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.25,"treecanopy":0.0731,"tc_gap":0.1769,"priority_i":0.494081236933951,"pctpoc":0.976817288801572,"pctpocnorm":0.976817288801572,"pctpov":0.591355599214145,"pctpovnorm":0.591355599214145,"unemplrate":0.021794871794872,"unemplnorm":0.038067061143984,"dep_ratio":0.505026611472501,"dep_perc":0.335559921414538,"depratnorm":0.252513305736251,"linguistic":0.156582705790704,"lingnorm":0.25248376546192,"health_nor":0.353334489549064,"temp_diff":1.02,"temp_norm":0.60050477735713,"tes":70,"tesctyscor":77.0,"holc_grade":"C","child_perc":0.227504911591356,"seniorperc":0.108055009823183,"ej_disadva":"Yes","rank":1897.0,"rankgrpsz":2675,"_bld1200":0.003,"_veg1200":0.1761,"_tot1200":0.1791,"_bld1500":0.0956,"_veg1500":0.1886,"_tot1500":0.2843,"_bld1800":0.4991,"_veg1800":0.1752,"_tot1800":0.6743},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.32509781598196,34.04769279245856],[-118.32244192859655,34.04745507544352],[-118.322452,34.047434],[-118.322988,34.047483],[-118.323506,34.04753],[-118.323875,34.047563],[-118.324536,34.047623],[-118.325356,34.047698],[-118.325515,34.047712],[-118.326704,34.04782],[-118.32669735660436,34.04783230121413],[-118.32509781598196,34.04769279245856]]]]}},{"type":"Feature","properties":{"GEOID":"060372181101","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":1961,"acs_pop":2417.0,"land_area":0.3341,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.3,"treecanopy":0.1181,"tc_gap":0.1819,"priority_i":0.516388329810693,"pctpoc":0.889118742242449,"pctpocnorm":0.889118742242449,"pctpov":0.618949110467522,"pctpovnorm":0.618949110467522,"unemplrate":0.124087591240876,"unemplnorm":0.216732172936552,"dep_ratio":0.517263025737602,"dep_perc":0.340918494000827,"depratnorm":0.258631512868801,"linguistic":0.175251628182356,"lingnorm":0.282586705622255,"health_nor":0.403781739481072,"temp_diff":-0.74,"temp_norm":0.56877591490896,"tes":67,"tesctyscor":77.0,"holc_grade":"C","child_perc":0.181216383947042,"seniorperc":0.159702110053786,"ej_disadva":"Yes","rank":2120.0,"rankgrpsz":2675,"_bld1200":0.0021,"_veg1200":0.2179,"_tot1200":0.22,"_bld1500":0.0778,"_veg1500":0.2526,"_tot1500":0.3304,"_bld1800":0.4182,"_veg1800":0.281,"_tot1800":0.6993},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.32671715761387,34.04782120226735],[-118.326704,34.04782],[-118.325515,34.047712],[-118.325356,34.047698],[-118.324536,34.047623],[-118.323875,34.047563],[-118.323506,34.04753],[-118.322988,34.047483],[-118.323336,34.046753],[-118.323664,34.04585],[-118.323662,34.045433],[-118.323655,34.043552],[-118.32469,34.043549],[-118.324845,34.043571],[-118.325049,34.043605],[-118.325125,34.04362],[-118.325397,34.043708],[-118.326298,34.043999],[-118.326401,34.044033],[-118.327364,34.044344],[-118.328418,34.044684],[-118.32843417288998,34.04470004653928],[-118.32671715761387,34.04782120226735]]]]}},{"type":"Feature","properties":{"GEOID":"060372181102","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":1159,"acs_pop":1145.0,"land_area":0.2644,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.25,"treecanopy":0.1,"tc_gap":0.15,"priority_i":0.468273392803869,"pctpoc":0.936244541484716,"pctpocnorm":0.936244541484716,"pctpov":0.312663755458515,"pctpovnorm":0.312663755458515,"unemplrate":0.07787610619469,"unemplnorm":0.136018900412445,"dep_ratio":0.41358024691358,"dep_perc":0.292576419213974,"depratnorm":0.20679012345679,"linguistic":0.175251628182356,"lingnorm":0.282586705622255,"health_nor":0.403781739481072,"temp_diff":0.23,"temp_norm":0.586262844780963,"tes":76,"tesctyscor":77.0,"holc_grade":"C","child_perc":0.241921397379913,"seniorperc":0.050655021834061,"ej_disadva":"Yes","rank":1459.0,"rankgrpsz":2675,"_bld1200":0.0013,"_veg1200":0.1936,"_tot1200":0.1949,"_bld1500":0.0579,"_veg1500":0.2286,"_tot1500":0.2865,"_bld1800":0.3799,"_veg1800":0.2438,"_tot1800":0.623},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.326635,34.039882],[-118.327239,34.03988],[-118.32852,34.039876],[-118.329738,34.039872],[-118.330334,34.039869],[-118.331053,34.039867],[-118.329803,34.042149],[-118.329439,34.042816],[-118.328418,34.044684],[-118.327364,34.044344],[-118.326401,34.044033],[-118.326298,34.043999],[-118.325397,34.043708],[-118.325125,34.04362],[-118.325049,34.043605],[-118.324845,34.043571],[-118.32469,34.043549],[-118.323655,34.043552],[-118.323648,34.041805],[-118.32364,34.039892],[-118.324827,34.039888],[-118.326017,34.039884],[-118.326635,34.039882]]]]}},{"type":"Feature","properties":{"GEOID":"060372181201","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":2539,"acs_pop":2025.0,"land_area":0.2225,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.25,"treecanopy":0.057,"tc_gap":0.193,"priority_i":0.557690693565946,"pctpoc":0.981234567901234,"pctpocnorm":0.981234567901234,"pctpov":0.66320987654321,"pctpovnorm":0.66320987654321,"unemplrate":0.017182130584192,"unemplnorm":0.030010418124427,"dep_ratio":0.806422836752899,"dep_perc":0.44641975308642,"depratnorm":0.40321141837645,"linguistic":0.269633507853403,"lingnorm":0.434773961873733,"health_nor":0.413700401868187,"temp_diff":2.86,"temp_norm":0.633675860825672,"tes":63,"tesctyscor":77.0,"holc_grade":"C","child_perc":0.312592592592593,"seniorperc":0.133827160493827,"ej_disadva":"Yes","rank":2338.0,"rankgrpsz":2675,"_bld1200":0.0009,"_veg1200":0.1234,"_tot1200":0.1243,"_bld1500":0.0683,"_veg1500":0.136,"_tot1500":0.2043,"_bld1800":0.5342,"_veg1800":0.1213,"_tot1800":0.6551},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.31886411635288,34.04716060446825],[-118.31759083911581,34.04716060446825],[-118.317653,34.046933],[-118.317694,34.046717],[-118.317705,34.046631],[-118.317722,34.046438],[-118.317719,34.045452],[-118.317711,34.04357],[-118.3189,34.043566],[-118.320089,34.043563],[-118.321278,34.043559],[-118.322466,34.043556],[-118.323655,34.043552],[-118.323662,34.045433],[-118.323664,34.04585],[-118.323336,34.046753],[-118.322988,34.047483],[-118.322452,34.047434],[-118.321293,34.047328],[-118.320087,34.047219],[-118.319544,34.047169],[-118.3190037101758,34.047169857602896],[-118.31886411635288,34.04716060446825]]]]}},{"type":"Feature","properties":{"GEOID":"060372181203","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":634,"acs_pop":1009.0,"land_area":0.0911,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.25,"treecanopy":0.0915,"tc_gap":0.1585,"priority_i":0.522648324643775,"pctpoc":0.970267591674926,"pctpocnorm":0.970267591674926,"pctpov":0.368209255533199,"pctpovnorm":0.368209255533199,"unemplrate":0.132827324478178,"unemplnorm":0.231997046373651,"dep_ratio":0.508221225710015,"dep_perc":0.336967294350842,"depratnorm":0.254110612855007,"linguistic":0.269633507853403,"lingnorm":0.434773961873733,"health_nor":0.413700401868187,"temp_diff":1.78,"temp_norm":0.614205877050658,"tes":71,"tesctyscor":77.0,"holc_grade":"C","child_perc":0.20416253716551,"seniorperc":0.132804757185332,"ej_disadva":"Yes","rank":1823.0,"rankgrpsz":2675,"_bld1200":0.0015,"_veg1200":0.1882,"_tot1200":0.1897,"_bld1500":0.0631,"_veg1500":0.2074,"_tot1500":0.2705,"_bld1800":0.4663,"_veg1800":0.1883,"_tot1800":0.6539},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.32127,34.041813],[-118.320082,34.041817],[-118.320078,34.040897],[-118.320074,34.039904],[-118.321263,34.0399],[-118.322451,34.039896],[-118.32364,34.039892],[-118.323648,34.041805],[-118.323655,34.043552],[-118.322466,34.043556],[-118.322459,34.041809],[-118.32127,34.041813]]]]}},{"type":"Feature","properties":{"GEOID":"060372182201","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 37","cbg_pop":965,"acs_pop":1020.0,"land_area":0.3008,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.3,"treecanopy":0.2002,"tc_gap":0.0998,"priority_i":0.377503183405157,"pctpoc":0.7,"pctpocnorm":0.7,"pctpov":0.245098039215686,"pctpovnorm":0.245098039215686,"unemplrate":0.01813110181311,"unemplnorm":0.031667897284437,"dep_ratio":0.25615763546798,"dep_perc":0.203921568627451,"depratnorm":0.12807881773399,"linguistic":0.124450549450549,"lingnorm":0.20067186334792,"health_nor":0.383759088693397,"temp_diff":-6.27,"temp_norm":0.469082386875789,"tes":87,"tesctyscor":77.0,"holc_grade":"C","child_perc":0.030392156862745,"seniorperc":0.173529411764706,"ej_disadva":"Yes","rank":640.0,"rankgrpsz":2675,"_bld1200":0.0029,"_veg1200":0.3181,"_tot1200":0.321,"_bld1500":0.0714,"_veg1500":0.3605,"_tot1500":0.4319,"_bld1800":0.4568,"_veg1800":0.362,"_tot1800":0.8185},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.32843417288998,34.04470004653928],[-118.328418,34.044684],[-118.329439,34.042816],[-118.329803,34.042149],[-118.331053,34.039867],[-118.33109300053107,34.03986688329532],[-118.32843417288998,34.04470004653928]]]]}},{"type":"Feature","properties":{"GEOID":"060372213041","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 34","cbg_pop":1810,"acs_pop":2584.0,"land_area":0.1737,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.25,"treecanopy":0.1079,"tc_gap":0.1421,"priority_i":0.585961628329101,"pctpoc":0.977554179566563,"pctpocnorm":0.977554179566563,"pctpov":0.743421052631579,"pctpovnorm":0.743421052631579,"unemplrate":0.081374321880651,"unemplnorm":0.142128906090187,"dep_ratio":0.618033813400125,"dep_perc":0.381965944272446,"depratnorm":0.309016906700063,"linguistic":0.358069977426636,"lingnorm":0.577374466375515,"health_nor":0.426275990026363,"temp_diff":1.21,"temp_norm":0.603930052280512,"tes":71,"tesctyscor":77.0,"holc_grade":"C","child_perc":0.240325077399381,"seniorperc":0.141640866873065,"ej_disadva":"Yes","rank":1823.0,"rankgrpsz":2675,"_bld1200":0.001,"_veg1200":0.2218,"_tot1200":0.2228,"_bld1500":0.0595,"_veg1500":0.2499,"_tot1500":0.3093,"_bld1800":0.4158,"_veg1800":0.2793,"_tot1800":0.695},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.31748825824728,34.04716060446825],[-118.31303887181384,34.04715616336693],[-118.31303,34.045368],[-118.313022,34.043553],[-118.314463,34.043549],[-118.31545,34.043546],[-118.315685,34.043546],[-118.316385,34.043544],[-118.317711,34.04357],[-118.317719,34.045452],[-118.317722,34.046438],[-118.317705,34.046631],[-118.317694,34.046717],[-118.317653,34.046933],[-118.31759083911581,34.04716060446825],[-118.31748825824728,34.04716060446825]]]]}},{"type":"Feature","properties":{"GEOID":"060372213042","place":"Los Angeles","state":"California","state_abbr":"CA","county":"Los Angeles County","ua_name":"Los Angeles--Long Beach--Anaheim, CA","ua_pop":12235584,"congressio":"CA Congressional District 34","cbg_pop":1222,"acs_pop":1265.0,"land_area":0.0535,"biome":"Mediterranean","cnpysource":"Google","tc_goal":0.2,"treecanopy":0.088,"tc_gap":0.112,"priority_i":0.545968753786929,"pctpoc":0.966798418972332,"pctpocnorm":0.966798418972332,"pctpov":0.463149078726968,"pctpovnorm":0.463149078726968,"unemplrate":0.071428571428571,"unemplnorm":0.124757595345831,"dep_ratio":0.552147239263804,"dep_perc":0.355731225296443,"depratnorm":0.276073619631902,"linguistic":0.358069977426636,"lingnorm":0.577374466375515,"health_nor":0.426275990026363,"temp_diff":2.89,"temp_norm":0.634216693708311,"tes":79,"tesctyscor":77.0,"holc_grade":"C","child_perc":0.240316205533597,"seniorperc":0.115415019762846,"ej_disadva":"Yes","rank":1235.0,"rankgrpsz":2675,"_bld1200":0.0035,"_veg1200":0.2176,"_tot1200":0.2211,"_bld1500":0.1091,"_veg1500":0.24,"_tot1500":0.3491,"_bld1800":0.5612,"_veg1800":0.2331,"_tot1800":0.7943},"geometry":{"type":"MultiPolygon","coordinates":[[[[-118.31159588316507,34.04715472306524],[-118.311589,34.045371],[-118.31158,34.043558],[-118.313022,34.043553],[-118.31303,34.045368],[-118.31303887181384,34.04715616336693],[-118.31159588316507,34.04715472306524]]]]}}]};</script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+:root {
+  --green-dark:  #2D5016;
+  --green:       #4A7C2F;
+  --green-mid:   #6B9E4A;
+  --green-light: #A8C97A;
+  --green-pale:  #E8F0DC;
+  --amber:       #C17D11;
+  --amber-pale:  #FDF3DC;
+  --blue:        #1B5E8A;
+  --blue-pale:   #DCF0FF;
+  --red:         #B83232;
+  --red-pale:    #FDEAEA;
+  --sand:        #F5F0E8;
+  --sand2:       #EDE8DE;
+  --bark:        #8B6914;
+  --text:        #1A1A1A;
+  --text2:       #4A4A4A;
+  --muted:       #888;
+  --border:      #D8D0C4;
+  --panel:       #FAFAF7;
+  --white:       #FFFFFF;
+  --font:        'DM Sans', sans-serif;
+  --mono:        'DM Mono', monospace;
+  --sb-width:    300px;
+  --tb-height:   52px;
+  --shadow:      0 2px 12px rgba(0,0,0,.12);
+  --shadow-lg:   0 8px 32px rgba(0,0,0,.18);
+}
 
-  <style>
-    /* ══════════════════════════════════════════════════════════════════
-       UNIFIED DESIGN SYSTEM & THEME TOKENS
-       ══════════════════════════════════════════════════════════════════ */
-    :root {
-      --accent:   #5B7A47;   /* Signature Sage Green */
-      --blue:     #2B6CB0;   /* Informational Boundary Accent */
-      --amber:    #C4780A;   /* Secondary / Maintenance Actions */
-      --danger:   #B93020;   /* Critical Alerts */
-      --bg:       #F4F1EB;   /* Warm Surface Canvas */
-      --panel:    #FFFFFF;   /* Foreground Card Panels */
-      --panel2:   #EDE9E0;   /* Container Borders / Secondary Modifiers */
-      --border:   #D8D3C7;   
-      --text:     #2C2825;   /* High Contrast Typography */
-      --muted:    #7A6E62;   
-      --font:     'DM Sans', system-ui, sans-serif;
-      --mono:     'DM Mono', monospace;
-    }
+html, body { width:100%; height:100%; overflow:hidden; font-family:var(--font); background:var(--sand); color:var(--text); }
 
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body, html { width: 100%; height: 100%; overflow: hidden; background: var(--bg); font-family: var(--font); color: var(--text); }
+/* ── Layout ───────────────────────────────────── */
+#app { display:flex; width:100%; height:100%; }
+#sidebar {
+  width:var(--sb-width); flex-shrink:0; height:100%;
+  background:var(--panel); border-right:1px solid var(--border);
+  display:flex; flex-direction:column; z-index:200; position:relative;
+  transition:transform .25s cubic-bezier(.4,0,.2,1);
+}
+#sidebar.collapsed { transform:translateX(calc(-1 * var(--sb-width))); }
+#map-wrap { flex:1; position:relative; overflow:hidden; }
+#map { width:100%; height:100%; }
 
-    /* Layout Shell */
-    #layout-container { display: flex; width: 100%; height: 100%; position: relative; }
-    
-    /* Control Panel Drawer */
-    #sidebar-panel {
-      width: 320px; height: 100%; background: var(--panel);
-      border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 1010;
-    }
-    .panel-header { padding: 20px 16px; border-bottom: 1px solid var(--border); background: var(--panel); }
-    .panel-header h1 { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
-    .panel-header p { font-size: 11px; color: var(--muted); font-family: var(--mono); }
-    
-    .scrollable-body { flex: 1; overflow-y: auto; padding: 16px; }
-    
-    /* Filter UI Elements */
-    .filter-group { margin-bottom: 20px; }
-    .filter-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 8px; font-family: var(--mono); }
-    .filter-select { width: 100%; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; font-size: 13px; color: var(--text); font-family: var(--font); outline: none; }
-    .filter-select:focus { border-color: var(--accent); }
+/* ── Sidebar toggle ───────────────────────────── */
+#sb-toggle {
+  position:absolute; top:60px; left:var(--sb-width);
+  width:24px; height:48px; background:var(--panel);
+  border:1px solid var(--border); border-left:none;
+  border-radius:0 8px 8px 0; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  z-index:201; transition:left .25s cubic-bezier(.4,0,.2,1);
+  color:var(--muted);
+}
+#sb-toggle:hover { color:var(--green); }
+#sidebar.collapsed ~ #map-wrap #sb-toggle { left:0; border-left:1px solid var(--border); border-radius:8px; }
 
-    /* Metric Badges */
-    .metric-pill {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 10px 12px; background: var(--panel2); border-radius: 8px; margin-bottom: 12px;
-    }
-    .metric-title { font-size: 12px; font-weight: 500; }
-    .metric-value { font-family: var(--mono); font-size: 12px; font-weight: 600; background: var(--accent); color: white; padding: 2px 8px; border-radius: 20px; }
+/* ── Sidebar head ─────────────────────────────── */
+.sb-head {
+  padding:14px 16px 12px;
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;
+  background:var(--green-dark);
+}
+.sb-logo-text { font-size:13px; font-weight:600; color:#fff; line-height:1.2; }
+.sb-logo-sub  { font-size:10px; color:rgba(255,255,255,.65); margin-top:2px; font-family:var(--mono); }
+.sb-logo-badge {
+  width:36px; height:36px; background:rgba(255,255,255,.15);
+  border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
 
-    /* Map Interface */
-    #leaflet-map-canvas { flex: 1; height: 100%; z-index: 1000; }
+/* ── Sidebar scroll area ──────────────────────── */
+.sb-scroll { flex:1; overflow-y:auto; overflow-x:hidden; }
+.sb-scroll::-webkit-scrollbar { width:4px; }
+.sb-scroll::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
 
-    /* Navigation Link Shortcuts */
-    .utility-footer { padding: 12px 16px; border-top: 1px solid var(--border); background: var(--panel2); display: flex; gap: 8px; }
-    .btn-link { flex: 1; text-align: center; padding: 8px; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; font-size: 11px; text-decoration: none; color: var(--text); font-weight: 500; }
-    .btn-link:hover { border-color: var(--accent); color: var(--accent); }
-  </style>
+/* ── Data overlay strip ───────────────────────── */
+#overlay-strip {
+  padding:10px 14px 12px;
+  border-bottom:2px solid var(--border);
+  background:var(--green-pale);
+}
+.ov-label { font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:.1em; color:var(--green-dark); margin-bottom:7px; font-family:var(--mono); }
+.ov-btns { display:flex; flex-wrap:wrap; gap:4px; }
+.ov-btn {
+  padding:5px 9px; font-size:10px; font-weight:500; border-radius:5px;
+  border:1px solid var(--border); background:var(--white); color:var(--text2);
+  cursor:pointer; font-family:var(--font); transition:all .15s; white-space:nowrap;
+}
+.ov-btn:hover { border-color:var(--green); color:var(--green); }
+.ov-btn.active { background:var(--green-dark); border-color:var(--green-dark); color:#fff; }
+#ov-legend { margin-top:8px; display:none; }
+.leg-bar { height:10px; border-radius:3px; margin-bottom:3px; }
+.leg-labels { display:flex; justify-content:space-between; font-size:9px; color:var(--muted); font-family:var(--mono); }
+
+/* ── Basemap toggle ───────────────────────────── */
+#bm-strip { padding:8px 14px 10px; border-bottom:1px solid var(--border); flex-shrink:0; }
+.bm-row { display:flex; gap:4px; background:var(--sand2); border-radius:7px; padding:3px; }
+.bm-btn {
+  flex:1; padding:6px 4px; font-size:10px; font-weight:500; text-align:center;
+  border:none; background:transparent; color:var(--muted); cursor:pointer;
+  border-radius:5px; font-family:var(--font); transition:all .15s; min-height:34px;
+}
+.bm-btn.active { background:var(--white); color:var(--text); box-shadow:0 1px 3px rgba(0,0,0,.12); }
+
+/* ── Layer groups ─────────────────────────────── */
+.sec-label { font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); padding:10px 14px 4px; font-family:var(--mono); }
+.layer-group { border-bottom:1px solid var(--border); }
+.grp-head {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:11px 14px; cursor:pointer; font-size:12px; font-weight:600;
+  color:var(--text2); transition:background .12s; min-height:44px;
+}
+.grp-head:hover { background:var(--sand2); color:var(--text); }
+.grp-chevron { font-size:11px; transition:transform .2s; color:var(--muted); }
+.grp-body { padding:2px 10px 8px; display:none; }
+.grp-body.open { display:block; }
+.grp-count { font-size:9px; font-family:var(--mono); background:var(--green); color:#fff; border-radius:8px; padding:1px 6px; margin-left:5px; }
+
+.tog-row {
+  display:flex; align-items:center; gap:9px; padding:8px 4px;
+  border-radius:6px; cursor:pointer; transition:background .12s; min-height:40px;
+}
+.tog-row:hover { background:var(--sand2); }
+.tog-icon { width:24px; height:24px; border-radius:5px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:13px; }
+.tog-label { flex:1; font-size:11px; color:var(--text2); line-height:1.3; }
+.tog-sub { font-size:9px; color:var(--muted); display:block; font-family:var(--mono); }
+.tog-sw {
+  width:28px; height:16px; background:var(--border); border-radius:8px;
+  position:relative; transition:background .2s; flex-shrink:0;
+}
+.tog-sw.on { background:var(--green); }
+.tog-sw::after {
+  content:''; position:absolute; top:2px; left:2px; width:12px; height:12px;
+  background:white; border-radius:50%; transition:transform .2s;
+}
+.tog-sw.on::after { transform:translateX(12px); }
+
+/* WOSIP goal chips */
+.wosip-chips { display:flex; flex-wrap:wrap; gap:3px; margin-top:5px; padding:0 4px 4px; }
+.wosip-chip {
+  font-size:9px; padding:2px 7px; border-radius:10px; border:1px solid var(--border);
+  color:var(--text2); cursor:pointer; font-family:var(--mono); transition:all .15s; white-space:nowrap;
+}
+.wosip-chip:hover { border-color:var(--green); color:var(--green); }
+.wosip-chip.active { background:var(--green-dark); border-color:var(--green-dark); color:#fff; }
+
+/* Status chips inside Greening layer */
+.status-chips { display:flex; gap:4px; margin-top:4px; padding:0 4px 6px; }
+.st-chip {
+  font-size:9px; padding:3px 8px; border-radius:10px; border:1px solid var(--border);
+  cursor:pointer; font-family:var(--mono); transition:all .15s;
+}
+.st-chip.active { background:var(--green-dark); border-color:var(--green-dark); color:#fff; }
+
+/* ── Top bar ──────────────────────────────────── */
+#topbar {
+  position:absolute; top:0; left:0; right:0; height:var(--tb-height);
+  background:var(--white); border-bottom:1px solid var(--border);
+  display:flex; align-items:center; gap:8px; padding:0 14px 0 38px;
+  z-index:100; box-shadow:var(--shadow);
+}
+#search-wrap { flex:1; position:relative; max-width:320px; }
+#search-input {
+  width:100%; background:var(--sand); border:1px solid var(--border); border-radius:8px;
+  padding:8px 12px 8px 32px; color:var(--text); font-size:12px; font-family:var(--font); outline:none;
+}
+#search-input:focus { border-color:var(--green); background:var(--white); }
+.search-icon { position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--muted); font-size:13px; pointer-events:none; }
+
+/* ── Map overlays ─────────────────────────────── */
+#map-legend {
+  position:absolute; bottom:28px; left:14px; background:rgba(250,250,247,.95);
+  border:1px solid var(--border); border-radius:8px; padding:9px 12px;
+  font-size:10px; z-index:50; display:none; min-width:140px;
+  box-shadow:var(--shadow);
+}
+#map-legend .leg-title { font-weight:600; color:var(--text2); margin-bottom:6px; font-size:10px; font-family:var(--mono); text-transform:uppercase; letter-spacing:.05em; }
+
+/* ── Popup panel ──────────────────────────────── */
+#popup-panel {
+  position:absolute; top:var(--tb-height); right:0; width:320px;
+  max-height:calc(100% - var(--tb-height)); overflow-y:auto;
+  background:var(--panel); border-left:1px solid var(--border);
+  z-index:150; display:none; box-shadow:var(--shadow-lg);
+  transform:translateX(100%); transition:transform .22s cubic-bezier(.4,0,.2,1);
+}
+#popup-panel.open { transform:translateX(0); display:block; }
+.pop-close {
+  position:absolute; top:12px; right:12px; width:28px; height:28px;
+  border:1px solid var(--border); border-radius:50%; background:var(--white);
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+  color:var(--muted); font-size:16px; line-height:1; z-index:2;
+}
+.pop-close:hover { color:var(--red); border-color:var(--red); }
+
+/* TES score badge */
+.tes-badge {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:6px 12px; border-radius:8px; font-weight:600;
+}
+.tes-num { font-size:28px; font-weight:700; line-height:1; font-family:var(--mono); }
+.tes-label-text { font-size:11px; line-height:1.3; }
+
+/* Progress bar */
+.prog-bar-wrap { background:var(--sand2); border-radius:4px; height:8px; overflow:hidden; }
+.prog-bar-fill { height:100%; border-radius:4px; transition:width .4s ease; }
+
+/* Popup sections */
+.pop-section { padding:12px 16px; border-bottom:1px solid var(--border); }
+.pop-section:last-child { border-bottom:none; }
+.pop-sec-title { font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); margin-bottom:8px; font-family:var(--mono); }
+.pop-row { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px; font-size:11px; }
+.pop-row-label { color:var(--text2); flex:1; }
+.pop-row-val { color:var(--text); font-weight:500; text-align:right; font-family:var(--mono); }
+
+/* WOSIP goal tags in popup */
+.goal-tag {
+  display:inline-flex; align-items:center; gap:4px; padding:3px 8px;
+  background:var(--green-pale); border:1px solid var(--green-light);
+  border-radius:5px; font-size:10px; color:var(--green-dark); margin:2px;
+}
+
+/* Shade time display */
+.shade-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; }
+.shade-cell { text-align:center; background:var(--sand2); border-radius:6px; padding:6px 4px; }
+.shade-time { font-size:9px; color:var(--muted); font-family:var(--mono); margin-bottom:3px; }
+.shade-pct { font-size:14px; font-weight:600; color:var(--text); }
+.shade-type { font-size:9px; color:var(--muted); }
+
+/* Greening project popup */
+.proj-status-badge {
+  display:inline-block; padding:3px 9px; border-radius:4px; font-size:10px;
+  font-weight:600; font-family:var(--mono); text-transform:uppercase; letter-spacing:.05em;
+}
+
+/* ── Attribution ──────────────────────────────── */
+.ol-attribution { bottom:4px !important; right:4px !important; }
+.ol-attribution button, .ol-attribution ul { background:rgba(250,250,247,.8) !important; color:var(--muted) !important; font-size:9px !important; }
+
+/* ── Mobile ───────────────────────────────────── */
+@media (max-width:600px) {
+  :root { --sb-width:292px; }
+  #sidebar {
+    position:fixed; top:0; left:0; height:100%; z-index:300;
+    transform:translateX(calc(-1 * var(--sb-width)));
+    box-shadow:var(--shadow-lg);
+  }
+  #sidebar.open { transform:translateX(0); }
+  #sb-toggle {
+    position:fixed; top:auto; bottom:68px; left:12px;
+    width:44px; height:44px; border-radius:12px; border:1px solid var(--border);
+    box-shadow:var(--shadow); z-index:301;
+  }
+  #sidebar.open ~ #map-wrap #sb-toggle { left:calc(var(--sb-width) + 8px); }
+  #topbar { padding:0 10px 0 10px; }
+  #popup-panel { width:100%; top:auto; bottom:0; left:0; right:0; max-height:72vh; border-left:none; border-top:1px solid var(--border); border-radius:16px 16px 0 0; transform:translateY(100%); }
+  #popup-panel.open { transform:translateY(0); }
+  #map-legend { bottom:70px; }
+}
+</style>
 </head>
 <body>
+<div id="app">
 
-  <div id="layout-container">
-    <aside id="sidebar-panel">
-      <div class="panel-header">
-        <h1>Greening Master Plan</h1>
-        <p>UNNC Corridor Toolset</p>
-      </div>
-
-      <div class="scrollable-body">
-        <div class="metric-pill">
-          <span class="metric-title">Active Greening Targets</span>
-          <span id="cnt-greening" class="metric-value">0</span>
+  <!-- ═══ SIDEBAR ═══ -->
+  <div id="sidebar">
+    <div class="sb-head">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="sb-logo-badge">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22V12M12 12C12 7 7 4 3 6M12 12C12 7 17 4 21 6M7 18c0-3 2-5 5-6M17 18c0-3-2-5-5-6"/></svg>
         </div>
-
-        <div class="filter-group">
-          <div class="filter-label">Project Execution Phase</div>
-          <select id="filter-phase" class="filter-select" onchange="applyLayerFilters()">
-            <option value="all">View All Phases</option>
-            <option value="planning">Planning & Assessment</option>
-            <option value="approved">Approved Targets</option>
-            <option value="planted">Completed / Maintained</option>
-          </select>
-        </div>
-
-        <div class="filter-group">
-          <div class="filter-label">Primary Funding/Partners</div>
-          <select id="filter-funding" class="filter-select" onchange="applyLayerFilters()">
-            <option value="all">All Funding Allocations</option>
-            <option value="city">City Greening Grants</option>
-            <option value="community">Neighborhood Capital</option>
-            <option value="private">Private Sponsorship</option>
-          </select>
+        <div>
+          <div class="sb-logo-text">UNNC Greening Master Plan</div>
+          <div class="sb-logo-sub">Jefferson Park · Los Angeles, CA</div>
         </div>
       </div>
+    </div>
 
-      <div class="utility-footer">
-        <a href="JP_NIM.html" class="btn-link">Community Map</a>
-        <a href="admin.html" class="btn-link">Admin System</a>
+    <div class="sb-scroll">
+
+      <!-- Data Overlay -->
+      <div id="overlay-strip">
+        <div class="ov-label">📊 Data Overlay</div>
+        <div class="ov-btns">
+          <button class="ov-btn active" onclick="setOverlay('off')">Off</button>
+          <button class="ov-btn" onclick="setOverlay('tes')">TES Score</button>
+          <button class="ov-btn" onclick="setOverlay('gap')">Canopy Gap</button>
+          <button class="ov-btn" onclick="setOverlay('heat')">Heat</button>
+          <button class="ov-btn" onclick="setOverlay('priority')">Priority</button>
+          <button class="ov-btn" onclick="setOverlay('holc')">HOLC</button>
+        </div>
+        <div id="ov-legend">
+          <div class="leg-bar" id="leg-bar"></div>
+          <div class="leg-labels"><span id="leg-lo"></span><span id="leg-hi"></span></div>
+        </div>
       </div>
-    </aside>
 
-    <main id="leaflet-map-canvas"></main>
+      <!-- Basemap -->
+      <div id="bm-strip">
+        <div class="bm-row">
+          <button class="bm-btn active" id="bm-street" onclick="setBasemap('street')">🗺 Street</button>
+          <button class="bm-btn" id="bm-sat" onclick="setBasemap('satellite')">🛰 Satellite</button>
+          <button class="bm-btn" id="bm-parcel" onclick="setBasemap('parcel')">📋 Parcels</button>
+        </div>
+      </div>
+
+      <!-- 1. Greening Master Plan -->
+      <div class="layer-group">
+        <div class="grp-head" onclick="toggleGroup('greening')">
+          <span>🌿 Greening Master Plan<span class="grp-count" id="cnt-greening">6</span></span>
+          <span class="grp-chevron" id="chv-greening">▾</span>
+        </div>
+        <div class="grp-body open" id="gb-greening">
+          <div class="tog-row" onclick="toggleLayer('greening')">
+            <div class="tog-icon" style="background:var(--green-pale)">📍</div>
+            <div class="tog-label">Project Sites<span class="tog-sub">6 anchor sites · Master Plan 2025</span></div>
+            <div class="tog-sw on" id="sw-greening"></div>
+          </div>
+          <!-- Status filter -->
+          <div style="padding:0 4px 2px;font-size:9px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em">Filter by status</div>
+          <div class="status-chips" id="status-chips">
+            <span class="st-chip active" data-status="all" onclick="filterGreeningStatus('all')">All</span>
+            <span class="st-chip" data-status="proposed" onclick="filterGreeningStatus('proposed')">Proposed</span>
+            <span class="st-chip" data-status="funded" onclick="filterGreeningStatus('funded')">Funded</span>
+            <span class="st-chip" data-status="active" onclick="filterGreeningStatus('active')">Active</span>
+          </div>
+          <!-- WOSIP filter -->
+          <div style="padding:4px 4px 2px;font-size:9px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em">WOSIP Goals</div>
+          <div class="wosip-chips" id="wosip-chips">
+            <span class="wosip-chip active" data-goal="all" onclick="filterWOSIP('all')">All Goals</span>
+            <span class="wosip-chip" data-goal="1" onclick="filterWOSIP('1')">G1 Safe Communities</span>
+            <span class="wosip-chip" data-goal="2" onclick="filterWOSIP('2')">G2 Park Access</span>
+            <span class="wosip-chip" data-goal="3" onclick="filterWOSIP('3')">G3 Water</span>
+            <span class="wosip-chip" data-goal="5" onclick="filterWOSIP('5')">G5 Urban Forest</span>
+            <span class="wosip-chip" data-goal="7" onclick="filterWOSIP('7')">G7 Heat</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Trees & Green Space -->
+      <div class="layer-group">
+        <div class="grp-head" onclick="toggleGroup('trees')">
+          <span>🌳 Trees & Green Space</span>
+          <span class="grp-chevron" id="chv-trees" style="transform:rotate(-90deg)">▾</span>
+        </div>
+        <div class="grp-body" id="gb-trees">
+          <div class="tog-row"><div class="tog-icon" style="background:#E8F5E9">🌲</div><div class="tog-label">Street Trees<span class="tog-sub">Field inventory</span></div><div class="tog-sw" id="sw-trees"></div></div>
+          <div class="tog-row"><div class="tog-icon" style="background:#F1F8E9">🌱</div><div class="tog-label">Planting Sites<span class="tog-sub">Vacant wells & opportunities</span></div><div class="tog-sw" id="sw-planting"></div></div>
+          <div class="tog-row"><div class="tog-icon" style="background:#E8F5E9">🏞</div><div class="tog-label">Parks & Trails<span class="tog-sub">Open space access</span></div><div class="tog-sw" id="sw-parks"></div></div>
+        </div>
+      </div>
+
+      <!-- 3. Stormwater & Infrastructure -->
+      <div class="layer-group">
+        <div class="grp-head" onclick="toggleGroup('stormwater')">
+          <span>💧 Stormwater & Infra</span>
+          <span class="grp-chevron" id="chv-stormwater" style="transform:rotate(-90deg)">▾</span>
+        </div>
+        <div class="grp-body" id="gb-stormwater">
+          <div class="tog-row" onclick="toggleLayer('impervious')">
+            <div class="tog-icon" style="background:#E3F2FD">🏚</div>
+            <div class="tog-label">Impervious Surface<span class="tog-sub">Derived from TES shade data</span></div>
+            <div class="tog-sw" id="sw-impervious"></div>
+          </div>
+          <div class="tog-row"><div class="tog-icon" style="background:#E1F5FE">🌊</div><div class="tog-label">Flood-prone Segments<span class="tog-sub">Add data layer</span></div><div class="tog-sw" id="sw-flood"></div></div>
+          <div class="tog-row"><div class="tog-icon" style="background:#E8F5E9">🌿</div><div class="tog-label">Bioswale Sites<span class="tog-sub">Proposed locations</span></div><div class="tog-sw" id="sw-bioswale"></div></div>
+        </div>
+      </div>
+
+      <!-- 4. Environment & Health -->
+      <div class="layer-group">
+        <div class="grp-head" onclick="toggleGroup('env')">
+          <span>🌬 Environment & Health</span>
+          <span class="grp-chevron" id="chv-env" style="transform:rotate(-90deg)">▾</span>
+        </div>
+        <div class="grp-body" id="gb-env">
+          <div class="tog-row"><div class="tog-icon" style="background:#FFF8E1">💨</div><div class="tog-label">Air Quality (PurpleAir)<span class="tog-sub">Live sensor data</span></div><div class="tog-sw" id="sw-air"></div></div>
+          <div class="tog-row"><div class="tog-icon" style="background:#FFF3E0">🌡</div><div class="tog-label">Heat Sensors<span class="tog-sub">Add data layer</span></div><div class="tog-sw" id="sw-heat-pts"></div></div>
+        </div>
+      </div>
+
+      <!-- 4. Traffic Safety & Streets (replaces UNNC boundary toggle freed slot) -->
+      <div class="layer-group">
+        <div class="grp-head" onclick="toggleGroup('traffic')">
+          <span>🚦 Traffic Safety &amp; Streets</span>
+          <span class="grp-chevron" id="chv-traffic" style="transform:rotate(-90deg)">▾</span>
+        </div>
+        <div class="grp-body" id="gb-traffic">
+          <!-- Metro E Line stations — static markers, always accurate -->
+          <div class="tog-row" onclick="toggleLayer('metro')">
+            <div class="tog-icon" style="background:rgba(235,125,36,.12)">🚇</div>
+            <div class="tog-label">Metro E Line Stops<span class="tog-sub">Jefferson/USC · Expo Park/USC</span></div>
+            <div class="tog-sw" id="sw-metro"></div>
+          </div>
+          <!-- Vision Zero HIN placeholder -->
+          <div class="tog-row" style="opacity:.55;cursor:not-allowed" title="Coming soon — LADOT Vision Zero data">
+            <div class="tog-icon" style="background:rgba(211,47,47,.12)">⚠️</div>
+            <div class="tog-label">Vision Zero HIN<span class="tog-sub">High Injury Network — coming soon</span></div>
+            <div class="tog-sw" id="sw-hin"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5. Boundaries -->
+
+      <div class="layer-group">
+        <div class="grp-head" onclick="toggleGroup('bounds')">
+          <span>🗺 Boundaries & Services</span>
+          <span class="grp-chevron" id="chv-bounds" style="transform:rotate(-90deg)">▾</span>
+        </div>
+        <div class="grp-body" id="gb-bounds">
+          <div class="tog-row" onclick="toggleLayer('unnc')">
+            <div class="tog-icon" style="background:rgba(27,94,138,.1)">🔲</div>
+            <div class="tog-label">UNNC Boundary<span class="tog-sub">6 Planning Regions</span></div>
+            <div class="tog-sw" id="sw-unnc"></div>
+          </div>
+          <div class="tog-row"><div class="tog-icon" style="background:#F3E5F5">🏛</div><div class="tog-label">Council District 10<span class="tog-sub">Political boundary</span></div><div class="tog-sw" id="sw-council"></div></div>
+        </div>
+      </div>
+
+      <!-- 6–9: Collapsed placeholder groups -->
+      <div class="layer-group">
+        <div class="grp-head" onclick="toggleGroup('community')">
+          <span>🏗 Community Improvements</span>
+          <span class="grp-chevron" id="chv-community" style="transform:rotate(-90deg)">▾</span>
+        </div>
+        <div class="grp-body" id="gb-community">
+          <div style="padding:8px 4px;font-size:11px;color:var(--muted);font-style:italic">Connect to Neighborhood Improvement Map layers</div>
+        </div>
+      </div>
+      <div class="layer-group">
+        <div class="grp-head" onclick="toggleGroup('arts')">
+          <span>🎨 Arts & Culture</span>
+          <span class="grp-chevron" id="chv-arts" style="transform:rotate(-90deg)">▾</span>
+        </div>
+        <div class="grp-body" id="gb-arts">
+          <div style="padding:8px 4px;font-size:11px;color:var(--muted);font-style:italic">Murals, cultural placemaking sites</div>
+        </div>
+      </div>
+      <div class="layer-group">
+        <div class="grp-head" onclick="toggleGroup('business')">
+          <span>🏪 Business & Econ Dev</span>
+          <span class="grp-chevron" id="chv-business" style="transform:rotate(-90deg)">▾</span>
+        </div>
+        <div class="grp-body" id="gb-business">
+          <div style="padding:8px 4px;font-size:11px;color:var(--muted);font-style:italic">Connect to Neighborhood Improvement Map layers</div>
+        </div>
+      </div>
+      <div class="layer-group">
+        <div class="grp-head" onclick="toggleGroup('safety')">
+          <span>🚨 Safety & Crime</span>
+          <span class="grp-chevron" id="chv-safety" style="transform:rotate(-90deg)">▾</span>
+        </div>
+        <div class="grp-body" id="gb-safety">
+          <div style="padding:8px 4px;font-size:11px;color:var(--muted);font-style:italic">Connect to Neighborhood Improvement Map layers</div>
+        </div>
+      </div>
+
+      <div style="height:20px"></div>
+    </div><!-- /sb-scroll -->
+  </div><!-- /sidebar -->
+
+  <!-- ═══ MAP WRAP ═══ -->
+  <div id="map-wrap">
+    <div id="sb-toggle" onclick="toggleSidebar()">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </div>
+    <!-- Topbar -->
+    <div id="topbar">
+      <div id="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input id="search-input" type="text" placeholder="Search block group or address…" oninput="handleSearch(this.value)">
+      </div>
+    </div>
+    <div id="map"></div>
+    <!-- Map legend -->
+    <div id="map-legend">
+      <div class="leg-title" id="mleg-title"></div>
+      <div id="mleg-items"></div>
+    </div>
   </div>
 
-  <script>
-    // ══════════════════════════════════════════════════════════════════
-    // GLOBAL STATE INTERFACES
-    // ══════════════════════════════════════════════════════════════════
-    let map = null;
-    let greeningPinsLayerGroup = L.layerGroup();
-    let treeEquityGeoJsonLayer = null;
-    let liveCachePins = [];
+  <!-- ═══ POPUP PANEL ═══ -->
+  <div id="popup-panel">
+    <div class="pop-close" onclick="closePopup()">×</div>
+    <div id="popup-content"></div>
+  </div>
 
-    // Initialize Supabase using Configuration Engine from System Files
-    const SUPABASE_URL = "https://your-supabase-project-url.supabase.co"; 
-    const SUPABASE_ANON_KEY = "your-anon-public-key";
-    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+</div><!-- /app -->
 
-    // ══════════════════════════════════════════════════════════════════
-    // MAP SYSTEM ENGINE LOGIC
-    // ══════════════════════════════════════════════════════════════════
-    document.addEventListener("DOMContentLoaded", () => {
-      initMapInterface();
-      fetchTreeEquityData();
-      loadLiveGreeningPins();
+<script>
+'use strict';
+
+// ══════════════════════════════════════════════════
+// DATA — Greening Master Plan project sites
+// ══════════════════════════════════════════════════
+// ── Supabase client (public-read anon key — same project as index.html) ───────
+const SUPABASE_URL  = 'https://sqiioihssmnqatjrednq.supabase.co';
+// Canonical anon key — matches admin.html and index.html (rotated 2025-01-28)
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNxaWlvaWhzc21ucWF0anJlZG5xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4MTQ2MDQsImV4cCI6MjA5MDM5MDYwNH0.7xmkq0yF_27ulgOMrOfblsg9vJsyDJtGve4bn0qgHIU';
+const { createClient } = supabase;
+const sbGMP = createClient(SUPABASE_URL, SUPABASE_ANON);
+
+// Fallback hardcoded projects — used if Supabase returns empty or errors.
+// PM can seed greening_projects table to replace these.
+const GREENING_PROJECTS = [
+  {
+    id: 'expo-place',
+    name: '2827 Expo Park Place',
+    region: 'Region 6 — Bungalows of Jefferson Park',
+    desc: 'Multi-benefit anchor park development: stormwater capture, major shade canopy, cultural programming space, and community gathering area.',
+    lat: 34.0342, lng: -118.2985,
+    status: 'proposed',
+    wosip: [2,3,5,7],
+    funding: 'Seeking WOSIP grant — unfunded',
+    area: '~0.4 acres',
+    partners: ['South LA Trees', 'UNNC'],
+  },
+  {
+    id: 'adams-corridor',
+    name: 'Adams Blvd Green Corridor',
+    region: 'Region 3 — West Adams Avenues',
+    desc: 'Street tree planting along transit corridor to increase shade and reduce heat island effect. Cool pavement integration at bus stops.',
+    lat: 34.0298, lng: -118.3185,
+    status: 'proposed',
+    wosip: [1,5,7],
+    funding: 'Seeking Metro + DWP funding',
+    area: '1.2 mile corridor',
+    partners: ['LADOT', 'LADWP'],
+  },
+  {
+    id: 'washington-corridor',
+    name: 'Washington Blvd Transit Greening',
+    region: 'Region 2 — Harvard Heights / West Adams Heights',
+    desc: 'Greening along public right-of-way. Cool pavement installation and transit stop shade structures targeting high impervious surface areas.',
+    lat: 34.0358, lng: -118.3352,
+    status: 'funded',
+    wosip: [1,3,7],
+    funding: 'Caltrans ATP Cycle 6 — $240K',
+    area: '0.8 mile corridor',
+    partners: ['Metro', 'LADOT', 'CD10'],
+  },
+  {
+    id: 'jefferson-corridor',
+    name: 'Jefferson Blvd Corridor',
+    region: 'Region 5 — Jefferson Park',
+    desc: 'Street tree gaps and alley greening. Focus on residential parcels and bicycle route improvements connecting to Expo Line station.',
+    lat: 34.0266, lng: -118.3115,
+    status: 'proposed',
+    wosip: [1,2,5],
+    funding: 'Seeking Measure W funding',
+    area: '0.9 mile corridor',
+    partners: ['LA Sanitation', 'UNNC'],
+  },
+  {
+    id: 'arlington-pocket',
+    name: 'Arlington Heights Pocket Parks',
+    region: 'Region 1 — Arlington Heights / Angelus Vista',
+    desc: 'Corner lot acquisition and conversion to high-canopy pocket parks. Focus on single-family residential street tree gaps.',
+    lat: 34.0445, lng: -118.3248,
+    status: 'proposed',
+    wosip: [2,4,5],
+    funding: 'Seeking LA County Parks funds',
+    area: '3 target parcels',
+    partners: ['LA County Parks', 'TreePeople'],
+  },
+  {
+    id: 'western-heights',
+    name: 'Western Heights Alley Greening',
+    region: 'Region 4 — Western Heights / Kinney Heights',
+    desc: 'Green alley demonstration project: permeable paving, tree planting, and bioswale installation to manage stormwater and increase canopy.',
+    lat: 34.0395, lng: -118.3422,
+    status: 'active',
+    wosip: [1,3,5,7],
+    funding: 'LA Sanitation Green Streets — $180K',
+    area: '4 alley segments',
+    partners: ['LA Sanitation', 'TreePeople', 'CD10'],
+  },
+];
+
+const WOSIP_LABELS = {
+  1: 'Safe & Resilient Communities',
+  2: 'Park & Open Space Access',
+  3: 'Water Resource Management',
+  4: 'Biodiversity',
+  5: 'Urban Forest Health',
+  6: 'Remediate Degraded Lands',
+  7: 'Extreme Heat Mitigation',
+  8: 'Wildfire Prevention',
+};
+
+const STATUS_COLORS = {
+  proposed: { bg:'#FFF8E1', text:'#C17D11', dot:'#C17D11' },
+  funded:   { bg:'#E8F5E9', text:'#2D7A2D', dot:'#4CAF50' },
+  active:   { bg:'#E3F2FD', text:'#1565C0', dot:'#2196F3' },
+  complete: { bg:'#F3E5F5', text:'#6A1B9A', dot:'#9C27B0' },
+};
+
+// ══════════════════════════════════════════════════
+// MAP SETUP
+// ══════════════════════════════════════════════════
+const CENTER_LON = -118.31887, CENTER_LAT = 34.03505;
+
+// Basemap sources
+const basemaps = {
+  street: new ol.layer.Tile({
+    source: new ol.source.XYZ({
+      url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      attributions: '© OpenStreetMap contributors',
+    }), zIndex:0,
+  }),
+  satellite: new ol.layer.Tile({
+    source: new ol.source.XYZ({
+      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      attributions: '© Esri, Maxar, Earthstar Geographics',
+    }), zIndex:0, visible:false,
+  }),
+  parcel: new ol.layer.Tile({
+    source: new ol.source.XYZ({
+      url: 'https://tiles.arcgis.com/tiles/jIL9msH9OI208GCb/arcgis/rest/services/LA_County_Parcels/MapServer/tile/{z}/{y}/{x}',
+      attributions: '© LA County GIS',
+    }), zIndex:1, visible:false,
+  }),
+};
+
+// TES / choropleth layer
+const format_tes = new ol.format.GeoJSON();
+const features_tes = format_tes.readFeatures(json_UNNCTES_0, {
+  dataProjection: 'EPSG:4326', featureProjection: 'EPSG:3857'
+});
+const tesSource = new ol.source.Vector({ features: features_tes });
+
+let currentOverlay = 'off';
+
+function tesStyle(feature) {
+  const p = feature.getProperties();
+  let fillColor = 'rgba(91,152,66,0.07)';
+  if (currentOverlay !== 'off') fillColor = getOverlayColor(p, currentOverlay);
+  return new ol.style.Style({
+    fill: new ol.style.Fill({ color: fillColor }),
+    stroke: new ol.style.Stroke({ color: 'rgba(45,80,22,.45)', width: 1 }),
+  });
+}
+
+const tesLayer = new ol.layer.Vector({ source: tesSource, style: tesStyle, zIndex: 5 });
+
+// Impervious proxy layer (low veg shade = high impervious)
+function imperviousStyle(feature) {
+  const veg = parseFloat(feature.getProperties()['_veg1200'] || 0);
+  const ratio = Math.max(0, Math.min(1, 1 - veg / 0.35));
+  const r = Math.round(180 + ratio * 60), g = Math.round(180 - ratio * 120), b = Math.round(160 - ratio * 130);
+  return new ol.style.Style({
+    fill: new ol.style.Fill({ color: `rgba(${r},${g},${b},0.55)` }),
+    stroke: new ol.style.Stroke({ color: 'rgba(100,50,20,.3)', width: 0.5 }),
+  });
+}
+const imperviousLayer = new ol.layer.Vector({ source: tesSource, style: imperviousStyle, zIndex:6, visible:false });
+
+// Greening projects layer
+// NOTE — naming convention for future shared helper (JP_NIM.html parity):
+//   UNNC_GMP uses OpenLayers (ol.source.Vector / ol.Feature).
+//   JP_NIM   uses Leaflet   (L.layerGroup / L.marker via makeGMPMarker).
+//   Both consume the same data shape: { id, name, region, status, wosip,
+//   lat, lng, desc, funding, area, partners }.  A future shared helper
+//   should accept this shape and branch on the map library.
+const geoJSON_format = new ol.format.GeoJSON();
+function makeGreeningSource(projects) {
+  return new ol.source.Vector({
+    features: projects.map(p => {
+      const f = new ol.Feature({
+        geometry: new ol.geom.Point(ol.proj.fromLonLat([p.lng, p.lat])),
+        ...p,
+      });
+      f.setId(p.id);
+      return f;
+    }),
+  });
+}
+const greeningSource = makeGreeningSource(GREENING_PROJECTS);
+
+function greeningStyle(feature) {
+  const st = feature.get('status') || 'proposed';
+  const colors = { proposed:'#C17D11', funded:'#2D7A2D', active:'#1565C0', complete:'#6A1B9A' };
+  const col = colors[st] || '#4A7C2F';
+  return new ol.style.Style({
+    image: new ol.style.Circle({
+      radius: 10, fill: new ol.style.Fill({ color: col }),
+      stroke: new ol.style.Stroke({ color: '#fff', width: 2 }),
+    }),
+    text: new ol.style.Text({
+      text: '🌿', font: '14px sans-serif',
+      offsetY: 0, textAlign: 'center',
+    }),
+  });
+}
+const greeningLayer = new ol.layer.Vector({ source: greeningSource, style: greeningStyle, zIndex:20 });
+
+// ── Metro E Line stations (static — coordinates verified) ────────────────────
+const METRO_E_STATIONS = [
+  { id: 'jefferson-usc', name: 'Jefferson / USC', lat: 34.0186, lng: -118.2867,
+    lines: ['E Line (Expo)'], connections: 'USC campus connector bus' },
+  { id: 'expo-park-usc', name: 'Expo Park / USC', lat: 34.0157, lng: -118.2868,
+    lines: ['E Line (Expo)'], connections: 'Natural History Museum, CSULA shuttle' },
+];
+
+function metroStationStyle(feature) {
+  return new ol.style.Style({
+    image: new ol.style.Circle({
+      radius: 9,
+      fill: new ol.style.Fill({ color: '#EB7D24' }),
+      stroke: new ol.style.Stroke({ color: '#fff', width: 2 }),
+    }),
+    text: new ol.style.Text({
+      text: 'M',
+      font: 'bold 9px DM Mono, monospace',
+      fill: new ol.style.Fill({ color: '#fff' }),
+      offsetY: 1,
+    }),
+  });
+}
+
+const metroSource = new ol.source.Vector();
+METRO_E_STATIONS.forEach(s => {
+  const f = new ol.Feature({
+    geometry: new ol.geom.Point(ol.proj.fromLonLat([s.lng, s.lat])),
+    ...s,
+  });
+  f.setId(s.id);
+  metroSource.addFeature(f);
+});
+const metroLayer = new ol.layer.Vector({
+  source: metroSource,
+  style: metroStationStyle,
+  visible: false,
+  zIndex: 25,
+});
+
+
+// Map
+const map = new ol.Map({
+  target: 'map',
+  layers: [basemaps.street, basemaps.satellite, basemaps.parcel, tesLayer, imperviousLayer, greeningLayer, metroLayer],
+  view: new ol.View({
+    center: ol.proj.fromLonLat([CENTER_LON, CENTER_LAT]),
+    zoom: 14,
+  }),
+  controls: ol.control.defaults.defaults({ attribution: true, zoom: true }),
+});
+
+// ══════════════════════════════════════════════════
+// CHOROPLETH COLOR SCALES
+// ══════════════════════════════════════════════════
+// Actual data ranges from analysis:
+// tes: 56-87  tc_gap: 0.097-0.234  temp_diff: -6.27-4.77  priority_i: 0.378-0.586
+const OVERLAY_CONFIG = {
+  tes: {
+    field:'tes', min:56, max:87, label:'Tree Equity Score',
+    stops: [[56,'#B71C1C'],[63,'#E65100'],[70,'#F9A825'],[78,'#558B2F'],[87,'#1B5E20']],
+    loLabel:'56 Critical', hiLabel:'87 Good',
+    gradient:'linear-gradient(to right,#B71C1C,#E65100,#F9A825,#558B2F,#1B5E20)',
+  },
+  gap: {
+    field:'tc_gap', min:0.097, max:0.234, label:'Canopy Gap (need)',
+    stops: [[0.097,'#F1F8E9'],[0.14,'#AED581'],[0.18,'#689F38'],[0.21,'#33691E'],[0.234,'#1B4000']],
+    loLabel:'+10% needed', hiLabel:'+23% needed',
+    gradient:'linear-gradient(to right,#F1F8E9,#AED581,#689F38,#33691E,#1B4000)',
+  },
+  heat: {
+    field:'temp_diff', min:-6.27, max:4.77, label:'Heat vs City Avg (°F)',
+    stops: [[-6.27,'#1565C0'],[-2,'#42A5F5'],[0,'#FFF9C4'],[2,'#FF7043'],[4.77,'#B71C1C']],
+    loLabel:'−6° cooler', hiLabel:'+5° hotter',
+    gradient:'linear-gradient(to right,#1565C0,#42A5F5,#FFF9C4,#FF7043,#B71C1C)',
+  },
+  priority: {
+    field:'priority_i', min:0.378, max:0.586, label:'Priority Index',
+    stops: [[0.378,'#E3F2FD'],[0.43,'#90CAF9'],[0.49,'#1976D2'],[0.54,'#0D47A1'],[0.586,'#01002E']],
+    loLabel:'Lower priority', hiLabel:'Higher priority',
+    gradient:'linear-gradient(to right,#E3F2FD,#90CAF9,#1976D2,#0D47A1,#01002E)',
+  },
+  holc: {
+    field:'holc_grade', label:'HOLC Redlining Grade',
+    holcMap: { A:'#4CAF50', B:'#2196F3', C:'#FF9800', D:'#F44336', null:'#9E9E9E' },
+    loLabel:'A (Best)', hiLabel:'D (Hazardous)',
+    gradient:'linear-gradient(to right,#4CAF50,#2196F3,#FF9800,#F44336)',
+  },
+};
+
+function interpolateColor(stops, val) {
+  for (let i = 0; i < stops.length - 1; i++) {
+    const [v0, c0] = stops[i], [v1, c1] = stops[i+1];
+    if (val <= v1) {
+      const t = (val - v0) / (v1 - v0);
+      return lerpColor(c0, c1, Math.max(0, Math.min(1, t)));
+    }
+  }
+  return stops[stops.length-1][1];
+}
+
+function lerpColor(c0, c1, t) {
+  const parse = c => [parseInt(c.slice(1,3),16), parseInt(c.slice(3,5),16), parseInt(c.slice(5,7),16)];
+  const [r0,g0,b0] = parse(c0), [r1,g1,b1] = parse(c1);
+  return `rgba(${Math.round(r0+(r1-r0)*t)},${Math.round(g0+(g1-g0)*t)},${Math.round(b0+(b1-b0)*t)},0.75)`;
+}
+
+function getOverlayColor(props, overlay) {
+  const cfg = OVERLAY_CONFIG[overlay];
+  if (!cfg) return 'rgba(0,0,0,0)';
+  if (overlay === 'holc') {
+    const g = props['holc_grade'] || null;
+    const c = cfg.holcMap[g] || cfg.holcMap[null];
+    return c + 'BF'; // 75% opacity
+  }
+  const val = parseFloat(props[cfg.field]);
+  if (isNaN(val)) return 'rgba(150,150,150,0.3)';
+  return interpolateColor(cfg.stops, val);
+}
+
+// ══════════════════════════════════════════════════
+// OVERLAY CONTROLS
+// ══════════════════════════════════════════════════
+function setOverlay(key) {
+  currentOverlay = key;
+  // Update buttons
+  document.querySelectorAll('.ov-btn').forEach(b => {
+    b.classList.toggle('active', b.textContent.toLowerCase().includes(key) || (key==='off' && b.textContent==='Off'));
+  });
+  // Refresh layer
+  tesLayer.setVisible(true);
+  tesLayer.changed();
+  // Legend
+  const legEl = document.getElementById('ov-legend');
+  const mapLeg = document.getElementById('map-legend');
+  if (key === 'off') {
+    legEl.style.display = 'none';
+    mapLeg.style.display = 'none';
+    return;
+  }
+  const cfg = OVERLAY_CONFIG[key];
+  // Sidebar mini legend
+  legEl.style.display = 'block';
+  document.getElementById('leg-bar').style.background = cfg.gradient;
+  document.getElementById('leg-lo').textContent = cfg.loLabel;
+  document.getElementById('leg-hi').textContent = cfg.hiLabel;
+  // Map corner legend
+  mapLeg.style.display = 'block';
+  document.getElementById('mleg-title').textContent = cfg.label;
+  const itemsEl = document.getElementById('mleg-items');
+  if (key === 'holc') {
+    itemsEl.innerHTML = Object.entries(cfg.holcMap).map(([g,c]) =>
+      `<div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">
+        <div style="width:12px;height:12px;border-radius:2px;background:${c}"></div>
+        <span style="font-size:10px;color:var(--text2)">${g === 'null' ? 'No grade' : 'Grade '+g}</span>
+      </div>`
+    ).join('');
+  } else {
+    itemsEl.innerHTML = `<div style="height:8px;border-radius:3px;margin-bottom:3px;background:${cfg.gradient}"></div>
+      <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted);font-family:var(--mono)">
+        <span>${cfg.loLabel}</span><span>${cfg.hiLabel}</span>
+      </div>`;
+  }
+}
+
+// ══════════════════════════════════════════════════
+// SIDEBAR / LAYER TOGGLES
+// ══════════════════════════════════════════════════
+const isMobile = () => window.innerWidth <= 600;
+
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  if (isMobile()) { sb.classList.toggle('open'); }
+  else { sb.classList.toggle('collapsed'); }
+}
+
+function toggleGroup(id) {
+  const body = document.getElementById('gb-'+id);
+  const chv  = document.getElementById('chv-'+id);
+  if (!body) return;
+  body.classList.toggle('open');
+  chv.style.transform = body.classList.contains('open') ? 'rotate(0deg)' : 'rotate(-90deg)';
+}
+
+function toggleLayer(id) {
+  const sw = document.getElementById('sw-'+id);
+  if (!sw) return;
+  const on = sw.classList.toggle('on');
+  if (id === 'greening') greeningLayer.setVisible(on);
+  if (id === 'metro')    metroLayer.setVisible(on);
+  if (id === 'impervious') imperviousLayer.setVisible(on);
+  if (id === 'unnc') {
+    // TODO: add UNNC boundary polygon layer
+  }
+}
+
+// ── Greening filter by status ──────────────────
+let activeStatus = 'all', activeGoal = 'all';
+
+function filterGreeningStatus(status) {
+  activeStatus = status;
+  document.querySelectorAll('#status-chips .st-chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.status === status);
+  });
+  applyGreeningFilter();
+}
+
+function filterWOSIP(goal) {
+  activeGoal = goal;
+  document.querySelectorAll('#wosip-chips .wosip-chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.goal === goal);
+  });
+  applyGreeningFilter();
+}
+
+function applyGreeningFilter() {
+  greeningSource.getFeatures().forEach(f => {
+    const st = f.get('status');
+    const goals = f.get('wosip') || [];
+    const statusOk = activeStatus === 'all' || st === activeStatus;
+    const goalOk   = activeGoal === 'all' || goals.includes(parseInt(activeGoal));
+    f.setStyle(statusOk && goalOk ? null : new ol.style.Style(null));
+  });
+}
+
+// ══════════════════════════════════════════════════
+// BASEMAP
+// ══════════════════════════════════════════════════
+function setBasemap(key) {
+  Object.keys(basemaps).forEach(k => basemaps[k].setVisible(false));
+  basemaps.street.setVisible(true); // always keep street as base
+  if (key !== 'street') basemaps[key].setVisible(true);
+  document.querySelectorAll('.bm-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('bm-'+key)?.classList.add('active');
+}
+
+// ══════════════════════════════════════════════════
+// CLICK → POPUP
+// ══════════════════════════════════════════════════
+function pct(v) { return (parseFloat(v)*100).toFixed(1)+'%'; }
+function fmt(v, d=1) { return parseFloat(v).toFixed(d); }
+
+function tesTier(score) {
+  const s = parseFloat(score);
+  if (s >= 80) return { label:'Good', color:'#2D7A2D', bg:'#E8F5E9' };
+  if (s >= 70) return { label:'Adequate', color:'#1565C0', bg:'#E3F2FD' };
+  if (s >= 60) return { label:'Below Average', color:'#C17D11', bg:'#FFF8E1' };
+  return { label:'Critical Need', color:'#B71C1C', bg:'#FDEAEA' };
+}
+
+function getWOSIPGoals(p) {
+  const goals = [];
+  if (parseFloat(p.tc_gap) > 0.12) goals.push(5);
+  if (parseFloat(p.temp_diff) > 1.5) goals.push(7);
+  if (parseFloat(p.priority_i) > 0.5) { if (!goals.includes(5)) goals.push(5); }
+  const veg = parseFloat(p._veg1200 || 0);
+  if (veg < 0.10) goals.push(3);
+  if (parseFloat(p.pctpoc) > 0.8 || parseFloat(p.pctpov) > 0.2) goals.push(1);
+  if (parseFloat(p.dep_perc) > 0.35) goals.push(2);
+  return [...new Set(goals)];
+}
+
+function buildTESPopup(props) {
+  const tier = tesTier(props.tes);
+  const gap  = parseFloat(props.tc_gap)*100;
+  const canopy = parseFloat(props.treecanopy)*100;
+  const goal   = parseFloat(props.tc_goal)*100;
+  const goals  = getWOSIPGoals(props);
+  const holcInfo = { A:'Historically "Best"', B:'Historically "Still Desirable"', C:'Historically "Declining"', D:'Historically "Hazardous" (Redlined)', null:'No HOLC grade recorded' };
+
+  return `
+    <!-- Header -->
+    <div style="background:${tier.bg};padding:16px 44px 14px 16px;border-bottom:1px solid var(--border)">
+      <div style="font-size:11px;color:${tier.color};font-weight:600;font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">${tier.label}</div>
+      <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:2px">${props.place || 'Los Angeles'}</div>
+      <div style="font-size:10px;color:var(--muted);font-family:var(--mono)">Block Group ${String(props.GEOID).slice(-6)} · ${props.county}</div>
+      <div style="display:flex;align-items:baseline;gap:8px;margin-top:10px">
+        <span style="font-size:42px;font-weight:700;color:${tier.color};font-family:var(--mono);line-height:1">${Math.round(props.tes)}</span>
+        <div>
+          <div style="font-size:11px;color:var(--text2);font-weight:500">Tree Equity Score</div>
+          <div style="font-size:10px;color:var(--muted);font-family:var(--mono)">Rank ${Math.round(props.rank).toLocaleString()} of ${Math.round(props.rankgrpsz).toLocaleString()} in LA</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Canopy -->
+    <div class="pop-section">
+      <div class="pop-sec-title">🌳 Tree Canopy</div>
+      <div style="margin-bottom:6px">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:3px;font-family:var(--mono)">
+          <span>Current: <b style="color:var(--text)">${canopy.toFixed(1)}%</b></span>
+          <span>Goal: <b style="color:var(--green)">${goal.toFixed(0)}%</b></span>
+          <span style="color:${gap>15?'var(--red)':'var(--amber)'}">Gap: −${gap.toFixed(1)}%</span>
+        </div>
+        <div class="prog-bar-wrap">
+          <div class="prog-bar-fill" style="width:${Math.min(100, canopy/goal*100)}%;background:${canopy/goal < 0.5 ? 'var(--red)' : canopy/goal < 0.8 ? 'var(--amber)' : 'var(--green)'}"></div>
+        </div>
+      </div>
+      <div class="pop-row"><span class="pop-row-label">Canopy source</span><span class="pop-row-val">${props.cnpysource}</span></div>
+    </div>
+
+    <!-- Heat & Climate -->
+    <div class="pop-section">
+      <div class="pop-sec-title">🌡 Heat & Climate</div>
+      <div class="pop-row">
+        <span class="pop-row-label">Heat vs city average</span>
+        <span class="pop-row-val" style="color:${parseFloat(props.temp_diff)>0?'var(--red)':'var(--blue)'}">
+          ${parseFloat(props.temp_diff)>0?'+':''}${fmt(props.temp_diff,2)}°F
+        </span>
+      </div>
+      <div class="pop-sec-title" style="margin-top:8px">☀️ Shade Coverage</div>
+      <div class="shade-grid">
+        <div class="shade-cell">
+          <div class="shade-time">Noon</div>
+          <div class="shade-pct">${pct(props._tot1200)}</div>
+          <div class="shade-type">🌳 ${pct(props._veg1200)} / 🏢 ${pct(props._bld1200)}</div>
+        </div>
+        <div class="shade-cell">
+          <div class="shade-time">3 PM</div>
+          <div class="shade-pct">${pct(props._tot1500)}</div>
+          <div class="shade-type">🌳 ${pct(props._veg1500)} / 🏢 ${pct(props._bld1500)}</div>
+        </div>
+        <div class="shade-cell">
+          <div class="shade-time">6 PM</div>
+          <div class="shade-pct">${pct(props._tot1800)}</div>
+          <div class="shade-type">🌳 ${pct(props._veg1800)} / 🏢 ${pct(props._bld1800)}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Equity -->
+    <div class="pop-section">
+      <div class="pop-sec-title">👥 Community Equity</div>
+      <div class="pop-row"><span class="pop-row-label">People of Color</span><span class="pop-row-val">${pct(props.pctpoc)}</span></div>
+      <div class="pop-row"><span class="pop-row-label">Below Poverty Line</span><span class="pop-row-val">${pct(props.pctpov)}</span></div>
+      <div class="pop-row"><span class="pop-row-label">Unemployment Rate</span><span class="pop-row-val">${pct(props.unemplrate)}</span></div>
+      <div class="pop-row"><span class="pop-row-label">Children & Seniors</span><span class="pop-row-val">${pct(props.dep_perc)}</span></div>
+      <div class="pop-row"><span class="pop-row-label">Linguistic isolation</span><span class="pop-row-val">${pct(props.linguistic)}</span></div>
+      ${props.ej_disadva === 'Yes' ? `<div style="margin-top:6px;padding:5px 9px;background:var(--amber-pale);border-radius:5px;font-size:10px;color:var(--amber);font-weight:600">✅ EPA Disadvantaged Community (IRA)</div>` : ''}
+      ${props.holc_grade ? `<div style="margin-top:6px;padding:5px 9px;background:${props.holc_grade==='D'?'var(--red-pale)':props.holc_grade==='C'?'#FFF8E1':'var(--green-pale)'};border-radius:5px;font-size:10px;color:var(--text2)">🏘 HOLC Grade <b>${props.holc_grade}</b> — ${holcInfo[props.holc_grade]||''}</div>` : ''}
+    </div>
+
+    <!-- WOSIP -->
+    ${goals.length ? `
+    <div class="pop-section">
+      <div class="pop-sec-title">🎯 WOSIP Priority Goals for this area</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px">
+        ${goals.map(g => `<span class="goal-tag">Goal ${g}: ${WOSIP_LABELS[g]||''}</span>`).join('')}
+      </div>
+    </div>` : ''}
+
+    <!-- Population -->
+    <div class="pop-section">
+      <div class="pop-sec-title">📊 Demographics</div>
+      <div class="pop-row"><span class="pop-row-label">Census population (2020)</span><span class="pop-row-val">${Math.round(props.cbg_pop).toLocaleString()}</span></div>
+      <div class="pop-row"><span class="pop-row-label">Land area</span><span class="pop-row-val">${fmt(props.land_area,3)} km²</span></div>
+      <div class="pop-row"><span class="pop-row-label">Biome</span><span class="pop-row-val">${props.biome}</span></div>
+    </div>
+  `;
+}
+
+function buildGreeningPopup(proj) {
+  const sc = STATUS_COLORS[proj.status] || STATUS_COLORS.proposed;
+  return `
+    <div style="background:var(--green-pale);padding:16px 44px 14px 16px;border-bottom:1px solid var(--border)">
+      <div style="display:inline-flex;align-items:center;gap:5px;margin-bottom:8px">
+        <span class="proj-status-badge" style="background:${sc.bg};color:${sc.text}">
+          <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${sc.dot};margin-right:4px"></span>
+          ${proj.status.charAt(0).toUpperCase()+proj.status.slice(1)}
+        </span>
+      </div>
+      <div style="font-size:16px;font-weight:700;color:var(--green-dark);margin-bottom:3px">${proj.name}</div>
+      <div style="font-size:10px;color:var(--text2);font-family:var(--mono)">${proj.region}</div>
+    </div>
+    <div class="pop-section">
+      <div class="pop-sec-title">📋 Project Description</div>
+      <div style="font-size:11px;color:var(--text2);line-height:1.6">${proj.desc}</div>
+    </div>
+    <div class="pop-section">
+      <div class="pop-sec-title">💰 Funding</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:5px">${proj.funding}</div>
+      <div class="pop-row"><span class="pop-row-label">Project area</span><span class="pop-row-val">${proj.area}</span></div>
+      <div class="pop-row"><span class="pop-row-label">Partners</span><span class="pop-row-val" style="text-align:right;max-width:160px">${proj.partners.join(', ')}</span></div>
+    </div>
+    <div class="pop-section">
+      <div class="pop-sec-title">🎯 WOSIP Goals</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px">
+        ${proj.wosip.map(g => `<span class="goal-tag">Goal ${g}: ${WOSIP_LABELS[g]||''}</span>`).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function openPopup(html) {
+  document.getElementById('popup-content').innerHTML = html;
+  const panel = document.getElementById('popup-panel');
+  panel.style.display = 'block';
+  requestAnimationFrame(() => panel.classList.add('open'));
+}
+
+function closePopup() {
+  const panel = document.getElementById('popup-panel');
+  panel.classList.remove('open');
+  setTimeout(() => { panel.style.display = 'none'; }, 220);
+}
+
+// Map click handler
+map.on('singleclick', e => {
+  // First check greening project markers
+  const gfeat = map.forEachFeatureAtPixel(e.pixel, f => f, {
+    layerFilter: l => l === greeningLayer, hitTolerance: 10,
+  });
+  if (gfeat) {
+    // Check if click hit a Metro station
+    const stationId = gfeat.getId();
+    const station = METRO_E_STATIONS.find(s => s.id === stationId);
+    if (station) {
+      openPopup(`<div style="min-width:180px">
+        <div style="font-weight:700;font-size:13px;margin-bottom:4px">🚇 ${station.name}</div>
+        <div style="font-size:10px;color:#EB7D24;font-weight:600;margin-bottom:4px">${station.lines.join(', ')}</div>
+        ${station.connections ? `<div style="font-size:10px;color:var(--text2)">${station.connections}</div>` : ''}
+      </div>`);
+      return;
+    }
+    const proj = (window._LIVE_GREENING || GREENING_PROJECTS).find(p => p.id === gfeat.getId());
+    if (proj) { openPopup(buildGreeningPopup(proj)); return; }
+  }
+  // Then check TES block groups
+  const tfeat = map.forEachFeatureAtPixel(e.pixel, f => f, {
+    layerFilter: l => l === tesLayer,
+  });
+  if (tfeat) {
+    openPopup(buildTESPopup(tfeat.getProperties()));
+    // Highlight selected feature
+    tesLayer.changed();
+    return;
+  }
+  closePopup();
+});
+
+// Hover cursor
+map.on('pointermove', e => {
+  const hit = map.hasFeatureAtPixel(e.pixel, {
+    layerFilter: l => l === tesLayer || l === greeningLayer || l === metroLayer,
+  });
+  map.getTargetElement().style.cursor = hit ? 'pointer' : '';
+});
+
+// ══════════════════════════════════════════════════
+// SEARCH (block group by place name or GEOID)
+// ══════════════════════════════════════════════════
+function handleSearch(val) {
+  if (!val || val.length < 2) return;
+  const v = val.toLowerCase();
+  const feat = tesSource.getFeatures().find(f => {
+    const p = f.getProperties();
+    return String(p.GEOID).includes(val) || (p.place||'').toLowerCase().includes(v);
+  });
+  if (feat) {
+    const ext = feat.getGeometry().getExtent();
+    map.getView().fit(ext, { duration:400, padding:[60,40,40,40], maxZoom:16 });
+    openPopup(buildTESPopup(feat.getProperties()));
+  }
+}
+
+// ══════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════
+// Close sidebar on mobile by default
+if (isMobile()) {
+  document.getElementById('sidebar').classList.remove('open');
+}
+// ── §B4  v_greening_map_pins — lean egress (~80% smaller than full table) ──────
+// Queries v_greening_map_pins instead of greening_projects.  The view returns
+// only the columns the map needs (id, name, region, status, wosip_goals, lat, lng).
+// Rich fields (notes, funding_source, partners, amount) live in the base table
+// and are served only when a popup is opened.  The cached wrapper below prevents
+// duplicate fetches when filters or layer toggles re-call this function.
+let _gmpFetchPromise = null; // page-lifetime cache slot
+
+async function loadGreeningFromSupabase() {
+  try {
+    const { data, error } = await sbGMP
+      .from('v_greening_map_pins')                          // ← was 'greening_projects'
+      .select('id,name,region,status,wosip_goals,lat,lng')  // ← pin-only columns
+      .order('name');
+    if (error) throw error;
+    if (!data || data.length === 0) return; // keep hardcoded fallback visible
+    // Merge with GREENING_PROJECTS fallback for popup-only fields
+    // (desc, funding, area, partners) so the popup stays richly filled even
+    // before a separate detail fetch is wired up.
+    const liveProjects = data.map(p => {
+      const fb = GREENING_PROJECTS.find(f => f.id === p.id) || {};
+      return {
+        id:       p.id,
+        name:     p.name,
+        region:   p.region          ?? fb.region   ?? '',
+        desc:     fb.desc           ?? '',
+        lat:      p.lat,
+        lng:      p.lng,
+        status:   p.status          ?? 'proposed',
+        wosip:    p.wosip_goals     ?? fb.wosip    ?? [],
+        funding:  fb.funding        ?? '',
+        area:     fb.area           ?? '',
+        partners: fb.partners       ?? [],
+      };
     });
+    // Swap source features for live data
+    greeningSource.clear();
+    const newSource = makeGreeningSource(liveProjects);
+    newSource.getFeatures().forEach(f => greeningSource.addFeature(f));
+    // Update sidebar count badge
+    const badge = document.getElementById('cnt-greening');
+    if (badge) badge.textContent = liveProjects.length;
+    // Expose live list to click handler
+    window._LIVE_GREENING = liveProjects;
+    console.log(`[GMP] Loaded ${liveProjects.length} pins from v_greening_map_pins`);
+  } catch(e) {
+    console.warn('[GMP] Supabase load failed, using hardcoded fallback:', e.message);
+  } finally {
+    // Always clear the promise so a subsequent call can retry after a network interruption
+    _gmpFetchPromise = null;
+  }
+}
 
-    function initMapInterface() {
-      // Centered on the Jefferson Boulevard Commercial Corridor
-      map = L.map('leaflet-map-canvas', {
-        center: [34.0250, -118.3200],
-        zoom: 14,
-        zoomControl: false
-      });
+/**
+ * loadMapPinsCached()
+ * Deduplicates concurrent callers — returns the same in-flight Promise so
+ * filter/toggle handlers don't each fire a separate network request.
+ * After the fetch resolves (success or failure), _gmpFetchPromise is cleared
+ * by loadGreeningFromSupabase's finally block, allowing a clean retry if the
+ * network was interrupted.
+ */
+async function loadMapPinsCached() {
+  if (!_gmpFetchPromise) {
+    _gmpFetchPromise = loadGreeningFromSupabase();
+  }
+  return _gmpFetchPromise;
+}
 
-      // Layer Definition Hierarchy (CartoDB Positron for high contrast legibility)
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
-      }).addTo(map);
+// Run after map initialises — use cached wrapper
+setTimeout(loadMapPinsCached, 600);
 
-      L.control.zoom({ position: 'topright' }).addTo(map);
-      greeningPinsLayerGroup.addTo(map);
-    }
-
-    // ══════════════════════════════════════════════════════════════════
-    // LAYER TRANSITIONS: TREE EQUITY ASSETS (DECOUPLED ASYNC MODULE)
-    // ══════════════════════════════════════════════════════════════════
-    async function fetchTreeEquityData() {
-      try {
-        // Point this endpoint directly to your storage bucket or public data route
-        const response = await fetch('https://your-supabase-bucket.supabase.co/storage/v1/object/public/geojson/unnctes.geojson');
-        if (!response.ok) throw new Error("Data asset target offline");
-        const geojsonData = await response.json();
-
-        treeEquityGeoJsonLayer = L.geoJson(geojsonData, {
-          style: function(feature) {
-            const priorityIndex = feature.properties.priority_i || 0;
-            // High visibility mapping color spectrum based on priority thresholds
-            return {
-              fillColor: priorityIndex > 0.5 ? '#B93020' : '#5B7A47',
-              weight: 1.5,
-              opacity: 0.8,
-              color: '#D8D3C7',
-              fillOpacity: 0.18
-            };
-          },
-          onEachFeature: function(feature, layer) {
-            if (feature.properties) {
-              layer.bindPopup(`
-                <div style="padding: 8px; font-family: var(--font);">
-                  <b style="font-size: 13px; color: var(--accent);">Tree Equity Target Block</b><br>
-                  <span style="font-size:11px; color: var(--muted);">GEOID: ${feature.properties.GEOID || 'N/A'}</span><br>
-                  <hr style="margin: 6px 0; border:0; border-top:1px solid var(--border);">
-                  <div style="font-size:12px;">Score: <b>${feature.properties.tes || 'N/A'}</b> / 100</div>
-                  <div style="font-size:12px;">Canopy Gap: <b>${Math.round((feature.properties.tc_gap || 0) * 100)}%</b></div>
-                </div>
-              `);
-            }
-          }
-        }).addTo(map);
-      } catch (err) {
-        console.warn("[GMP Engine] GeoJSON layer asset loading fallback executed:", err.message);
-      }
-    }
-
-    // ══════════════════════════════════════════════════════════════════
-    // DATA LAYER SYNCHRONIZATION FROM SUPABASE VIEW
-    // ══════════════════════════════════════════════════════════════════
-    async function loadLiveGreeningPins() {
-      try {
-        // Queries structural view matching database mutations
-        const { data, error } = await sb
-          .from('v_greening_map_pins')
-          .select('*');
-
-        if (error) throw error;
-
-        liveCachePins = data || [];
-        renderMapFeatures(liveCachePins);
-      } catch (err) {
-        console.error("[GMP Sync Engine] Query fault on v_greening_map_pins view:", err.message);
-      }
-    }
-
-    function renderMapFeatures(pins) {
-      greeningPinsLayerGroup.clear();
-      
-      pins.forEach(pin => {
-        if (!pin.lat || !pin.lng) return;
-
-        // Custom stylized markers configured via matching dashboard configurations
-        const statusColor = pin.phase === 'planted' ? 'var(--accent)' : 
-                            pin.phase === 'approved' ? 'var(--blue)' : 'var(--amber)';
-
-        const pinMarker = L.circleMarker([pin.lat, pin.lng], {
-          radius: 8,
-          fillColor: statusColor,
-          color: '#FFFFFF',
-          weight: 2,
-          fillOpacity: 0.9
-        });
-
-        // Formats interactive descriptions cleanly inside the popup wrapper
-        const inlinePopupDetails = `
-          <div style="padding:10px; font-family:var(--font); color:var(--text); max-width:240px">
-            <div style="font-weight:600; font-size:13px; color:${statusColor}; margin-bottom:4px;">
-              ${pin.species_common || 'Proposed Tree Site'}
-            </div>
-            <div style="font-size:11px; line-height:1.4; margin-bottom:6px;">
-              ${pin.notes || 'No description notes logged for this target site.'}
-            </div>
-            <hr style="border:0; border-top:1px solid var(--border); margin:6px 0;">
-            <div style="font-size:10px; color:var(--muted); font-family:var(--mono);">
-              PHASE: ${pin.phase ? pin.phase.toUpperCase() : 'PLANNING'}<br>
-              PARTNER: ${pin.partners || 'Unassigned'}
-            </div>
-          </div>
-        `;
-
-        pinMarker.bindPopup(inlinePopupDetails);
-        greeningPinsLayerGroup.addLayer(pinMarker);
-      });
-
-      // Synchronize Badge Counters
-      const countDisplay = document.getElementById('cnt-greening');
-      if (countDisplay) countDisplay.textContent = pins.length;
-    }
-
-    // ══════════════════════════════════════════════════════════════════
-    // RUNTIME FILTER TRANSITIONS
-    // ══════════════════════════════════════════════════════════════════
-    function applyLayerFilters() {
-      const targetPhase = document.getElementById('filter-phase').value;
-      const targetFunding = document.getElementById('filter-funding').value;
-
-      const filteredSubset = liveCachePins.filter(pin => {
-        const matchesPhase = (targetPhase === 'all' || pin.phase === targetPhase);
-        const matchesFunding = (targetFunding === 'all' || (pin.partners && pin.partners.toLowerCase().includes(targetFunding)));
-        return matchesPhase && matchesFunding;
-      });
-
-      renderMapFeatures(filteredSubset);
-    }
-  </script>
+</script>
 </body>
 </html>

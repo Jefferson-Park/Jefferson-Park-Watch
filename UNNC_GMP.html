@@ -59,9 +59,9 @@ html, body { margin: 0; padding: 0; width:100%; height:100%; overflow:hidden; fo
   
   #map {
     width: 100%;
-    height: 100%;
+    height: calc(100% - var(--tb-height));
     position: absolute;
-    top: 0;
+    top: var(--tb-height);
     left: 0;
     background-color: #f8f9fa;
   }
@@ -984,7 +984,7 @@ window.addEventListener('DOMContentLoaded', () => {
 loadMapPinsCached();
 
       setTimeout(() => map.updateSize(), 280);
-  }, 0); // end setTimeout
+  }, 150); // end setTimeout
 }); // end DOMContentLoaded
 
 // ══════════════════════════════════════════════════

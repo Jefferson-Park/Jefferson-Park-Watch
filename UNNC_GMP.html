@@ -254,6 +254,86 @@ html, body { width:100%; height:100%; overflow:hidden; font-family:var(--font); 
 .ol-attribution { bottom:4px !important; right:4px !important; }
 .ol-attribution button, .ol-attribution ul { background:rgba(250,250,247,.8) !important; color:var(--muted) !important; font-size:9px !important; }
 
+/* ── Zoom controls — right side (avoids mobile address bar) ─── */
+.ol-zoom {
+  right: 12px !important;
+  left: auto !important;
+  top: calc(var(--tb-height) + 12px) !important;
+  bottom: auto !important;
+}
+.ol-zoom .ol-zoom-in,
+.ol-zoom .ol-zoom-out {
+  background: var(--white) !important;
+  color: var(--text2) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 6px !important;
+  margin: 2px 0 !important;
+  width: 32px !important;
+  height: 32px !important;
+  font-size: 18px !important;
+  line-height: 30px !important;
+  box-shadow: var(--shadow) !important;
+}
+
+/* ── Popup z-index above sidebar ────────────────────── */
+#popup-panel { z-index: 300 !important; }
+
+/* ── Locate Me button in topbar ─────────────────────── */
+#locate-btn {
+  width: 34px; height: 34px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--white);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--text2); flex-shrink: 0;
+  font-size: 16px; transition: all .15s;
+}
+#locate-btn:hover { background: var(--green-pale); border-color: var(--green); color: var(--green); }
+#locate-btn.active { background: var(--green); border-color: var(--green); color: #fff; }
+
+/* ── Back link to JP_NIM in topbar ──────────────────── */
+#back-link {
+  display: flex; align-items: center; gap: 5px;
+  padding: 5px 10px; font-size: 11px; font-weight: 500;
+  color: var(--text2); border: 1px solid var(--border);
+  background: var(--white); border-radius: 8px; text-decoration: none;
+  flex-shrink: 0; transition: all .15s; white-space: nowrap;
+}
+#back-link:hover { border-color: var(--green); color: var(--green); background: var(--green-pale); }
+
+/* ── Sidebar toggle: red ────────────────────────────── */
+#sb-toggle {
+  background: var(--red) !important;
+  color: #fff !important;
+  border-color: var(--red) !important;
+  flex-direction: column;
+}
+#sb-toggle:hover { background: #8B2020 !important; border-color: #8B2020 !important; }
+.sb-toggle-label {
+  font-size: 8px; font-weight: 700; font-family: var(--mono);
+  text-transform: uppercase; letter-spacing: .04em;
+  margin-top: 2px; line-height: 1; color: #fff;
+}
+
+/* ── Toast notification ─────────────────────────────── */
+#toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  padding: 9px 18px; border-radius: 8px; font-size: 12px; font-weight: 500;
+  z-index: 9999; display: none; pointer-events: none; box-shadow: var(--shadow-lg);
+  font-family: var(--font);
+}
+#toast.ok  { background: #1B5E20; color: #fff; }
+#toast.err { background: var(--red); color: #fff; }
+
+/* ── PurpleAir sensor dot ───────────────────────────── */
+.pa-sensor-dot {
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-weight: 700; border: 2px solid rgba(0,0,0,.25); box-shadow: 0 1px 4px rgba(0,0,0,.35);
+}
+
+/* ── Desktop: hide label on sb-toggle ──────────────── */
+@media (min-width: 601px) {
+  .sb-toggle-label { display: none; }
+}
+
 /* ── Mobile ───────────────────────────────────── */
 @media (max-width:600px) {
   :root { --sb-width:292px; }
@@ -297,7 +377,7 @@ html, body { width:100%; height:100%; overflow:hidden; font-family:var(--font); 
 
       <!-- Data Overlay -->
       <div id="overlay-strip">
-        <div class="ov-label">📊 Data Overlay</div>
+        <div class="ov-label">📊 Tree Equity Score (TES) Data Overlay</div>
         <div class="ov-btns">
           <button class="ov-btn active" onclick="setOverlay('off')">Off</button>
           <button class="ov-btn" onclick="setOverlay('tes')">TES Score</button>
@@ -342,14 +422,17 @@ html, body { width:100%; height:100%; overflow:hidden; font-family:var(--font); 
             <span class="st-chip" data-status="active" onclick="filterGreeningStatus('active')">Active</span>
           </div>
           <!-- WOSIP filter -->
-          <div style="padding:4px 4px 2px;font-size:9px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em">WOSIP Goals</div>
+          <div style="padding:4px 4px 2px;font-size:9px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em">WOSIP Goals <span style="font-weight:400;letter-spacing:0;text-transform:none">(Watershed Opportunities for Sustained Infrastructure Planning)</span></div>
           <div class="wosip-chips" id="wosip-chips">
             <span class="wosip-chip active" data-goal="all" onclick="filterWOSIP('all')">All Goals</span>
-            <span class="wosip-chip" data-goal="1" onclick="filterWOSIP('1')">G1 Safe Communities</span>
-            <span class="wosip-chip" data-goal="2" onclick="filterWOSIP('2')">G2 Park Access</span>
-            <span class="wosip-chip" data-goal="3" onclick="filterWOSIP('3')">G3 Water</span>
-            <span class="wosip-chip" data-goal="5" onclick="filterWOSIP('5')">G5 Urban Forest</span>
-            <span class="wosip-chip" data-goal="7" onclick="filterWOSIP('7')">G7 Heat</span>
+            <span class="wosip-chip" data-goal="1" onclick="filterWOSIP('1')" title="Empower Safe and Resilient Communities">G1 Safe Communities</span>
+            <span class="wosip-chip" data-goal="2" onclick="filterWOSIP('2')" title="Increase Access to Parks and Open Spaces">G2 Park Access</span>
+            <span class="wosip-chip" data-goal="3" onclick="filterWOSIP('3')" title="Protect and Manage Water Resources">G3 Water</span>
+            <span class="wosip-chip" data-goal="4" onclick="filterWOSIP('4')" title="Increase Biodiversity">G4 Biodiversity</span>
+            <span class="wosip-chip" data-goal="5" onclick="filterWOSIP('5')" title="Advance Urban Forest Health">G5 Urban Forest</span>
+            <span class="wosip-chip" data-goal="6" onclick="filterWOSIP('6')" title="Remediate Degraded Lands">G6 Remediate Lands</span>
+            <span class="wosip-chip" data-goal="7" onclick="filterWOSIP('7')" title="Mitigate Impacts from Extreme Heat">G7 Heat</span>
+            <span class="wosip-chip" data-goal="8" onclick="filterWOSIP('8')" title="Prevent Wildfire">G8 Wildfire</span>
           </div>
         </div>
       </div>
@@ -361,9 +444,9 @@ html, body { width:100%; height:100%; overflow:hidden; font-family:var(--font); 
           <span class="grp-chevron" id="chv-trees" style="transform:rotate(-90deg)">▾</span>
         </div>
         <div class="grp-body" id="gb-trees">
-          <div class="tog-row"><div class="tog-icon" style="background:#E8F5E9">🌲</div><div class="tog-label">Street Trees<span class="tog-sub">Field inventory</span></div><div class="tog-sw" id="sw-trees"></div></div>
-          <div class="tog-row"><div class="tog-icon" style="background:#F1F8E9">🌱</div><div class="tog-label">Planting Sites<span class="tog-sub">Vacant wells & opportunities</span></div><div class="tog-sw" id="sw-planting"></div></div>
-          <div class="tog-row"><div class="tog-icon" style="background:#E8F5E9">🏞</div><div class="tog-label">Parks & Trails<span class="tog-sub">Open space access</span></div><div class="tog-sw" id="sw-parks"></div></div>
+          <div class="tog-row" onclick="toggleLayer('trees')"><div class="tog-icon" style="background:#E8F5E9">🌲</div><div class="tog-label">Street Trees<span class="tog-sub">Field inventory · Supabase</span></div><div class="tog-sw" id="sw-trees"></div></div>
+          <div class="tog-row" onclick="toggleLayer('planting')"><div class="tog-icon" style="background:#F1F8E9">🌱</div><div class="tog-label">Planting Sites<span class="tog-sub">Vacant wells + stumps + sites</span></div><div class="tog-sw" id="sw-planting"></div></div>
+          <div class="tog-row" onclick="toggleLayer('parks')"><div class="tog-icon" style="background:#E8F5E9">🏞</div><div class="tog-label">Parks & Trails<span class="tog-sub">Open space access</span></div><div class="tog-sw" id="sw-parks"></div></div>
         </div>
       </div>
 
@@ -391,38 +474,75 @@ html, body { width:100%; height:100%; overflow:hidden; font-family:var(--font); 
           <span class="grp-chevron" id="chv-env" style="transform:rotate(-90deg)">▾</span>
         </div>
         <div class="grp-body" id="gb-env">
-          <div class="tog-row"><div class="tog-icon" style="background:#FFF8E1">💨</div><div class="tog-label">Air Quality (PurpleAir)<span class="tog-sub">Live sensor data</span></div><div class="tog-sw" id="sw-air"></div></div>
-          <div class="tog-row"><div class="tog-icon" style="background:#FFF3E0">🌡</div><div class="tog-label">Heat Sensors<span class="tog-sub">Add data layer</span></div><div class="tog-sw" id="sw-heat-pts"></div></div>
+          <div class="tog-row" onclick="toggleLayer('air')"><div class="tog-icon" style="background:#FFF8E1">💨</div><div class="tog-label">Air Quality (PurpleAir)<span class="tog-sub">Live sensor data · viewport</span></div><div class="tog-sw" id="sw-air"></div></div>
+          <div class="tog-row" style="opacity:.55;cursor:not-allowed" title="Heat sensor data — coming soon"><div class="tog-icon" style="background:#FFF3E0">🌡</div><div class="tog-label">Heat Sensors<span class="tog-sub">Coming soon</span></div><div class="tog-sw" id="sw-heat-pts"></div></div>
         </div>
       </div>
 
-      <!-- 4. Traffic Safety & Streets (replaces UNNC boundary toggle freed slot) -->
+      <!-- 5. Traffic Safety & Streets -->
       <div class="layer-group">
         <div class="grp-head" onclick="toggleGroup('traffic')">
           <span>🚦 Traffic Safety &amp; Streets</span>
           <span class="grp-chevron" id="chv-traffic" style="transform:rotate(-90deg)">▾</span>
         </div>
         <div class="grp-body" id="gb-traffic">
-          <!-- Metro E Line stations — static markers, always accurate -->
-          <div class="tog-row" onclick="toggleLayer('metro')">
-            <div class="tog-icon" style="background:rgba(235,125,36,.12)">🚇</div>
-            <div class="tog-label">Metro E Line Stops<span class="tog-sub">Jefferson/USC · Expo Park/USC</span></div>
-            <div class="tog-sw" id="sw-metro"></div>
+          <div class="tog-row" onclick="toggleLayer('traffic')">
+            <div class="tog-icon" style="background:rgba(211,47,47,.1)">🚗</div>
+            <div class="tog-label">Traffic Collisions<span class="tog-sub" id="lapd-status">LAPD · last 90 days</span></div>
+            <div class="tog-sw" id="sw-traffic"></div>
           </div>
           <!-- Vision Zero HIN placeholder -->
-          <div class="tog-row" style="opacity:.55;cursor:not-allowed" title="Coming soon — LADOT Vision Zero data">
+          <div class="tog-row" style="opacity:.55;cursor:not-allowed" title="Zero HIN — connect to LADOT Vision Zero API">
             <div class="tog-icon" style="background:rgba(211,47,47,.12)">⚠️</div>
-            <div class="tog-label">Vision Zero HIN<span class="tog-sub">High Injury Network — coming soon</span></div>
+            <div class="tog-label">Zero HIN<span class="tog-sub">High Injury Network · LADOT API — coming soon</span></div>
             <div class="tog-sw" id="sw-hin"></div>
+          </div>
+          <!-- DOT Transportation map placeholder -->
+          <div class="tog-row" style="opacity:.55;cursor:not-allowed" title="LADOT Transportation Map — coming soon">
+            <div class="tog-icon" style="background:rgba(21,101,192,.1)">🗺</div>
+            <div class="tog-label">Transportation Map<span class="tog-sub">LADOT — placeholder</span></div>
+            <div class="tog-sw" id="sw-dot"></div>
+          </div>
+          <!-- Metro First Mile/Last Mile placeholder -->
+          <div class="tog-row" style="opacity:.55;cursor:not-allowed" title="Metro First Mile/Last Mile — coming soon">
+            <div class="tog-icon" style="background:rgba(235,125,36,.12)">🚇</div>
+            <div class="tog-label">Metro First/Last Mile<span class="tog-sub">Metro — placeholder</span></div>
+            <div class="tog-sw" id="sw-metro-fmlm"></div>
           </div>
         </div>
       </div>
 
-      <!-- 5. Boundaries -->
+      <!-- 5. Boundaries — keep UNNC boundary, remove Boundaries & Services group -->
 
+      <!-- 6. Community Improvements — wired to JP_NIM annotation categories -->
+      <div class="layer-group">
+        <div class="grp-head" onclick="toggleGroup('community')">
+          <span>🏗 Community Improvements</span>
+          <span class="grp-chevron" id="chv-community" style="transform:rotate(-90deg)">▾</span>
+        </div>
+        <div class="grp-body" id="gb-community">
+          <div class="tog-row" onclick="toggleLayer('improvement')">
+            <div class="tog-icon" style="background:#E8F5E9">🔧</div>
+            <div class="tog-label">Improvements<span class="tog-sub">Community reported</span></div>
+            <div class="tog-sw" id="sw-improvement"></div>
+          </div>
+          <div class="tog-row" onclick="toggleLayer('art_mural')">
+            <div class="tog-icon" style="background:#FCE4EC">🎨</div>
+            <div class="tog-label">Art &amp; Murals<span class="tog-sub">Cultural placemaking</span></div>
+            <div class="tog-sw" id="sw-art_mural"></div>
+          </div>
+          <div class="tog-row" onclick="toggleLayer('trash')">
+            <div class="tog-icon" style="background:#FFF9C4">🗑</div>
+            <div class="tog-label">Trash &amp; Hazards<span class="tog-sub">Nuisance reports</span></div>
+            <div class="tog-sw" id="sw-trash"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- UNNC Boundary — standalone toggle -->
       <div class="layer-group">
         <div class="grp-head" onclick="toggleGroup('bounds')">
-          <span>🗺 Boundaries & Services</span>
+          <span>🔲 UNNC Boundary</span>
           <span class="grp-chevron" id="chv-bounds" style="transform:rotate(-90deg)">▾</span>
         </div>
         <div class="grp-body" id="gb-bounds">
@@ -431,45 +551,6 @@ html, body { width:100%; height:100%; overflow:hidden; font-family:var(--font); 
             <div class="tog-label">UNNC Boundary<span class="tog-sub">6 Planning Regions</span></div>
             <div class="tog-sw" id="sw-unnc"></div>
           </div>
-          <div class="tog-row"><div class="tog-icon" style="background:#F3E5F5">🏛</div><div class="tog-label">Council District 10<span class="tog-sub">Political boundary</span></div><div class="tog-sw" id="sw-council"></div></div>
-        </div>
-      </div>
-
-      <!-- 6–9: Collapsed placeholder groups -->
-      <div class="layer-group">
-        <div class="grp-head" onclick="toggleGroup('community')">
-          <span>🏗 Community Improvements</span>
-          <span class="grp-chevron" id="chv-community" style="transform:rotate(-90deg)">▾</span>
-        </div>
-        <div class="grp-body" id="gb-community">
-          <div style="padding:8px 4px;font-size:11px;color:var(--muted);font-style:italic">Connect to Neighborhood Improvement Map layers</div>
-        </div>
-      </div>
-      <div class="layer-group">
-        <div class="grp-head" onclick="toggleGroup('arts')">
-          <span>🎨 Arts & Culture</span>
-          <span class="grp-chevron" id="chv-arts" style="transform:rotate(-90deg)">▾</span>
-        </div>
-        <div class="grp-body" id="gb-arts">
-          <div style="padding:8px 4px;font-size:11px;color:var(--muted);font-style:italic">Murals, cultural placemaking sites</div>
-        </div>
-      </div>
-      <div class="layer-group">
-        <div class="grp-head" onclick="toggleGroup('business')">
-          <span>🏪 Business & Econ Dev</span>
-          <span class="grp-chevron" id="chv-business" style="transform:rotate(-90deg)">▾</span>
-        </div>
-        <div class="grp-body" id="gb-business">
-          <div style="padding:8px 4px;font-size:11px;color:var(--muted);font-style:italic">Connect to Neighborhood Improvement Map layers</div>
-        </div>
-      </div>
-      <div class="layer-group">
-        <div class="grp-head" onclick="toggleGroup('safety')">
-          <span>🚨 Safety & Crime</span>
-          <span class="grp-chevron" id="chv-safety" style="transform:rotate(-90deg)">▾</span>
-        </div>
-        <div class="grp-body" id="gb-safety">
-          <div style="padding:8px 4px;font-size:11px;color:var(--muted);font-style:italic">Connect to Neighborhood Improvement Map layers</div>
         </div>
       </div>
 
@@ -479,15 +560,20 @@ html, body { width:100%; height:100%; overflow:hidden; font-family:var(--font); 
 
   <!-- ═══ MAP WRAP ═══ -->
   <div id="map-wrap">
-    <div id="sb-toggle" onclick="toggleSidebar()">
+    <div id="sb-toggle" onclick="toggleSidebar()" title="Move Layers">
       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      <span class="sb-toggle-label">Layers</span>
     </div>
     <!-- Topbar -->
     <div id="topbar">
+      <a id="back-link" href="JP_NIM.html" title="Back to Neighborhood Improvement Map">
+        ← NIM
+      </a>
       <div id="search-wrap">
         <span class="search-icon">🔍</span>
         <input id="search-input" type="text" placeholder="Search block group or address…" oninput="handleSearch(this.value)">
       </div>
+      <button id="locate-btn" onclick="gmpLocateMe()" title="Locate me on map">📍</button>
     </div>
     <div id="map"></div>
     <!-- Map legend -->
@@ -504,6 +590,7 @@ html, body { width:100%; height:100%; overflow:hidden; font-family:var(--font); 
   </div>
 
 </div><!-- /app -->
+<div id="toast"></div>
 
 <script>
 'use strict';
@@ -518,7 +605,308 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 const { createClient } = supabase;
 const sbGMP = createClient(SUPABASE_URL, SUPABASE_ANON);
 
-// Fallback hardcoded projects — used if Supabase returns empty or errors.
+// ══════════════════════════════════════════════════
+// SUPABASE LAYER INFRASTRUCTURE
+// Mirrors JP_NIM's category layer system, adapted for OpenLayers (OL).
+// Each toggle maps to one ol.source.Vector + ol.layer.Vector.
+// ══════════════════════════════════════════════════
+const sbLayerSources = {
+  trees:       new ol.source.Vector(),
+  planting:    new ol.source.Vector(),  // vacant_well + planting_site + stump
+  parks:       new ol.source.Vector(),  // parks + trail
+  traffic:     new ol.source.Vector(),  // LAPD collisions
+  air:         new ol.source.Vector(),  // PurpleAir sensors
+  improvement: new ol.source.Vector(),
+  art_mural:   new ol.source.Vector(),
+  trash:       new ol.source.Vector(),
+};
+
+// Category value → which sbLayerSources key collects it
+const CAT_TO_LAYER = {
+  tree:          'trees',
+  stump:         'planting',
+  vacant_well:   'planting',
+  planting_site: 'planting',
+  parks:         'parks',
+  trail:         'parks',
+  improvement:   'improvement',
+  art_mural:     'art_mural',
+  mural:         'art_mural',
+  trash:         'trash',
+  hazard:        'trash',
+  nuisance_property: 'trash',
+};
+
+// Icon per layer
+const LAYER_ICON_COLOR = {
+  trees:       { emoji:'🌲', bg:'#E8F5E9' },
+  planting:    { emoji:'🌱', bg:'#F1F8E9' },
+  parks:       { emoji:'🏞', bg:'#E8F5E9' },
+  traffic:     { emoji:'🚗', bg:'rgba(211,47,47,.12)' },
+  air:         { emoji:'💨', bg:'#FFF8E1' },
+  improvement: { emoji:'🔧', bg:'#E8F5E9' },
+  art_mural:   { emoji:'🎨', bg:'#FCE4EC' },
+  trash:       { emoji:'🗑',  bg:'#FFF9C4' },
+};
+
+function makeSBStyle(key) {
+  const cfg = LAYER_ICON_COLOR[key] || { emoji:'📍', bg:'#eee' };
+  return new ol.style.Style({
+    image: new ol.style.Circle({
+      radius: 7,
+      fill: new ol.style.Fill({ color: cfg.bg }),
+      stroke: new ol.style.Stroke({ color: '#666', width: 1.2 }),
+    }),
+  });
+}
+
+const sbOLLayers = {};
+Object.keys(sbLayerSources).forEach(key => {
+  sbOLLayers[key] = new ol.layer.Vector({
+    source: sbLayerSources[key],
+    style:  () => makeSBStyle(key),
+    visible: false,
+    zIndex:  15,
+  });
+});
+
+// PurpleAir: not a vector layer, managed via feature markers added manually
+let _purpleAirVisible = false;
+let _purpleAirMoveHandler = null;
+let _toastTimer = null;
+
+// ══════════════════════════════════════════════════
+// UTILITIES
+// ══════════════════════════════════════════════════
+function showToast(msg, type = 'ok') {
+  const t = document.getElementById('toast');
+  if (!t) return;
+  t.textContent = msg; t.className = type; t.style.display = 'block';
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { t.style.display = 'none'; }, 3500);
+}
+
+function aqiColorFromPm25(pm) {
+  if (pm == null || isNaN(pm)) return '#aaaaaa';
+  if (pm <= 12.0)  return '#00e400';
+  if (pm <= 35.4)  return '#ffff00';
+  if (pm <= 55.4)  return '#ff7e00';
+  if (pm <= 150.4) return '#ff0000';
+  if (pm <= 250.4) return '#8f3f97';
+  return '#7e0023';
+}
+function aqiLabelFromPm25(pm) {
+  if (pm == null || isNaN(pm)) return 'No data';
+  if (pm <= 12.0)  return 'Good';
+  if (pm <= 35.4)  return 'Moderate';
+  if (pm <= 55.4)  return 'Unhealthy for Sensitive Groups';
+  if (pm <= 150.4) return 'Unhealthy';
+  if (pm <= 250.4) return 'Very Unhealthy';
+  return 'Hazardous';
+}
+
+// ══════════════════════════════════════════════════
+// FETCH FUNCTIONS — each populates the corresponding sbLayerSources key
+// Categories map is the same as JP_NIM's map_annotations table.
+// ══════════════════════════════════════════════════
+
+// Shared annotation fetcher — fetches all public annotations once
+// then distributes to the correct source.
+let _annotationsCache = null;
+
+async function loadAnnotationsOnce() {
+  if (_annotationsCache) return _annotationsCache;
+  try {
+    const { data, error } = await sbGMP.rpc('get_annotations_geojson');
+    if (error) throw error;
+    const { data: catData } = await sbGMP
+      .from('map_annotations')
+      .select('id,category,category_data,status,is_sensitive')
+      .eq('is_public', true);
+    const catMap = {};
+    if (catData) catData.forEach(r => { catMap[r.id] = r; });
+    _annotationsCache = (data || []).map(f => ({
+      ...f,
+      ...(catMap[f.id] || {}),
+    }));
+    return _annotationsCache;
+  } catch(e) {
+    console.warn('[GMP annotations]', e.message);
+    return [];
+  }
+}
+
+async function fetchCategoryLayer(layerKey) {
+  const src = sbLayerSources[layerKey];
+  if (!src) return;
+  src.clear();
+  const anns = await loadAnnotationsOnce();
+  const fmt = new ol.format.GeoJSON();
+  let count = 0;
+  anns.forEach(ann => {
+    if (ann.is_sensitive) return;
+    const cat = ann.category || 'observation';
+    if (CAT_TO_LAYER[cat] !== layerKey) return;
+    if (!ann.geometry_geojson) return;
+    try {
+      const geoj = typeof ann.geometry_geojson === 'string'
+        ? JSON.parse(ann.geometry_geojson) : ann.geometry_geojson;
+      const features = fmt.readFeatures(
+        { type:'FeatureCollection', features:[{ type:'Feature', geometry: geoj, properties: ann }] },
+        { dataProjection:'EPSG:4326', featureProjection:'EPSG:3857' }
+      );
+      features.forEach(f => { f.setId(ann.id); src.addFeature(f); });
+      count++;
+    } catch(e) { /* skip malformed */ }
+  });
+  console.log(`[GMP] ${layerKey}: ${count} features`);
+  return count;
+}
+
+// LAPD Traffic Collisions (same Edge Function as JP_NIM)
+async function fetchTrafficLayer() {
+  const src = sbLayerSources['traffic'];
+  src.clear();
+  const statusEl = document.getElementById('lapd-status');
+  if (statusEl) statusEl.textContent = 'Loading…';
+
+  const from = (() => { const d = new Date(); d.setDate(d.getDate()-90); return d.toISOString().slice(0,10); })();
+  const to   = new Date().toISOString().slice(0,10);
+  const ext  = map.getView().calculateExtent(map.getSize());
+  const ll   = ol.proj.toLonLat([ext[0], ext[1]]);
+  const ur   = ol.proj.toLonLat([ext[2], ext[3]]);
+  const bbox = { nLat: ur[1], sLat: ll[1], wLng: ll[0], eLng: ur[0] };
+
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/functions/v1/lapd-traffic?from=${from}&to=${to}&nLat=${bbox.nLat}&sLat=${bbox.sLat}&wLng=${bbox.wLng}&eLng=${bbox.eLng}&limit=600`,
+      { headers: { 'Authorization': `Bearer ${SUPABASE_ANON}`, 'apikey': SUPABASE_ANON },
+        signal: AbortSignal.timeout(14000) }
+    );
+    if (!res.ok) throw new Error('LAPD Edge Function ' + res.status);
+    const data = await res.json();
+    const records = data.data || data || [];
+    records.forEach(r => {
+      if (!r.latitude || !r.longitude) return;
+      const lat = parseFloat(r.latitude), lng = parseFloat(r.longitude);
+      if (isNaN(lat) || isNaN(lng)) return;
+      const f = new ol.Feature({
+        geometry: new ol.geom.Point(ol.proj.fromLonLat([lng, lat])),
+        _type: 'traffic',
+        ...r,
+      });
+      src.addFeature(f);
+    });
+    if (statusEl) statusEl.textContent = `${src.getFeatures().length} collisions`;
+    console.log(`[GMP traffic] ${src.getFeatures().length} collisions loaded`);
+  } catch(e) {
+    console.warn('[GMP traffic]', e.message);
+    if (statusEl) statusEl.textContent = 'unavailable';
+    showToast('Traffic data unavailable — check Edge Function', 'err');
+  }
+}
+
+// PurpleAir (same Edge Function as JP_NIM, but renders as OL features)
+async function fetchPurpleAirLayer() {
+  const src = sbLayerSources['air'];
+  src.clear();
+  const ext = map.getView().calculateExtent(map.getSize());
+  const ll  = ol.proj.toLonLat([ext[0], ext[1]]);
+  const ur  = ol.proj.toLonLat([ext[2], ext[3]]);
+  const params = new URLSearchParams({
+    nwlng: ll[0].toFixed(4), nwlat: ur[1].toFixed(4),
+    selng: ur[0].toFixed(4), selat: ll[1].toFixed(4),
+  });
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/functions/v1/purpleair-sensors?${params}`,
+      { headers: { 'Authorization': `Bearer ${SUPABASE_ANON}`, 'apikey': SUPABASE_ANON },
+        signal: AbortSignal.timeout(14000) }
+    );
+    if (!res.ok) throw new Error('PurpleAir Edge Function ' + res.status);
+    const data = await res.json();
+    const fields = data.fields || [];
+    const rows   = data.data   || [];
+    rows.forEach(row => {
+      const obj = {}; fields.forEach((f,i) => { obj[f]=row[i]; });
+      const lat = parseFloat(obj.latitude), lng = parseFloat(obj.longitude);
+      if (isNaN(lat)||isNaN(lng)) return;
+      const f = new ol.Feature({
+        geometry: new ol.geom.Point(ol.proj.fromLonLat([lng, lat])),
+        _type: 'purpleair',
+        ...obj,
+      });
+      f.setId('pa-' + (obj.sensor_index || Math.random()));
+      src.addFeature(f);
+    });
+    console.log(`[GMP air] ${src.getFeatures().length} PurpleAir sensors`);
+    if (src.getFeatures().length === 0) showToast('No PurpleAir sensors in viewport', 'ok');
+  } catch(e) {
+    console.warn('[GMP purpleair]', e.message);
+    showToast('PurpleAir unavailable — check Edge Function', 'err');
+  }
+}
+
+// ══════════════════════════════════════════════════
+// LOCATE ME (OL version — replaces Leaflet flyTo)
+// ══════════════════════════════════════════════════
+let _locateFeature = null;
+
+function gmpLocateMe() {
+  const btn = document.getElementById('locate-btn');
+  // Second press: clear
+  if (_locateFeature) {
+    sbLayerSources['_locate'] && sbLayerSources['_locate'].clear();
+    if (_locateLayer) map.removeLayer(_locateLayer);
+    _locateFeature = null;
+    _locateLayer = null;
+    if (btn) btn.classList.remove('active');
+    showToast('Location marker cleared', 'ok');
+    return;
+  }
+  if (!navigator.geolocation) { showToast('Geolocation not supported', 'err'); return; }
+  showToast('Getting your location…', 'ok');
+  navigator.geolocation.getCurrentPosition(pos => {
+    const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+    const zoom = accuracy <= 20 ? 19 : accuracy <= 50 ? 18 : 17;
+    map.getView().animate({ center: ol.proj.fromLonLat([lng, lat]), zoom, duration: 600 });
+    // Create locate marker feature
+    const locSrc = new ol.source.Vector();
+    _locateFeature = new ol.Feature({
+      geometry: new ol.geom.Point(ol.proj.fromLonLat([lng, lat])),
+      _type: 'locate', accuracy,
+    });
+    _locateFeature.setStyle(new ol.style.Style({
+      image: new ol.style.Circle({
+        radius: 10,
+        fill: new ol.style.Fill({ color: '#9333ea' }),
+        stroke: new ol.style.Stroke({ color: '#fff', width: 2.5 }),
+      }),
+      text: new ol.style.Text({
+        text: '📍', font: '14px sans-serif', offsetY: -18,
+      }),
+    }));
+    locSrc.addFeature(_locateFeature);
+    // Accuracy circle
+    const accFeature = new ol.Feature({
+      geometry: new ol.geom.Circle(ol.proj.fromLonLat([lng, lat]), accuracy),
+    });
+    accFeature.setStyle(new ol.style.Style({
+      fill: new ol.style.Fill({ color: 'rgba(147,51,234,0.08)' }),
+      stroke: new ol.style.Stroke({ color: '#9333ea', width: 1 }),
+    }));
+    locSrc.addFeature(accFeature);
+    _locateLayer = new ol.layer.Vector({ source: locSrc, zIndex: 100 });
+    map.addLayer(_locateLayer);
+    if (btn) btn.classList.add('active');
+    showToast(`📍 Located ±${Math.round(accuracy)}m`, 'ok');
+  }, () => showToast('Could not get your location', 'err'), {
+    enableHighAccuracy: true, maximumAge: 0, timeout: 15000,
+  });
+}
+let _locateLayer = null;
+
+ — used if Supabase returns empty or errors.
 // PM can seed greening_projects table to replace these.
 const GREENING_PROJECTS = [
   {
@@ -756,7 +1144,11 @@ const metroLayer = new ol.layer.Vector({
 // Map
 const map = new ol.Map({
   target: 'map',
-  layers: [basemaps.street, basemaps.satellite, basemaps.parcel, tesLayer, imperviousLayer, greeningLayer, metroLayer],
+  layers: [
+    basemaps.street, basemaps.satellite, basemaps.parcel,
+    tesLayer, imperviousLayer, greeningLayer,
+    ...Object.values(sbOLLayers),
+  ],
   view: new ol.View({
     center: ol.proj.fromLonLat([CENTER_LON, CENTER_LAT]),
     zoom: 14,
@@ -900,13 +1292,54 @@ function toggleLayer(id) {
   const sw = document.getElementById('sw-'+id);
   if (!sw) return;
   const on = sw.classList.toggle('on');
-  if (id === 'greening') greeningLayer.setVisible(on);
-  if (id === 'metro')    metroLayer.setVisible(on);
-  if (id === 'impervious') imperviousLayer.setVisible(on);
-  if (id === 'unnc') {
-    // TODO: add UNNC boundary polygon layer
+
+  // Core OL layers
+  if (id === 'greening')   { greeningLayer.setVisible(on); return; }
+  if (id === 'impervious') { imperviousLayer.setVisible(on); return; }
+  if (id === 'unnc')       { /* TODO: wire UNNC boundary polygon */ return; }
+
+  // Supabase-backed OL vector layers
+  const sbKeys = ['trees','planting','parks','improvement','art_mural','trash'];
+  if (sbKeys.includes(id)) {
+    sbOLLayers[id].setVisible(on);
+    if (on) {
+      fetchCategoryLayer(id).then(count => {
+        if (count === 0) showToast(`No ${id} data found`, 'ok');
+        else showToast(`✓ ${count} ${id} features loaded`, 'ok');
+      });
+    }
+    return;
+  }
+
+  // Traffic — LAPD Edge Function
+  if (id === 'traffic') {
+    sbOLLayers['traffic'].setVisible(on);
+    if (on) {
+      fetchTrafficLayer();
+      showToast('🚗 Loading LAPD collision data…', 'ok');
+    }
+    return;
+  }
+
+  // Air — PurpleAir Edge Function
+  if (id === 'air') {
+    sbOLLayers['air'].setVisible(on);
+    if (on) {
+      fetchPurpleAirLayer();
+      showToast('🟣 Loading PurpleAir sensors…', 'ok');
+      // Reload on map move
+      if (!_purpleAirMoveHandler) {
+        _purpleAirMoveHandler = () => { if (sbOLLayers['air'].getVisible()) fetchPurpleAirLayer(); };
+        map.on('moveend', _purpleAirMoveHandler);
+      }
+    } else {
+      if (_purpleAirMoveHandler) { map.un('moveend', _purpleAirMoveHandler); _purpleAirMoveHandler = null; }
+      sbLayerSources['air'].clear();
+    }
+    return;
   }
 }
+
 
 // ── Greening filter by status ──────────────────
 let activeStatus = 'all', activeGoal = 'all';
@@ -1110,6 +1543,12 @@ function openPopup(html) {
   const panel = document.getElementById('popup-panel');
   panel.style.display = 'block';
   requestAnimationFrame(() => panel.classList.add('open'));
+  // On mobile: collapse sidebar so popup isn't covered
+  if (isMobile()) {
+    const sb = document.getElementById('sidebar');
+    sb.classList.remove('open');
+    sb.classList.add('collapsed');
+  }
 }
 
 function closePopup() {
@@ -1120,32 +1559,62 @@ function closePopup() {
 
 // Map click handler
 map.on('singleclick', e => {
-  // First check greening project markers
+  // 1. Greening project markers (highest priority)
   const gfeat = map.forEachFeatureAtPixel(e.pixel, f => f, {
     layerFilter: l => l === greeningLayer, hitTolerance: 10,
   });
   if (gfeat) {
-    // Check if click hit a Metro station
-    const stationId = gfeat.getId();
-    const station = METRO_E_STATIONS.find(s => s.id === stationId);
-    if (station) {
-      openPopup(`<div style="min-width:180px">
-        <div style="font-weight:700;font-size:13px;margin-bottom:4px">🚇 ${station.name}</div>
-        <div style="font-size:10px;color:#EB7D24;font-weight:600;margin-bottom:4px">${station.lines.join(', ')}</div>
-        ${station.connections ? `<div style="font-size:10px;color:var(--text2)">${station.connections}</div>` : ''}
-      </div>`);
-      return;
-    }
     const proj = (window._LIVE_GREENING || GREENING_PROJECTS).find(p => p.id === gfeat.getId());
     if (proj) { openPopup(buildGreeningPopup(proj)); return; }
   }
-  // Then check TES block groups
+
+  // 2. Supabase annotation layers (trees, planting, parks, community, air, traffic)
+  const sbLayerList = Object.values(sbOLLayers);
+  const sbFeat = map.forEachFeatureAtPixel(e.pixel, f => f, {
+    layerFilter: l => sbLayerList.includes(l), hitTolerance: 8,
+  });
+  if (sbFeat) {
+    const props = sbFeat.getProperties();
+    const type  = props._type || props.category || 'annotation';
+    if (type === 'purpleair') {
+      const pm  = parseFloat(props['pm2.5_60minute'] ?? props['pm2.5_10minute']);
+      const col = aqiColorFromPm25(pm);
+      const lbl = aqiLabelFromPm25(pm);
+      const tc  = (pm <= 35.4) ? '#000' : '#fff';
+      openPopup(`<div class="pop-section">
+        <div class="pop-sec-title">🟣 PurpleAir Sensor</div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px">${props.name || 'Sensor #' + (props.sensor_index||'')}</div>
+        <div style="display:inline-block;background:${col};color:${tc};padding:4px 12px;border-radius:6px;font-size:11px;font-weight:600;margin-bottom:10px">${lbl}</div>
+        <div class="pop-row"><span class="pop-row-label">PM2.5 (60 min avg)</span><span class="pop-row-val">${isNaN(pm)?'—':pm.toFixed(1)} µg/m³</span></div>
+        <div class="pop-row"><span class="pop-row-label">Humidity</span><span class="pop-row-val">${props.humidity != null ? parseFloat(props.humidity).toFixed(0)+'%' : '—'}</span></div>
+        <div class="pop-row"><span class="pop-row-label">Temperature</span><span class="pop-row-val">${props.temperature != null ? parseFloat(props.temperature).toFixed(0)+'°F' : '—'}</span></div>
+      </div>`);
+      return;
+    }
+    if (type === 'traffic') {
+      openPopup(`<div class="pop-section">
+        <div class="pop-sec-title">🚗 Traffic Collision</div>
+        <div class="pop-row"><span class="pop-row-label">Date</span><span class="pop-row-val">${props.date_reported || props.date_occurred || '—'}</span></div>
+        <div class="pop-row"><span class="pop-row-label">Description</span><span class="pop-row-val" style="max-width:160px;text-align:right">${props.description || props.crime_description || '—'}</span></div>
+        <div class="pop-row"><span class="pop-row-label">Location</span><span class="pop-row-val" style="max-width:160px;text-align:right">${props.location || ''}</span></div>
+      </div>`);
+      return;
+    }
+    // Generic annotation popup
+    openPopup(`<div class="pop-section">
+      <div class="pop-sec-title">${props.category || type}</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.5">${props.notes || props.description || 'No description'}</div>
+      ${props.status ? `<div class="pop-row" style="margin-top:8px"><span class="pop-row-label">Status</span><span class="pop-row-val">${props.status}</span></div>` : ''}
+    </div>`);
+    return;
+  }
+
+  // 3. TES block groups
   const tfeat = map.forEachFeatureAtPixel(e.pixel, f => f, {
     layerFilter: l => l === tesLayer,
   });
   if (tfeat) {
     openPopup(buildTESPopup(tfeat.getProperties()));
-    // Highlight selected feature
     tesLayer.changed();
     return;
   }
@@ -1154,8 +1623,9 @@ map.on('singleclick', e => {
 
 // Hover cursor
 map.on('pointermove', e => {
+  const allLayers = [tesLayer, greeningLayer, ...Object.values(sbOLLayers)];
   const hit = map.hasFeatureAtPixel(e.pixel, {
-    layerFilter: l => l === tesLayer || l === greeningLayer || l === metroLayer,
+    layerFilter: l => allLayers.includes(l),
   });
   map.getTargetElement().style.cursor = hit ? 'pointer' : '';
 });
@@ -1184,9 +1654,9 @@ function handleSearch(val) {
 if (isMobile()) {
   document.getElementById('sidebar').classList.remove('open');
 }
-// ── §B4  greening_projects — live pin fetch ──────────────────────────────────
-// Queries greening_projects directly (v_greening_map_pins view does not exist).
-// Only fetches the columns the map needs (id, name, region, status, wosip_goals, lat, lng).
+// ── §B4  v_greening_map_pins — lean egress (~80% smaller than full table) ──────
+// Queries v_greening_map_pins instead of greening_projects.  The view returns
+// only the columns the map needs (id, name, region, status, wosip_goals, lat, lng).
 // Rich fields (notes, funding_source, partners, amount) live in the base table
 // and are served only when a popup is opened.  The cached wrapper below prevents
 // duplicate fetches when filters or layer toggles re-call this function.
@@ -1195,8 +1665,8 @@ let _gmpFetchPromise = null; // page-lifetime cache slot
 async function loadGreeningFromSupabase() {
   try {
     const { data, error } = await sbGMP
-      .from('greening_projects')
-      .select('id,name,region,status,wosip_goals,lat,lng')
+      .from('v_greening_map_pins')                          // ← was 'greening_projects'
+      .select('id,name,region,status,wosip_goals,lat,lng')  // ← pin-only columns
       .order('name');
     if (error) throw error;
     if (!data || data.length === 0) return; // keep hardcoded fallback visible
@@ -1228,7 +1698,7 @@ async function loadGreeningFromSupabase() {
     if (badge) badge.textContent = liveProjects.length;
     // Expose live list to click handler
     window._LIVE_GREENING = liveProjects;
-    console.log(`[GMP] Loaded ${liveProjects.length} pins from greening_projects`);
+    console.log(`[GMP] Loaded ${liveProjects.length} pins from v_greening_map_pins`);
   } catch(e) {
     console.warn('[GMP] Supabase load failed, using hardcoded fallback:', e.message);
   } finally {

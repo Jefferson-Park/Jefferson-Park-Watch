@@ -7,9 +7,7 @@
 
 <!-- Supabase — BLOCKING (must be available at parse time for `const { createClient } = supabase`) -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-  const supabase = supabase.createClient('YOUR_SUPABASE_URL', 'YOUR_SUPABASE_ANON_KEY');
-</script>
+
 <!-- Leaflet core — deferred (only called inside functions, never at top level) -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -625,32 +623,16 @@ body.sb-collapsed #bottom-panel { left:0 !important; }
     <div class="login-divider"><span>Staff &amp; Officer Login</span></div>
     <div class="fg"><label>Email</label><input type="email" id="li-email" placeholder="you@lapd.lacity.org" autocomplete="email"></div>
     <div class="fg"><label>Password</label><input type="password" id="li-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <!-- ADD THIS LINK HERE -->
+    <div style="margin-top:-8px; margin-bottom:12px; text-align:right;">
+      <a href="#" onclick="requestPasswordReset(); return false;" style="font-size:11px; color:var(--muted); text-decoration:underline; cursor:pointer;">Forgot password?</a>
+    </div>
+
     <button class="btn-primary" id="li-btn" onclick="doLogin()">Sign in as Staff</button>
     <div class="login-err" id="li-err"></div>
   </div>
 </div>
-<!-- Forgot Password Section -->
-<div id="forgot-password-section">
-  <input type="email" id="reset-email" placeholder="Enter your email">
-  <button onclick="requestReset()">Forgot Password?</button>
-</div>
 
-<script>
-  async function requestReset() {
-    const email = document.getElementById('reset-email').value;
-    
-    // This sends the email to Supabase
-    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: 'https://your-website.com/reset-password.html',
-    });
-
-    if (error) {
-      alert('Error: ' + error.message);
-    } else {
-      alert('Check your email for the reset link!');
-    }
-  }
-</script>
 <!-- ═══════ APP ═══════ -->
 <div id="app">
 
@@ -2247,7 +2229,26 @@ async function doLogin() {
   await loadRole();
   launch();
 }
+// ══════════════════════════════════════════════════════════════════
+// PASSWORD RESET
+// ══════════════════════════════════════════════════════════════════
+async function requestPasswordReset() {
+  const email = document.getElementById('li-email').value; // Uses the existing email input
+  if (!email) {
+    alert('Please enter your email first.');
+    return;
+  }
+  
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: 'https://your-website.com/reset-password.html',
+  });
 
+  if (error) {
+    alert('Error: ' + error.message);
+  } else {
+    alert('Check your email for the reset link!');
+  }
+}
 async function viewPublic() {
   // Sign out any existing session so role doesn't bleed into public view
   await sb.auth.signOut();

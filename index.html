@@ -17,7 +17,7 @@
     --ink:       #1c2840;
     --ink2:      #3a4d68;
     --ink3:      #4a5a78;
-    --muted:     #7a8faa;
+    --muted:     #5f7492;
     --chrome:    #9aaabf;
     --chrome2:   #b8c8d8;
     --gold:      #8a6020;
@@ -31,14 +31,14 @@
     --rally:     'Raleway', sans-serif;
   }
 
-  html { scroll-behavior: smooth; }
+  html { scroll-behavior: smooth; font-size: 108%; }
 
   body {
     background: var(--bg);
     color: var(--ink);
     font-family: var(--sans);
     font-weight: 400;
-    line-height: 1.6;
+    line-height: 1.65;
     overflow-x: hidden;
   }
 
@@ -131,6 +131,30 @@
     transition: background 0.2s;
   }
   .nav-cta:hover { background: var(--ink2); }
+
+  .nav-toggle {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    width: 44px;
+    height: 44px;
+    background: none;
+    border: 1px solid rgba(28,40,64,0.2);
+    cursor: pointer;
+    padding: 0;
+  }
+  .nav-toggle span {
+    display: block;
+    width: 20px;
+    height: 2px;
+    background: var(--ink);
+    margin: 0 auto;
+    transition: transform 0.25s ease, opacity 0.25s ease;
+  }
+  .nav-toggle.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+  .nav-toggle.open span:nth-child(2) { opacity: 0; }
+  .nav-toggle.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
 
   /* ——— HERO ——— */
   .hero {
@@ -593,6 +617,21 @@
     color: var(--gold);
     border-color: rgba(138,96,32,0.2);
   }
+  .project-badge.slate {
+    background: rgba(58,77,104,0.07);
+    color: var(--ink3);
+    border-color: rgba(58,77,104,0.22);
+  }
+
+  .project-card.placeholder { border: 1px dashed rgba(28,40,64,0.22); }
+  .project-card.placeholder .project-link {
+    background: transparent;
+    color: var(--ink3);
+    border: 1px solid rgba(28,40,64,0.25);
+    cursor: default;
+    pointer-events: none;
+  }
+  .project-card.placeholder .project-link svg { display: none; }
 
   .project-title {
     font-family: var(--rally);
@@ -837,20 +876,88 @@
   .fade-up.visible { opacity: 1; transform: translateY(0); }
 
   /* ——— RESPONSIVE ——— */
-  @media (max-width: 960px) {
-    .hero { grid-template-columns: 1fr; }
-    .hero-visual { height: 300px; }
-    .pillars-grid { grid-template-columns: 1fr 1fr; gap: 1px; }
-    .problem-inner { grid-template-columns: 1fr; gap: 3rem; }
-    .how-header { grid-template-columns: 1fr; gap: 2rem; }
-    .how-steps { grid-template-columns: 1fr; }
-    .projects-grid { grid-template-columns: 1fr; }
-    .why-inner { grid-template-columns: 1fr; gap: 3rem; }
-    .why-sticky { position: static; }
-    .nav-links { display: none; }
+
+  /* Respect users who prefer less motion (common senior-accessibility need) */
+  @media (prefers-reduced-motion: reduce) {
+    .holo-ring, .holo-ring-2, .cta::before { animation: none; }
+    html { scroll-behavior: auto; }
+    .fade-up { transition: none; }
   }
+
+  @media (max-width: 960px) {
+    .hero { grid-template-columns: 1fr; padding: 3rem 6vw 3rem; gap: 2rem; }
+    .hero-visual { height: 260px; order: -1; }
+    .hero-sub { max-width: none; }
+    .hero-actions { flex-direction: column; }
+    .hero-actions a { text-align: center; width: 100%; }
+
+    .pillars { padding: 0 6vw 4rem; }
+    .pillars-grid { grid-template-columns: 1fr 1fr; gap: 1px; }
+
+    .problem { padding: 4rem 6vw; }
+    .problem-inner { grid-template-columns: 1fr; gap: 2.5rem; }
+
+    .how { padding: 4rem 6vw; }
+    .how-header { grid-template-columns: 1fr; gap: 1.5rem; }
+    .how-steps { grid-template-columns: 1fr; }
+
+    .projects { padding: 4rem 6vw; }
+    .projects-grid { grid-template-columns: 1fr; }
+    .project-card { padding: 2.2rem 1.8rem; }
+
+    .why { padding: 4rem 6vw; }
+    .why-inner { grid-template-columns: 1fr; gap: 2.5rem; }
+    .why-sticky { position: static; }
+
+    .cta { padding: 5rem 6vw; }
+
+    /* Hamburger menu */
+    .nav-toggle { display: flex; }
+    .nav-cta { display: none; }
+    nav { padding: 1rem 6vw; }
+    .nav-links {
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 68px;
+      left: 0;
+      right: 0;
+      background: var(--white);
+      border-bottom: 1px solid rgba(28,40,64,0.12);
+      box-shadow: 0 12px 24px rgba(28,40,64,0.1);
+      gap: 0;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+      z-index: 99;
+    }
+    .nav-links.open { max-height: 340px; }
+    .nav-links li { width: 100%; }
+    .nav-links a {
+      display: block;
+      padding: 1.1rem 6vw;
+      font-size: 0.95rem;
+      border-bottom: 1px solid rgba(28,40,64,0.07);
+    }
+    .nav-links li:last-child a { border-bottom: none; }
+  }
+
   @media (max-width: 580px) {
+    body { line-height: 1.7; }
     .pillars-grid { grid-template-columns: 1fr; }
+    h1.hero-title { font-size: clamp(2.1rem, 9vw, 2.8rem); }
+    h2.section-title { font-size: clamp(1.6rem, 7vw, 2.1rem); }
+    .hero-sub, .section-body, .why-item-body, .step-body, .pillar-desc, .project-desc { font-size: 0.95rem; }
+    .project-features li { font-size: 0.88rem; }
+    .cta-title { font-size: clamp(1.7rem, 8vw, 2.2rem); }
+    .cta-sub { font-size: 1rem; }
+    .cta-actions { flex-direction: column; align-items: stretch; }
+    .cta-actions a { text-align: center; }
+    .btn-primary, .btn-ghost, .btn-light, .btn-ghost-light, .nav-cta, .project-link {
+      padding-top: 0.95rem;
+      padding-bottom: 0.95rem;
+    }
+    footer { flex-direction: column; text-align: center; }
   }
 </style>
 </head>
@@ -881,13 +988,16 @@
       <span class="bottom">Innovations</span>
     </div>
   </a>
-  <ul class="nav-links">
+  <ul class="nav-links" id="navLinks">
     <li><a href="#about">What We Do</a></li>
     <li><a href="#projects">Projects</a></li>
     <li><a href="#how">Our Approach</a></li>
     <li><a href="#contact">Contact</a></li>
   </ul>
   <a href="#contact" class="nav-cta">Get in Touch</a>
+  <button class="nav-toggle" id="navToggle" aria-label="Open menu" aria-expanded="false" aria-controls="navLinks">
+    <span></span><span></span><span></span>
+  </button>
 </nav>
 
 <!-- HERO -->
@@ -896,8 +1006,7 @@
     <div class="hero-eyebrow">GIS Civic Services</div>
     <h1 class="hero-title">
       Maps that<br>
-      <strong>unite your</strong><br>
-      <em>community</em>
+      <strong>unite your <em>community</em></strong>
     </h1>
     <p class="hero-sub">
       We build interactive GIS applications for neighborhood councils — turning fragmented documents, buried data, and unclear responsibilities into a single, living map every stakeholder can understand and act on.
@@ -1191,9 +1300,9 @@
   <div class="projects-inner">
     <div class="projects-header fade-up">
       <div class="section-eyebrow" style="justify-content:center;">Current Applications</div>
-      <h2 class="section-title" style="text-align:center;">Two projects.<br><em>Pro-Bono Conceptual Projects</em></h2>
-      <p style="color:var(--ink3);font-size:0.9rem;max-width:500px;margin:0 auto;line-height:1.8;font-weight:300;">
-        Built for Los Angeles neighborhood councils, these applications demonstrate what purpose-built civic GIS can accomplish. This application was independently developed as a pro-bono community prototype and is not officially endorsed or funded by the UNNC or Jefferson Park Watch.
+      <h2 class="section-title" style="text-align:center;">Four projects.<br><em>Pro-Bono Conceptual Projects</em></h2>
+      <p style="color:var(--ink3);font-size:0.95rem;max-width:560px;margin:0 auto;line-height:1.8;font-weight:300;">
+        Built for Los Angeles neighborhood councils, these applications demonstrate what purpose-built civic GIS can accomplish. These applications were independently developed as pro-bono community prototypes and are not officially endorsed or funded by the UNNC or Jefferson Park Watch.
       </p>
     </div>
     <div class="projects-grid fade-up">
@@ -1231,6 +1340,38 @@
         <a href="https://mappinginnovations.com/UNNC_GMP.html" class="project-link">
           View The Map
           <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke-width="2"><line x1="3" y1="8" x2="13" y2="8"/><polyline points="9,4 13,8 9,12"/></svg>
+        </a>
+      </div>
+
+      <!-- PLACEHOLDER: replace with live copy, features, and URL when this project is ready -->
+      <div class="project-card placeholder">
+        <span class="project-badge slate">Urban Forestry · Coming Soon</span>
+        <h3 class="project-title">Tree Inventory</h3>
+        <p class="project-desc">A living inventory of the neighborhood's urban tree canopy — mapping species, condition, and maintenance needs to guide planting, pruning, and removal priorities.</p>
+        <ul class="project-features">
+          <li>Placeholder: catalog trees by species, size, and health</li>
+          <li>Placeholder: flag hazards and maintenance requests by location</li>
+          <li>Placeholder: track new plantings against canopy goals</li>
+          <li>Placeholder: coordinate with Urban Forestry and RAP crews</li>
+        </ul>
+        <a href="#" class="project-link" aria-disabled="true">
+          Coming Soon
+        </a>
+      </div>
+
+      <!-- PLACEHOLDER: replace with live copy, features, and URL when this project is ready -->
+      <div class="project-card placeholder">
+        <span class="project-badge slate">Public Safety · Coming Soon</span>
+        <h3 class="project-title">Crime Watch</h3>
+        <p class="project-desc">A neighborhood-level public safety map for tracking reported incidents, trends, and hotspots — helping residents and watch groups stay informed and coordinated.</p>
+        <ul class="project-features">
+          <li>Placeholder: map reported incidents by category and date</li>
+          <li>Placeholder: highlight emerging hotspots by block</li>
+          <li>Placeholder: share safety alerts with residents</li>
+          <li>Placeholder: coordinate with LAPD and neighborhood watch captains</li>
+        </ul>
+        <a href="#" class="project-link" aria-disabled="true">
+          Coming Soon
         </a>
       </div>
     </div>
@@ -1320,6 +1461,20 @@
 </footer>
 
 <script>
+  const navToggle = document.getElementById('navToggle');
+  const navLinks = document.getElementById('navLinks');
+  navToggle.addEventListener('click', () => {
+    const isOpen = navLinks.classList.toggle('open');
+    navToggle.classList.toggle('open', isOpen);
+    navToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    navToggle.setAttribute('aria-label', isOpen ? 'Close menu' : 'Open menu');
+  });
+  navLinks.querySelectorAll('a').forEach(a => a.addEventListener('click', () => {
+    navLinks.classList.remove('open');
+    navToggle.classList.remove('open');
+    navToggle.setAttribute('aria-expanded', 'false');
+  }));
+
   const io = new IntersectionObserver(entries => {
     entries.forEach(e => {
       if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); }

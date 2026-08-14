@@ -471,7 +471,16 @@
       font-size: 14px; cursor: pointer; z-index: 1;
     }
     .info-sheet-close:hover { background: #fff; }
-    .info-sheet-scroll { overflow-y: auto; }
+    .info-sheet-scroll {
+      overflow-y: auto;
+      flex: 1 1 auto;
+      min-height: 0; /* same flexbox footgun as .report-modal-body — without this, the sole
+                         flex child in #info-sheet's column layout won't shrink below its
+                         content height, so overflow-y:auto never engages and content past
+                         82vh gets clipped by #info-sheet's overflow:hidden instead of
+                         scrolling. Was latent until a card long enough to hit it came along
+                         (the greening_zone funding/WOSIP-goals card). */
+    }
     .info-sheet-header { padding: 18px 20px 16px; }
     .info-sheet-eyebrow {
       font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 700;

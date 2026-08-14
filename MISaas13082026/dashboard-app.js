@@ -1142,6 +1142,7 @@ function showInfoSheet(html) {
 function closeInfoSheet() {
   document.getElementById('info-sheet')?.classList.remove('open');
   document.getElementById('info-sheet-backdrop')?.classList.remove('open');
+  document.querySelectorAll('.record-item').forEach(el => el.classList.remove('highlighted')); // no-op unless a marker (e.g. greening_zone) opened this sheet
 }
 
 function initInfoSheet() {
@@ -1955,6 +1956,31 @@ function renderMarkers(records) {
     const sym = getSymbol(row.category_value, row.committee_slug);
 
     const marker = L.marker([coords.lat, coords.lng], { icon: buildEmojiIcon(sym) });
+
+    // Greening Master Plan popups (header/description/funding/WOSIP goals —
+    // see buildGreeningPopupHtml) are the tallest cards on the dashboard.
+    // As a Leaflet bindPopup bubble anchored to the marker's pixel position,
+    // that height routinely ran off the top or bottom of the map on mobile
+    // with no scroll, i.e. truncated. Route these through the same
+    // showInfoSheet bottom-sheet used for TES/boundary layers instead —
+    // same fix, same reasoning as the 2026-07-04 boundary-popup clipping
+    // issue, just applied to a marker instead of a boundary layer.
+    if (row.category_value === 'greening_zone') {
+      marker.on('click', () => {
+        showInfoSheet(buildPopupHtml(row));
+        _loadPopupChildrenPublic(row);
+        _loadPopupAttachmentsPublic(row);
+        document.querySelectorAll('.record-item').forEach(el => el.classList.remove('highlighted'));
+        const listItem = document.querySelector(`.record-item[data-id="${row.id}"]`);
+        if (listItem) {
+          listItem.classList.add('highlighted');
+          listItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      });
+      _markersLayer.addLayer(marker);
+      _markerById[row.id] = marker;
+      return;
+    }
 
     marker.bindPopup(buildPopupHtml(row), _popupOptionsFor(row));
 

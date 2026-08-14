@@ -2,7 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <!-- user-scalable=no is deliberate here, not an oversight: without it, a pinch gesture
+       on the map can zoom the whole Safari page instead of (or in addition to) Leaflet's
+       own zoom, and panning while the page itself is zoomed carries the header/sidebar
+       off-screen with no obvious way back (reported 2026-08, "lose all fields and edge
+       banners, left with just the map"). Leaflet's own zoom controls/pinch handling
+       remain fully functional — this only disables the OUTER page's native zoom. -->
   <title>Mapping Innovations — Community Dashboard</title>
 
   <!-- Leaflet -->
@@ -520,11 +526,19 @@
     /* ── Sidebar control stack (Level 1/2 + LAPD + Env + Search + Nearby) ──
        Wraps everything above the record list in one scrollable region with
        a capped height, so the record list below always keeps usable space
-       even as more tiers get added. */
+       even as more tiers get added.
+       flex-grow is deliberately 0 here (not 1) — with both this box and
+       #record-list-section set to grow, flexbox split any leftover sidebar
+       height between the two of them, stretching each past its own content
+       and leaving a blank gap above/below the record list (reported 2026-08
+       field test). This box should only ever be as tall as its own content,
+       capped at 64vh with internal scroll — #record-list-section is the one
+       that should claim whatever space is left over. */
     #sidebar-controls {
-      flex: 1 1 auto;
+      flex: 0 1 auto;
       overflow-y: auto;
       max-height: 64vh;
+      border-bottom: 2px solid var(--panel-border); /* explicit divider between toggles and record list */
     }
     #sidebar-controls::-webkit-scrollbar { width: 5px; }
     #sidebar-controls::-webkit-scrollbar-thumb {
@@ -798,9 +812,11 @@
 
     /* Record list */
     #record-list-section {
-      flex: 1 1 0;
+      flex: 1 1 auto; /* the one flex-grow item in the sidebar column — claims all leftover height */
       overflow-y: auto;
-      padding: 8px 0;
+      padding: 0; /* was 8px 0, which showed as blank space above the sticky count label and
+                     below the last record — the sticky label's own border below already
+                     reads as the section boundary, so no extra padding needed there */
     }
     #record-list-section::-webkit-scrollbar { width: 5px; }
     #record-list-section::-webkit-scrollbar-thumb {
@@ -1570,9 +1586,6 @@
       </div>
 
     </aside>
-
-    <!-- Mobile-only backdrop, shown behind the sidebar drawer while open -->
-    <div id="sidebar-backdrop"></div>
 
     <!-- Mobile-only backdrop, shown behind the sidebar drawer while open -->
     <div id="sidebar-backdrop"></div>

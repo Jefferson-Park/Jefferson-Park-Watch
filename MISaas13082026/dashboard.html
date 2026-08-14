@@ -57,7 +57,14 @@
     #app {
       display: flex;
       flex-direction: column;
-      height: 100vh;
+      height: 100vh;  /* fallback for browsers without dvh support */
+      height: 100dvh; /* tracks Safari's actual visible viewport as the address bar
+                          shows/hides, instead of the old 100vh which is calculated
+                          against the toolbar-hidden height — that mismatch was why
+                          the Report button/map bottom sat under the Safari chrome
+                          until you scrolled. iOS Safari 15.4+ (all iPhone 11s on a
+                          reasonably current iOS); unsupported browsers just keep
+                          the 100vh fallback above. */
     }
 
     /* ── Header ────────────────────────────────────────── */
@@ -1030,7 +1037,7 @@
     #report-concern-btn {
       position: absolute;
       right: 16px;
-      bottom: 16px;
+      bottom: calc(16px + env(safe-area-inset-bottom)); /* clears the home-indicator bar on notched iPhones */
       z-index: 500;
       background: #fff;
       color: var(--danger);
@@ -1290,7 +1297,7 @@
 
       #report-concern-btn {
         right: 12px;
-        bottom: 12px;
+        bottom: calc(12px + env(safe-area-inset-bottom));
         padding: 10px 14px;
         font-size: 12px;
       }
@@ -1567,7 +1574,7 @@
     <div id="map-wrap">
       <div id="map"></div>
 
-      <button type="button" id="report-concern-btn" title="Report a Concern">🚩 Report a Concern</button>
+      <button type="button" id="report-concern-btn" title="Report a Concern">🚩 Flag It</button>
 
       <!-- Shown if anon SELECT policy is missing -->
       <div id="policy-warning">

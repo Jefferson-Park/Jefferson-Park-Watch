@@ -23,7 +23,7 @@ export const FIELD_PHOTOS_BUCKET = 'field-photos'; // hyphen — confirmed from 
 export const ATTACHMENTS_BUCKET = 'attachments';
 
 // ─── 2. EXTERNAL SERVICE URLS ─────────────────────────────────────────────────
-export const IS_LOCAL_SANDBOX = false; // flip to true only on your own machine, never commit true
+export const IS_LOCAL_SANDBOX = true; // flip to true only on your own machine, never commit true
 
 export const TES_GEOJSON_URL = 'https://sqiioihssmnqatjrednq.supabase.co/storage/v1/object/public/geojson/unnctes.geojson';
 
@@ -85,7 +85,7 @@ export const CATEGORY_MAP = {
     'tree_trunk':          { group: 'tree_inventory', label: 'Tree Trunk', icon: '🪵', color: '#43a047', radius: 9,  sensitiveDefault: false, fields: ['diameter', 'condition'] },
     'tree_photos':         { group: 'tree_inventory', label: 'Tree Photos', icon: '📸', color: '#78909c', radius: 9,  sensitiveDefault: false, fields: ['photo_context'] },
     'tree_report':         { group: 'tree_inventory', label: 'Tree Report', icon: '📋', color: '#795548', radius: 9,  sensitiveDefault: false, fields: ['report_type', 'prepared_by', 'report_date'] },
-    'old_city_tree_report':{ group: 'tree_inventory', label: 'Old City Tree Report', icon: '📋', color: '#d32f2f', radius: 9,  sensitiveDefault: false, fields: ['report_type', 'prepared_by', 'report_date'] },
+    'project_tree_report':{ group: 'tree_inventory', label: 'Old City Tree Report', icon: '📋', color: '#d32f2f', radius: 9,  sensitiveDefault: false, fields: ['report_type', 'prepared_by', 'report_date'] },
 
 
     // ─── Trees & Parks Services (tree_park_services) ─────────────────────────

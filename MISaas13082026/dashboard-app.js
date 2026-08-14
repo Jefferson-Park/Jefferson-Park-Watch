@@ -2095,11 +2095,29 @@ function fitToBounds(pointBounds, shapeBoundsList) {
   } catch (e) { /* ignore fitBounds edge cases, e.g. a single identical point */ }
 }
 
-function renderRecordList(records) {
-  const container = document.getElementById('record-list');
-  const countLabel = document.getElementById('list-count-label');
+// Rendering all matched records (plus a per-item click listener each) in one
+// synchronous pass was the actual cause of the dashboard hanging/freezing on
+// large result sets (230 records, reported 2026-08) — not a layout bug. The
+// freeze made the page unresponsive to scroll input, which read as "the
+// record list dominates the sidebar and I can't reach the toggles." Fixed by
+// (1) rendering in capped batches with a "Show more" button, and (2) one
+// delegated click listener on the container instead of N individual ones.
+const RECORD_LIST_PAGE_SIZE = 60;
+let _recordListFullData = [];
+let _recordListShownCount = 0;
 
+function renderRecordList(records) {
+  const countLabel = document.getElementById('list-count-label');
   countLabel.textContent = `${records.length} record${records.length !== 1 ? 's' : ''} visible`;
+
+  _recordListFullData = records;
+  _recordListShownCount = Math.min(RECORD_LIST_PAGE_SIZE, records.length);
+  _renderRecordListBatch();
+}
+
+function _renderRecordListBatch() {
+  const container = document.getElementById('record-list');
+  const records = _recordListFullData;
 
   if (records.length === 0) {
     container.innerHTML = `<div class="empty-state">
@@ -2109,7 +2127,9 @@ function renderRecordList(records) {
     return;
   }
 
-  container.innerHTML = records.map(row => {
+  const visible = records.slice(0, _recordListShownCount);
+
+  const itemsHtml = visible.map(row => {
     const sym      = getSymbol(row.category_value, row.committee_slug);
     const catLabel = CATEGORY_MAP[row.category_value]?.label || (row.category_value || 'Unknown');
     const addr     = _isAddressWithheld(row) ? '' : (row.reported_address || '');
@@ -2126,45 +2146,59 @@ function renderRecordList(records) {
     </div>`;
   }).join('');
 
-  // Click → pan/zoom to the record's map layer (marker or shape) and open its popup
-  container.querySelectorAll('.record-item').forEach(el => {
-    el.addEventListener('click', () => {
-      const id = el.dataset.id;
-      const target = _markerById[id];
-      if (!target) return;
+  const remaining = records.length - _recordListShownCount;
+  const loadMoreHtml = remaining > 0
+    ? `<button type="button" id="record-list-load-more" class="record-list-load-more">Show ${Math.min(RECORD_LIST_PAGE_SIZE, remaining)} more (${remaining} left)</button>`
+    : '';
 
-      if (typeof target.getLatLng === 'function') {
-        // Point marker. Now that _markersLayer is a MarkerClusterGroup
-        // (2026-07-06), the marker may currently be hidden inside a cluster
-        // bubble rather than present on the map directly — a plain
-        // setView+openPopup would silently do nothing in that case.
-        // zoomToShowLayer zooms/spiderfies as needed first, then opens the
-        // popup once the marker is actually visible.
-        _markersLayer.zoomToShowLayer(target, () => target.openPopup());
-      } else if (typeof target.getBounds === 'function') {
-        // Polygon/LineString shape layer (an L.geoJSON FeatureGroup). Zoom
-        // first — this part always worked.
-        try { _map.fitBounds(target.getBounds(), { padding: [40, 40], maxZoom: 16, animate: true }); }
-        catch (e) { /* ignore fitBounds edge cases, e.g. a degenerate geometry */ }
+  container.innerHTML = itemsHtml + loadMoreHtml;
 
-        // openPopup() on the FeatureGroup itself is a silent no-op: bindPopup
-        // propagated the popup content down to each child layer individually
-        // (that's why clicking the shape on the map already worked), but the
-        // FeatureGroup wrapper never got its own _popup set, so calling
-        // openPopup() directly on `target` here did nothing — this was the
-        // actual "polygon doesn't zoom like point data" bug (the zoom itself
-        // silently succeeded, but nothing else visibly happened afterward,
-        // reading as "it didn't do anything"). Open the popup on the first
-        // child layer instead, where bindPopup's content actually lives.
-        let popupLayer = null;
-        if (typeof target.eachLayer === 'function') {
-          target.eachLayer(l => { if (!popupLayer) popupLayer = l; });
-        }
-        popupLayer?.openPopup();
-      }
-      closeMobileSidebar(); // no-op on desktop (classList.remove on an unopened drawer)
-    });
+  document.getElementById('record-list-load-more')?.addEventListener('click', () => {
+    _recordListShownCount = Math.min(_recordListShownCount + RECORD_LIST_PAGE_SIZE, records.length);
+    _renderRecordListBatch();
   });
+}
+
+// One delegated listener, set up once (see initMobileUI), instead of one
+// addEventListener per record — handles clicks for whatever batch of
+// .record-item elements currently exists in the container after any render.
+function _handleRecordListClick(e) {
+  const el = e.target.closest('.record-item');
+  if (!el) return;
+  const id = el.dataset.id;
+  const target = _markerById[id];
+  if (!target) return;
+
+  if (typeof target.getLatLng === 'function') {
+    // Point marker. Now that _markersLayer is a MarkerClusterGroup
+    // (2026-07-06), the marker may currently be hidden inside a cluster
+    // bubble rather than present on the map directly — a plain
+    // setView+openPopup would silently do nothing in that case.
+    // zoomToShowLayer zooms/spiderfies as needed first, then opens the
+    // popup once the marker is actually visible.
+    _markersLayer.zoomToShowLayer(target, () => target.openPopup());
+  } else if (typeof target.getBounds === 'function') {
+    // Polygon/LineString shape layer (an L.geoJSON FeatureGroup). Zoom
+    // first — this part always worked.
+    try { _map.fitBounds(target.getBounds(), { padding: [40, 40], maxZoom: 16, animate: true }); }
+    catch (e) { /* ignore fitBounds edge cases, e.g. a degenerate geometry */ }
+
+    // openPopup() on the FeatureGroup itself is a silent no-op: bindPopup
+    // propagated the popup content down to each child layer individually
+    // (that's why clicking the shape on the map already worked), but the
+    // FeatureGroup wrapper never got its own _popup set, so calling
+    // openPopup() directly on `target` here did nothing — this was the
+    // actual "polygon doesn't zoom like point data" bug (the zoom itself
+    // silently succeeded, but nothing else visibly happened afterward,
+    // reading as "it didn't do anything"). Open the popup on the first
+    // child layer instead, where bindPopup's content actually lives.
+    let popupLayer = null;
+    if (typeof target.eachLayer === 'function') {
+      target.eachLayer(l => { if (!popupLayer) popupLayer = l; });
+    }
+    popupLayer?.openPopup();
+  }
+  closeMobileSidebar(); // no-op on desktop (classList.remove on an unopened drawer)
 }
 
 /**
@@ -2488,6 +2522,7 @@ function initMobileUI() {
   document.getElementById('mobile-filter-toggle')?.addEventListener('click', openMobileSidebar);
   document.getElementById('sidebar-close-btn')?.addEventListener('click', closeMobileSidebar);
   document.getElementById('sidebar-backdrop')?.addEventListener('click', closeMobileSidebar);
+  document.getElementById('record-list')?.addEventListener('click', _handleRecordListClick);
 }
 
 // ─── Report Concern (public intake) ─────────────────────────────────────────────

@@ -83,6 +83,7 @@
       font-weight: 400;
       opacity: .75;
     }
+    .wordmark-short { display: none; font-weight: 600; opacity: 1; }
     #header .divider {
       width: 1px;
       height: 22px;
@@ -1116,6 +1117,11 @@
     .report-modal-body {
       padding: 14px 16px 18px;
       overflow-y: auto;
+      flex: 1 1 auto;
+      min-height: 0; /* without this, a flex child won't shrink below its content height, so
+                         overflow-y:auto never actually kicks in — the form just grows past the
+                         46vh mobile sheet cap and gets silently clipped by #report-modal's
+                         overflow:hidden instead of scrolling */
     }
 
     .report-location-actions { display: flex; gap: 8px; margin-bottom: 8px; }
@@ -1313,11 +1319,38 @@
       }
 
       #address-search-bar { top: 52px; }
+
+      /* The Boundaries row (SLO / UNNC / TES / Council Districts /
+         Neighborhood Councils) is 5 buttons sharing one flex row — fine at
+         desktop sidebar width, but in the ~300px mobile drawer each button
+         gets squeezed to ~50px and its label ellipsis-truncates to 1-2
+         letters. Let it wrap to two rows instead so labels stay readable. */
+      #boundary-section .tier-btn-row {
+        flex-wrap: wrap;
+      }
+      #boundary-section .tier-btn {
+        flex: 1 1 30%;
+        min-width: 84px;
+      }
     }
 
-    @media (max-width: 400px) {
-      #header .wordmark { font-size: 13px; }
+    /* Narrow phones (iPhone 11 = 414px, SE = 375px, etc.) — the 768px rules
+       above still leave the wordmark, org tabs, stats pill, address icon,
+       and filter button competing for ~360px of usable width, which was
+       running roughly 150-170px over budget with no wrap and no overflow
+       handling (the actual cause of the mobile "squished/cut off" header).
+       This trims each element to its essential content instead. */
+    @media (max-width: 480px) {
+      #header { gap: 6px; padding: 0 8px; }
+      #header .wordmark .wordmark-full { display: none; }
+      #header .wordmark .wordmark-short { display: inline; }
+      #header .wordmark { font-size: 14px; }
+      #org-tabs { max-width: 30vw; }
       .org-tab { font-size: 12px; padding: 7px 8px; }
+      #stats-strip .stat-pill span:not(.stat-count) { display: none; } /* drop the "records" label, keep the number */
+      .stat-pill { padding: 6px 8px; }
+      #mobile-filter-toggle .btn-label { display: none; } /* icon-only "☰" instead of "☰ Filters" */
+      #mobile-filter-toggle { padding: 8px 10px; }
     }
   </style>
 </head>
@@ -1327,7 +1360,7 @@
 
   <!-- ── Header ─────────────────────────────────────────── -->
   <header id="header">
-    <div class="wordmark">Mapping Innovations <span>Community Dashboard</span></div>
+    <div class="wordmark"><span class="wordmark-full">Mapping Innovations</span><span class="wordmark-short">MI</span> <span>Community Dashboard</span></div>
     <div class="divider"></div>
 
     <!-- Org tabs — populated by JS from organizations table -->
@@ -1349,7 +1382,7 @@
     <button type="button" id="address-search-toggle" class="header-icon-btn" aria-label="Search address" title="Search an address">📍</button>
 
     <!-- Mobile-only: opens the sidebar (filters + record list) drawer -->
-    <button type="button" id="mobile-filter-toggle" class="mobile-only-btn" aria-label="Show filters and records">☰ Filters</button>
+    <button type="button" id="mobile-filter-toggle" class="mobile-only-btn" aria-label="Show filters and records" title="Filters">☰<span class="btn-label"> Filters</span></button>
   </header>
 
   <!-- Address search bar — toggled open/closed by #address-search-toggle -->

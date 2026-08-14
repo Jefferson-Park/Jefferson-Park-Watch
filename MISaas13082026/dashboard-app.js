@@ -126,6 +126,7 @@ let _visibleRecords = []; // post-filter subset rendered on map + list
 
 // ─── Map state ────────────────────────────────────────────────────────────────
 let _map = null;
+let _isPickingReportLocation = false; // true while "Tap map to set pin" is armed — suppresses boundary info-sheet popups so the tap only sets the report pin
 let _markersLayer = null; // L.layerGroup holding all current point (emoji) markers
 let _shapesLayer = null;  // L.layerGroup holding all current Polygon/LineString shapes
 // Map from record.id → L.Marker | L.GeoJSON so the record list can pan/highlight
@@ -1128,6 +1129,7 @@ async function _fetchBoundaryGeoJSON(boundaryType) {
 // no matter where on the map was clicked. See map-core.js's 'sheet'
 // popupTrigger mode, which calls showInfoSheet() via opts.onOpenSheet.
 function showInfoSheet(html) {
+  if (_isPickingReportLocation) return; // suppress boundary popups while a Report-a-Concern pin tap is armed
   const sheet = document.getElementById('info-sheet');
   const backdrop = document.getElementById('info-sheet-backdrop');
   const content = document.getElementById('info-sheet-content');
@@ -2623,6 +2625,8 @@ function closeReportModal() {
   document.getElementById('report-modal')?.classList.remove('open');
   document.getElementById('report-modal-backdrop')?.classList.remove('open');
   document.body.classList.remove('report-modal-open');
+  _isPickingReportLocation = false; // safety net if the reporter backs out before completing a map tap
+  if (_map) _map.getContainer().style.cursor = '';
 }
 
 function resetReportForm() {
@@ -2665,9 +2669,11 @@ function initReportConcernUI() {
     document.getElementById('report-modal')?.classList.remove('open');
     document.getElementById('report-modal-backdrop')?.classList.remove('open');
     _map.getContainer().style.cursor = 'crosshair';
+    _isPickingReportLocation = true; // arm — suppresses boundary info-sheet popups until this tap lands
 
     _map.once('click', (e) => {
       _map.getContainer().style.cursor = '';
+      _isPickingReportLocation = false;
       setReportLocation(e.latlng.lat, e.latlng.lng);
       document.getElementById('report-modal')?.classList.add('open');
       document.getElementById('report-modal-backdrop')?.classList.add('open');

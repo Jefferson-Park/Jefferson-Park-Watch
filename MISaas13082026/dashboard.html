@@ -2,13 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <!-- user-scalable=no is deliberate here, not an oversight: without it, a pinch gesture
-       on the map can zoom the whole Safari page instead of (or in addition to) Leaflet's
-       own zoom, and panning while the page itself is zoomed carries the header/sidebar
-       off-screen with no obvious way back (reported 2026-08, "lose all fields and edge
-       banners, left with just the map"). Leaflet's own zoom controls/pinch handling
-       remain fully functional — this only disables the OUTER page's native zoom. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Mapping Innovations — Community Dashboard</title>
 
   <!-- Leaflet -->
@@ -75,6 +69,15 @@
 
     /* ── Header ────────────────────────────────────────── */
     #header {
+      position: fixed; /* anchored to the real browser viewport (not #app's layout box), so it
+                           stays put through iOS Safari's native pinch-zoom/pan — the mechanism
+                           that was carrying the header off-screen (reported 2026-08). Deliberately
+                           NOT solved by disabling page zoom (user-scalable=no) — this dashboard's
+                           primary users are older adults who may need to pinch-zoom the page
+                           itself for readability, so that stays fully available. */
+      top: 0;
+      left: 0;
+      right: 0;
       flex: 0 0 auto;
       display: flex;
       align-items: center;
@@ -218,9 +221,17 @@
 
     /* ── Main body (sidebar + map) ─────────────────────── */
     #body {
-      flex: 1 1 0;
+      flex: 0 0 auto;
       display: flex;
       overflow: hidden;
+      margin-top: 52px; /* #header is now position:fixed and out of normal flow — this reserves
+                            the space it used to occupy so #body doesn't slide up underneath it */
+      height: calc(100vh - 52px);  /* fallback */
+      height: calc(100dvh - 52px); /* #body no longer auto-fills #app via flex-grow (that would
+                                       double-count the header's height on top of a margin that's
+                                       also reserving it, overflowing 52px past the viewport
+                                       bottom) — sized explicitly instead so margin + height
+                                       together add up to exactly 100dvh */
     }
 
     /* ── Left sidebar ──────────────────────────────────── */
@@ -538,6 +549,10 @@
       flex: 0 1 auto;
       overflow-y: auto;
       max-height: 64vh;
+      min-height: 0; /* same Safari flexbox footgun fixed on .report-modal-body/.info-sheet-scroll —
+                        without this, a long record list (its sibling) could shove this box past
+                        its max-height instead of respecting it, which is what "search results
+                        dominate the sidebar, can't scroll to toggles" looked like (2026-08 field test) */
       border-bottom: 2px solid var(--panel-border); /* explicit divider between toggles and record list */
     }
     #sidebar-controls::-webkit-scrollbar { width: 5px; }
@@ -814,6 +829,7 @@
     #record-list-section {
       flex: 1 1 auto; /* the one flex-grow item in the sidebar column — claims all leftover height */
       overflow-y: auto;
+      min-height: 0; /* same fix as #sidebar-controls above, on the other side of the pairing */
       padding: 0; /* was 8px 0, which showed as blank space above the sticky count label and
                      below the last record — the sticky label's own border below already
                      reads as the section boundary, so no extra padding needed there */

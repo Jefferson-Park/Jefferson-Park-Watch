@@ -85,7 +85,7 @@ export const CATEGORY_MAP = {
     'tree_trunk':          { group: 'tree_inventory', label: 'Tree Trunk', icon: '🪵', color: '#43a047', radius: 9,  sensitiveDefault: false, fields: ['diameter', 'condition'] },
     'tree_photos':         { group: 'tree_inventory', label: 'Tree Photos', icon: '📸', color: '#78909c', radius: 9,  sensitiveDefault: false, fields: ['photo_context'] },
     'tree_report':         { group: 'tree_inventory', label: 'Tree Report', icon: '📋', color: '#795548', radius: 9,  sensitiveDefault: false, fields: ['report_type', 'prepared_by', 'report_date'] },
-    'project_tree_report':{ group: 'tree_inventory', label: 'Project Tree Report', icon: '📋', color: '#d32f2f', radius: 9,  sensitiveDefault: false, fields: ['report_type', 'prepared_by', 'report_date'] },
+    'old_city_tree_report':{ group: 'tree_inventory', label: 'Old City Tree Report', icon: '📋', color: '#d32f2f', radius: 9,  sensitiveDefault: false, fields: ['report_type', 'prepared_by', 'report_date'] },
 
 
     // ─── Trees & Parks Services (tree_park_services) ─────────────────────────
@@ -223,13 +223,39 @@ export const ORG_EXCLUSIVE_GROUPS = {
     'unnc':                 ['tree_inventory', 'tree_park_services'],
 };
 
+// ─── 5c. VIEW PROFILES (single-purpose wrapper pages) ───────────────────────
+// The general dashboard (dashboard.html) lets a visitor switch orgs and see
+// everything that org's ORG_EXCLUSIVE_GROUPS above allows — for UNNC that
+// still includes shared civic groups (traffic/planning/env/culture), not
+// just Trees. A VIEW_PROFILE is narrower: a single-purpose wrapper page
+// (e.g. unnc.html) that locks to one org, one category scope, and one
+// default boundary layer, activated at load rather than by user action.
+// Read by dashboard-app.js via window.MI_VIEW_PROFILE, set in the wrapper
+// HTML's own inline <script> before dashboard-app.js's module tag runs.
+export const VIEW_PROFILES = {
+    'unnc-tree': {
+        orgSlug: 'unnc',
+        label: 'UNNC — Tree Inventory & Greening Master Plan',
+        defaultBoundary: 'unnc', // dashboard-app.js maps this to toggleUnncBoundary()
+        visibleGroups: ['tree_inventory', 'tree_park_services'],
+        lockOrg: true, // hides the UNNC/JPW switcher — this page IS the UNNC view
+    },
+    // 'jpw-crime': { orgSlug: 'jefferson-park-watch', defaultBoundary: 'slo',
+    //   visibleGroups: ['public_safety'], lockOrg: true } — next pass
+};
+
 /**
  * Returns the CATEGORY_GROUPS ids visible to a given org: every group NOT
  * exclusively claimed by another org, plus this org's own exclusive groups.
  * @param {string} orgSlug
+ * @param {string} [viewProfileKey] - if set and found in VIEW_PROFILES, its
+ *   visibleGroups list is used directly instead of the org-exclusivity
+ *   calculation below (narrower scope, for single-purpose wrapper pages).
  * @returns {string[]} CATEGORY_GROUPS ids
  */
-export function resolveVisibleGroups(orgSlug) {
+export function resolveVisibleGroups(orgSlug, viewProfileKey) {
+    const profile = viewProfileKey && VIEW_PROFILES[viewProfileKey];
+    if (profile?.visibleGroups) return profile.visibleGroups;
     const allExclusiveGroups = Object.values(ORG_EXCLUSIVE_GROUPS).flat();
     const ownExclusiveGroups = ORG_EXCLUSIVE_GROUPS[orgSlug] || [];
     return CATEGORY_GROUPS

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mapping Innovations — Community Dashboard</title>
+  <title>UNNC — Tree Inventory & Greening Master Plan</title>
 
   <!-- Leaflet -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
@@ -1425,11 +1425,16 @@
 </head>
 
 <body>
+  <!-- View profile activation: read by dashboard-app.js's module script
+       below via window.MI_VIEW_PROFILE. Must be a plain (non-module)
+       inline script so it runs before the deferred module script — see
+       VIEW_PROFILES in config.js for what 'unnc-tree' actually sets. -->
+  <script>window.MI_VIEW_PROFILE = 'unnc-tree';</script>
 <div id="app">
 
   <!-- ── Header ─────────────────────────────────────────── -->
   <header id="header">
-    <div class="wordmark"><span class="wordmark-full">Mapping Innovations</span><span class="wordmark-short">MI</span><span class="wordmark-sub"> Community Map</span></div>
+    <div class="wordmark"><span class="wordmark-full">UNNC</span><span class="wordmark-short">UNNC</span><span class="wordmark-sub"> Tree &amp; Greening Map</span></div>
     <div class="divider"></div>
 
     <!-- Org tabs — populated by JS from organizations table -->

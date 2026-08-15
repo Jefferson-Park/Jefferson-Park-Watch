@@ -46,6 +46,7 @@ import {
   ASSESSOR_QUERY_URL,
   getTreeTrimColor,
   getFiscalYearFromRow,
+  VIEW_PROFILES,
 } from './config.js';
 
 import { submitPublicConcern, validateSubmissionPhoto } from './public-submission-service.js';
@@ -98,7 +99,18 @@ async function _fetchAllRows(table, selectCols, configure) {
 // Loaded once from the organizations table so we're data-driven, not hardcoded.
 // Map of slug → { id, slug, display_name }
 let _orgs = {};
-let _activeOrgSlug = 'unnc';
+
+// View profile (single-purpose wrapper pages, e.g. unnc.html) — set by the
+// wrapper's own inline <script> BEFORE this module script tag runs. Plain
+// dashboard.html never sets window.MI_VIEW_PROFILE, so _viewProfile is null
+// there and every branch below falls through to today's normal behavior.
+const _activeViewProfileKey = window.MI_VIEW_PROFILE || null;
+const _viewProfile = _activeViewProfileKey ? (VIEW_PROFILES[_activeViewProfileKey] || null) : null;
+if (_activeViewProfileKey && !_viewProfile) {
+  console.warn('[dashboard] Unknown view profile:', _activeViewProfileKey, '— falling back to normal dashboard behavior.');
+}
+
+let _activeOrgSlug = _viewProfile?.orgSlug || 'unnc';
 
 // Short tab labels, keyed by org slug — not derived from display_name.
 // The old approach did display_name.replace('United Neighborhoods
@@ -1779,7 +1791,7 @@ async function loadRecords(orgSlug) {
     // the comment this replaced only ever meant to stop a duplicate pin
     // showing next to its parent during ordinary browsing, not to make
     // linked children unsearchable. See handoff (IMG 8979/8980 case).
-    const visibleGroupIds = new Set(resolveVisibleGroups(orgSlug));
+    const visibleGroupIds = new Set(resolveVisibleGroups(orgSlug, _activeViewProfileKey));
     _allRecords = (data || []).filter(row => {
       const group = _resolveRowGroup(row);
       return !(group && !visibleGroupIds.has(group));
@@ -2294,7 +2306,7 @@ function tintFor(hexColor, alpha) {
 
 function buildGroupFilters() {
   const container = document.getElementById('group-filters');
-  const visibleGroupIds = new Set(resolveVisibleGroups(_activeOrgSlug));
+  const visibleGroupIds = new Set(resolveVisibleGroups(_activeOrgSlug, _activeViewProfileKey));
 
   container.innerHTML = CATEGORY_GROUPS
     .filter(group => visibleGroupIds.has(group.id))
@@ -3546,6 +3558,17 @@ function setLoading(on) {
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 
+// Maps a VIEW_PROFILE's defaultBoundary string to the toggle function that
+// already exists for it — reusing the same functions the boundary buttons
+// call, not new activation logic, so this can't drift out of sync with them.
+const _BOUNDARY_TOGGLE_FNS = {
+  'slo': toggleSloBoundary,
+  'unnc': toggleUnncBoundary,
+  'tes': toggleTesLayer,
+  'council-districts': toggleCouncilDistrictsBoundary,
+  'neighborhood-councils': toggleNeighborhoodCouncilsBoundary,
+};
+
 async function boot() {
   initMap();
   buildGroupFilters();
@@ -3561,9 +3584,19 @@ async function boot() {
   initNearbyUI();
   initReportConcernUI();
 
+  if (_viewProfile?.lockOrg) {
+    document.getElementById('org-tabs').style.display = 'none';
+  }
+
   await loadOrgs();
   await loadRecords(_activeOrgSlug);
   applyOrgGeofence(_activeOrgSlug); // don't block first paint on the boundary fetch
+
+  if (_viewProfile?.defaultBoundary) {
+    const toggleFn = _BOUNDARY_TOGGLE_FNS[_viewProfile.defaultBoundary];
+    if (toggleFn) toggleFn();
+    else console.warn('[dashboard] VIEW_PROFILE defaultBoundary has no matching toggle function:', _viewProfile.defaultBoundary);
+  }
 }
 
 boot().catch(err => console.error('[dashboard] boot failed:', err));

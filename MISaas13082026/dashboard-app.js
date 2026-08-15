@@ -2102,7 +2102,7 @@ function fitToBounds(pointBounds, shapeBoundsList) {
 // record list dominates the sidebar and I can't reach the toggles." Fixed by
 // (1) rendering in capped batches with a "Show more" button, and (2) one
 // delegated click listener on the container instead of N individual ones.
-const RECORD_LIST_PAGE_SIZE = 8;
+const RECORD_LIST_PAGE_SIZE = 4;
 let _recordListFullData = [];
 let _recordListShownCount = 0;
 
@@ -2148,7 +2148,7 @@ function _renderRecordListBatch() {
 
   const remaining = records.length - _recordListShownCount;
   const loadMoreHtml = remaining > 0
-    ? `<button type="button" id="record-list-load-more" class="record-list-load-more">Show ${Math.min(RECORD_LIST_PAGE_SIZE, remaining)} more (${remaining} left)</button>`
+    ? `<button type="button" id="record-list-load-more" class="record-list-load-more">Show More (${remaining} remaining)</button>`
     : '';
 
   container.innerHTML = itemsHtml + loadMoreHtml;

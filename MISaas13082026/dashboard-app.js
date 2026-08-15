@@ -100,6 +100,20 @@ async function _fetchAllRows(table, selectCols, configure) {
 let _orgs = {};
 let _activeOrgSlug = 'unnc';
 
+// Short tab labels, keyed by org slug — not derived from display_name.
+// The old approach did display_name.replace('United Neighborhoods
+// Neighborhood Council', 'UNNC'), but the org's actual legal name is
+// "United Neighbors Neighborhood Council" (Neighbors, not Neighborhoods),
+// so that string match silently never fired: the full un-shortened legal
+// name rendered in the tab, overflowed its box, and got truncated
+// (reported 2026-08 field test, screenshot showed "United Neighborhoo...").
+// A direct slug→label map can't drift out of sync with display_name text
+// the way a substring match can.
+const ORG_SHORT_LABELS = {
+  'unnc': 'UNNC',
+  'jefferson-park-watch': 'JPW',
+};
+
 // ─── Filter state ─────────────────────────────────────────────────────────────
 // Category-level granularity. Starts EMPTY — nothing plotted on the map
 // until the reporter/visitor opts into specific categories via the sidebar
@@ -1690,14 +1704,15 @@ async function loadOrgs() {
   _orgs = {};
   data.forEach(o => { _orgs[o.slug] = o; });
 
-  // Rebuild org tab labels from live data.
-  // NOTE: UNNC's long legal name is still shortened for tab-width reasons,
-  // but "Jefferson Park Watch" is now shown in full (no longer collapsed
-  // to "JPW") per request.
+  // Rebuild org tab labels from live data. Short, fixed labels via
+  // ORG_SHORT_LABELS (see declaration above) — falls back to the org's
+  // real display_name only if a new org shows up without an entry there,
+  // so a future org addition degrades gracefully instead of breaking.
   document.querySelectorAll('.org-tab').forEach(tab => {
     const slug = tab.dataset.slug;
     if (_orgs[slug]) {
-      tab.textContent = _orgs[slug].display_name.replace('United Neighborhoods Neighborhood Council', 'UNNC');
+      tab.textContent = ORG_SHORT_LABELS[slug] || _orgs[slug].display_name;
+      tab.title = _orgs[slug].display_name; // full legal name available on hover/long-press
     }
   });
 }

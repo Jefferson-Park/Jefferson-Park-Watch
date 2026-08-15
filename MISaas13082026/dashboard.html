@@ -94,8 +94,13 @@
       font-size: 15px;
       letter-spacing: -.2px;
       white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
+      flex-shrink: 1; /* graceful ellipsis if space is ever tight, instead of forcing
+                          org-tabs/stats/buttons off-screen or wrapping the header */
     }
-    #header .wordmark span {
+    #header .wordmark .wordmark-sub {
       font-weight: 400;
       opacity: .75;
     }
@@ -361,32 +366,18 @@
     .crime-date-apply { background: var(--accent) !important; color: #fff; border-color: var(--accent) !important; }
     .crime-date-filter-hint { font-size: 10px; color: var(--muted); }
 
-    .category-filter-row {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 3px 6px;
-      border-radius: var(--radius);
-      cursor: pointer;
-      user-select: none;
-      font-size: 12px;
-    }
-    .category-filter-row:hover { background: var(--accent-dim); }
-    .category-check {
-      width: 13px;
-      height: 13px;
-      accent-color: var(--accent);
-      cursor: pointer;
-      flex-shrink: 0;
-    }
-    .category-icon { font-size: 13px; line-height: 1; flex-shrink: 0; }
-    .category-label {
-      flex: 1;
-      color: var(--text);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
+    /* .category-filter-row/.category-check/.category-icon/.category-label
+       used to style these rows directly, back when they were plain
+       checkboxes. They were superseded by the .toggle-row/.toggle-switch
+       system (2026-07-03) — the markup now carries BOTH class names
+       (e.g. class="toggle-switch category-check") for historical reasons,
+       which meant this leftover block was still silently fighting the
+       current styles at equal CSS specificity. Its mobile override
+       (.category-check { width:18px }) was the actual cause of the switch
+       looking tiny specifically on phones (reported 2026-08) even after
+       enlarging .toggle-switch above — removed rather than patched again,
+       since nothing needs the old block anymore. .category-badge is kept;
+       it's a compatible visual layer on .toggle-count, not a conflict. */
     .category-badge {
       font-family: 'DM Mono', monospace;
       font-size: 10px;
@@ -721,7 +712,7 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 5px 6px;
+      padding: 7px 6px;
       border-radius: var(--radius);
       cursor: pointer;
       user-select: none;
@@ -743,9 +734,14 @@
       flex-shrink: 0;
     }
     .toggle-switch {
-      width: 30px; height: 16px;
-      border-radius: 8px;
-      background: #ccc;
+      width: 36px; height: 20px;
+      border-radius: 10px;
+      background: #9199a3; /* was #ccc — too close to the panel background to read as
+                               interactive; the whole row has always been tappable
+                               (see initCollapsibleSections/wind/purpleair/LAPD row
+                               listeners), but a pale, easy-to-miss switch made people
+                               feel like they had to aim for the dot specifically */
+      border: 1px solid rgba(0,0,0,.12);
       position: relative;
       flex-shrink: 0;
       transition: background .15s;
@@ -754,13 +750,18 @@
       content: '';
       position: absolute;
       top: 2px; left: 2px;
-      width: 12px; height: 12px;
+      width: 14px; height: 14px;
       border-radius: 50%;
       background: #fff;
+      box-shadow: 0 1px 2px rgba(0,0,0,.35);
       transition: left .15s;
     }
-    .toggle-switch.on { background: var(--accent); }
-    .toggle-switch.on::after { left: 16px; }
+    .toggle-switch.on { background: var(--accent); border-color: var(--accent-dark); }
+    .toggle-switch.on::after { left: 18px; }
+
+    /* Tap feedback across the WHOLE row (not just the switch) so it reads
+       clearly as one tappable unit on touch devices, which have no :hover. */
+    .toggle-row:active { background: var(--accent-dim); }
 
     .aqi-scale-row {
       display: flex;
@@ -1297,8 +1298,11 @@
         gap: 8px;
         padding: 0 10px;
       }
-      #header .wordmark span { display: none; } /* drop the "Community Dashboard" subtitle to save width */
-      .divider { display: none; }
+      .divider { display: none; } /* subtitle now stays visible here — org tabs went from
+                                      long org names to short UNNC/JPW labels (2026-08 fix),
+                                      which freed up the width the subtitle used to be
+                                      dropped for; .wordmark's ellipsis (see base rule) is
+                                      the safety net if it's ever still too tight */
 
       #mobile-filter-toggle { display: inline-flex; }
 
@@ -1335,8 +1339,7 @@
       /* Bigger tap targets throughout the filter panel */
       .layer-group-header { padding: 10px 6px; min-height: 40px; }
       .group-collapse-btn { width: 22px; font-size: 13px; }
-      .category-check { width: 18px; height: 18px; }
-      .category-filter-row { padding: 8px 8px; font-size: 13px; }
+      .toggle-row { padding: 9px 8px; font-size: 13px; }
       .record-item { padding: 10px 14px; }
 
       #map { z-index: 1; }
@@ -1397,19 +1400,22 @@
       }
     }
 
-    /* Narrow phones (iPhone 11 = 414px, SE = 375px, etc.) — the 768px rules
-       above still leave the wordmark, org tabs, stats pill, address icon,
-       and filter button competing for ~360px of usable width, which was
-       running roughly 150-170px over budget with no wrap and no overflow
-       handling (the actual cause of the mobile "squished/cut off" header).
-       This trims each element to its essential content instead. */
+    /* Narrow phones (iPhone 11 = 414px, SE = 375px, etc.) — this used to be
+       a much tighter squeeze (org tabs alone could run up to ~165px for a
+       long org name), which is why the wordmark got collapsed to bare "MI"
+       with no subtitle. Now that org tabs are short, fixed UNNC/JPW labels
+       (2026-08 fix — see ORG_SHORT_LABELS in dashboard-app.js) instead of
+       overflowing legal names, there's room to keep "MI Community
+       Dashboard" together; .wordmark's ellipsis (base rule) is the
+       fallback if a future org gets a longer short-label and it's tight
+       again, rather than the old hard collapse-to-"MI" behavior. */
     @media (max-width: 480px) {
       #header { gap: 6px; padding: 0 8px; }
       #header .wordmark .wordmark-full { display: none; }
       #header .wordmark .wordmark-short { display: inline; }
-      #header .wordmark { font-size: 14px; }
-      #org-tabs { max-width: 30vw; }
-      .org-tab { font-size: 12px; padding: 7px 8px; }
+      #header .wordmark { font-size: 13px; max-width: 140px; }
+      #org-tabs { max-width: none; }
+      .org-tab { font-size: 12px; padding: 6px 9px; }
       #stats-strip .stat-pill span:not(.stat-count) { display: none; } /* drop the "records" label, keep the number */
       .stat-pill { padding: 6px 8px; }
       #mobile-filter-toggle .btn-label { display: none; } /* icon-only "☰" instead of "☰ Filters" */
@@ -1423,7 +1429,7 @@
 
   <!-- ── Header ─────────────────────────────────────────── -->
   <header id="header">
-    <div class="wordmark"><span class="wordmark-full">Mapping Innovations</span><span class="wordmark-short">MI</span> <span>Community Dashboard</span></div>
+    <div class="wordmark"><span class="wordmark-full">Mapping Innovations</span><span class="wordmark-short">MI</span><span class="wordmark-sub"> Community Dashboard</span></div>
     <div class="divider"></div>
 
     <!-- Org tabs — populated by JS from organizations table -->

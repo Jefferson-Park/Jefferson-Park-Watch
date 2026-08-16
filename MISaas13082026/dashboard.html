@@ -345,8 +345,13 @@
 
     .crime-date-filter {
       display: flex; flex-direction: column; gap: 6px;
-      padding: 6px 10px 8px 26px;
-      border-bottom: 1px solid var(--panel-border);
+      padding: 6px 10px 8px 10px;
+      margin: 0 -4px 4px -26px; /* bleeds out of .layer-group-items' 26px/4px
+                                    indent so this highlighted box spans the
+                                    same full width as the group header,
+                                    instead of sitting narrower and offset
+                                    once nested inside the collapsible list */
+      border-radius: var(--radius);
       background: var(--accent-dim);
     }
     .crime-date-filter-row { display: flex; align-items: center; gap: 6px; }

@@ -2357,20 +2357,20 @@ function buildGroupFilters() {
           <span class="group-label">${group.label}</span>
           <span class="group-badge" data-group="${group.id}">0</span>
         </div>
-        ${group.id === 'public_safety' ? `
-        <div class="crime-date-filter">
-          <div class="crime-date-filter-row">
-            <input type="date" id="crime-date-from" value="${_crimeDateFrom || ''}">
-            <span>–</span>
-            <input type="date" id="crime-date-to" value="${_crimeDateTo || ''}">
-          </div>
-          <div class="crime-date-filter-actions">
-            <button type="button" id="crime-date-apply">Apply</button>
-            <button type="button" id="crime-date-clear">Clear</button>
-          </div>
-          ${(_crimeDateFrom || _crimeDateTo) ? `<div class="crime-date-filter-hint">Filtering crime records by date</div>` : ''}
-        </div>` : ''}
         <div class="layer-group-items collapsed" data-group="${group.id}">
+          ${group.id === 'public_safety' ? `
+          <div class="crime-date-filter">
+            <div class="crime-date-filter-row">
+              <input type="date" id="crime-date-from" value="${_crimeDateFrom || ''}">
+              <span>–</span>
+              <input type="date" id="crime-date-to" value="${_crimeDateTo || ''}">
+            </div>
+            <div class="crime-date-filter-actions">
+              <button type="button" id="crime-date-apply">Apply</button>
+              <button type="button" id="crime-date-clear">Clear</button>
+            </div>
+            ${(_crimeDateFrom || _crimeDateTo) ? `<div class="crime-date-filter-hint">Filtering crime records by date</div>` : ''}
+          </div>` : ''}
           ${itemsHtml}
         </div>
       </div>

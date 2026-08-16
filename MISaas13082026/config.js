@@ -244,7 +244,7 @@ export const VIEW_PROFILES = {
     },
     'jpw-crime': {
         orgSlug: 'jefferson-park-watch',
-        label: 'MI Community Crime Map - JPW',
+        label: 'MI Community Map - Public Safety | JPW',
         defaultBoundary: 'slo', // SLO boundary overlay shown by default on load
         visibleGroups: ['public_safety', 'traffic_infra', 'env_health'],
         lockOrg: true, // hides the UNNC/JPW switcher — this page IS the JPW view

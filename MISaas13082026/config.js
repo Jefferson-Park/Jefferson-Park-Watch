@@ -85,7 +85,7 @@ export const CATEGORY_MAP = {
     'tree_trunk':          { group: 'tree_inventory', label: 'Tree Trunk', icon: '🪵', color: '#43a047', radius: 9,  sensitiveDefault: false, fields: ['diameter', 'condition'] },
     'tree_photos':         { group: 'tree_inventory', label: 'Tree Photos', icon: '📸', color: '#78909c', radius: 9,  sensitiveDefault: false, fields: ['photo_context'] },
     'tree_report':         { group: 'tree_inventory', label: 'Tree Report', icon: '📋', color: '#795548', radius: 9,  sensitiveDefault: false, fields: ['report_type', 'prepared_by', 'report_date'] },
-    'project_tree_report':{ group: 'tree_inventory', label: 'Project_Tree Report', icon: '📋', color: '#d32f2f', radius: 9,  sensitiveDefault: false, fields: ['report_type', 'prepared_by', 'report_date'] },
+    'project_tree_report':{ group: 'tree_inventory', label: 'Project_Tree Report', icon: '📋', color: '#d32f2f', radius: 9,  sensitiveDefault: false, fields: ['report_type', 'prepared_by', 'report_date', 'diameter'] },
 
 
     // ─── Trees & Parks Services (tree_park_services) ─────────────────────────
@@ -235,8 +235,8 @@ export const ORG_EXCLUSIVE_GROUPS = {
 export const VIEW_PROFILES = {
     'unnc-tree': {
         orgSlug: 'unnc',
-        label: 'UNNC — Tree Inventory & Greening Master Plan',
-        defaultBoundary: 'unnc', // dashboard-app.js maps this to toggleUnncBoundary()
+        label: 'MI Community Map | Trees & Greening',
+        defaultBoundary: 'tes', // dashboard-app.js maps this to toggleTesLayer() (2026-08 switch from 'unnc')
         visibleGroups: ['tree_inventory', 'tree_park_services'],
         lockOrg: true, // hides the UNNC/JPW switcher — this page IS the UNNC view
     },

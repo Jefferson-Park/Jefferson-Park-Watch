@@ -333,7 +333,13 @@ function _popupOptionsFor(row) {
 // arrays) — used by buildPopupHtml below to surface DBH on the popup card,
 // which nothing previously rendered despite the CSV importer/Edit drawer
 // both already writing it. (2026-07-24)
-const TREE_DIAMETER_CATEGORIES = new Set(['tree', 'project_tree', 'tree_parkway', 'tree_median', 'tree_trunk', 'stump', 'dead_tree', 'preservation_tree']);
+const TREE_DIAMETER_CATEGORIES = new Set(['tree', 'project_tree', 'tree_parkway', 'tree_median', 'tree_trunk', 'stump', 'dead_tree', 'preservation_tree', 'project_tree_report']);
+
+// project_tree_report shows its diameter labeled as "DBH" (diameter at
+// breast height — the arborist term already used on its report forms)
+// rather than the generic "Diameter" label the other tree categories use.
+// (2026-08)
+const DBH_LABEL_CATEGORIES = new Set(['project_tree_report']);
 
 /**
  * Compact popup for a Tree Trimming Schedule LINESTRING segment — just the
@@ -392,12 +398,20 @@ function buildPopupHtml(row) {
 
   html += `<strong>${sym.icon || '📍'} ${title}</strong>`;
   html += `<div class="popup-meta">${catLabel}`;
-  if (statusText) html += ` · <span style="color:${statusColor(row.status)}">${statusText}</span>`;
+  // "Published" is the status on nearly every record the public dashboard
+  // shows (drafts are filtered out upstream), so announcing it on every
+  // card was pure noise — skip it here to free up popup space, while
+  // still surfacing other statuses (pending/active/etc.) that do carry
+  // information. (2026-08)
+  if (statusText && statusText.toLowerCase() !== 'published') {
+    html += ` · <span style="color:${statusColor(row.status)}">${statusText}</span>`;
+  }
   html += `</div>`;
   if (dateTimeText) html += `<div class="popup-meta" style="margin-top:2px;">🕐 ${esc(dateTimeText)}</div>`;
   if (addr) html += `<div class="popup-meta" style="margin-top:2px;">📍 ${addr}</div>`;
   if (TREE_DIAMETER_CATEGORIES.has(row.category_value) && diameter) {
-    html += `<div class="popup-meta" style="margin-top:2px;">📏 Diameter: ${esc(diameter)}${/\d$/.test(String(diameter)) ? '"' : ''}</div>`;
+    const diameterLabel = DBH_LABEL_CATEGORIES.has(row.category_value) ? 'DBH' : 'Diameter';
+    html += `<div class="popup-meta" style="margin-top:2px;">📏 ${diameterLabel}: ${esc(diameter)}${/\d$/.test(String(diameter)) ? '"' : ''}</div>`;
   }
   if (notes) {
     const short = notes.length > 120 ? notes.substring(0, 117) + '…' : notes;

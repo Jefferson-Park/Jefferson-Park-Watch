@@ -130,7 +130,7 @@ export const CATEGORY_MAP = {
     'vandalism':           { group: 'public_safety', label: 'Vandalism', icon: '🎨', color: '#d35400', radius: 9,  sensitiveDefault: true, fields: ['incident_date', 'incident_time'] },
     'homicide':            { group: 'public_safety', label: 'Homicide', icon: '⚫', color: '#000000', radius: 10, sensitiveDefault: true, fields: ['incident_date', 'incident_time'] },
 
-    // ─── Traffic Infrastructure & Safety (traffic_infra) ───
+    // ─── Traffic Safety & Infrastructure (traffic_infra) ───
     // 'traffic' = Public Reported Traffic Safety parent (JP_NIM: "Traffic Accidents All").
     // 'lighting' = Street Infrastructure parent (JP_NIM: "Street Infrastructure All").
     // Finer-grained sidebar sub-toggles for both live in CATEGORY_SUBTYPES
@@ -140,6 +140,8 @@ export const CATEGORY_MAP = {
     // way JP_NIM's toggleCatSubtype() matched accident_type/infra_type.
     'traffic':             { group: 'traffic_infra', label: 'Traffic Safety Hazard', icon: '🚦', color: '#f0a500', radius: 10, sensitiveDefault: false, fields: ['intersection_type', 'speed_limit'] },
     'lighting':            { group: 'traffic_infra', label: 'Traffic Infrastructure', icon: '💡', color: '#2d8bff', radius: 9,  sensitiveDefault: false, fields: ['pole_id', 'outage_severity'] },
+    // New (2026-08-16): Bus Stop, for JPW's Traffic Safety & Infrastructure layer.
+    'bus_stop':            { group: 'traffic_infra', label: 'Bus Stop', icon: '🚌', color: '#1a73e8', radius: 9,  sensitiveDefault: false, fields: ['route_number', 'shelter_present'] },
 
     // ─── Land Use & Economic Development (planning_dev) ───
     'business':            { group: 'planning_dev',  label: 'Commercial Business Registry', icon: '🏪', color: '#5B7A47', radius: 9, sensitiveDefault: false, fields: ['business_name', 'use_type'] },
@@ -195,7 +197,7 @@ export const CATEGORY_GROUPS = [
     { id: 'tree_inventory',     label: '🌳 Tree Inventory' },
     { id: 'tree_park_services', label: '🌿 Trees & Parks Services' },
     { id: 'public_safety',   label: '🚨 Crime & Public Safety' },
-    { id: 'traffic_infra',   label: '🚦 Traffic Infrastructure & Safety' },
+    { id: 'traffic_infra',   label: '🚦 Traffic Safety & Infrastructure' },
     { id: 'planning_dev',    label: '🏗 Planning & Economic Dev' },
     { id: 'env_health',      label: '🌱 Environment & Health' },
     { id: 'culture_comm',    label: '🎨 Culture & Community' }
@@ -240,8 +242,13 @@ export const VIEW_PROFILES = {
         visibleGroups: ['tree_inventory', 'tree_park_services'],
         lockOrg: true, // hides the UNNC/JPW switcher — this page IS the UNNC view
     },
-    // 'jpw-crime': { orgSlug: 'jefferson-park-watch', defaultBoundary: 'slo',
-    //   visibleGroups: ['public_safety'], lockOrg: true } — next pass
+    'jpw-crime': {
+        orgSlug: 'jefferson-park-watch',
+        label: 'MI Community Crime Map - JPW',
+        defaultBoundary: 'slo', // SLO boundary overlay shown by default on load
+        visibleGroups: ['public_safety', 'traffic_infra', 'env_health'],
+        lockOrg: true, // hides the UNNC/JPW switcher — this page IS the JPW view
+    },
 };
 
 /**
@@ -381,7 +388,9 @@ export const GROUP_COMMITTEE_SLUG = {
 // Callers (submitCreateRecord, commitCsvBatch, public-submission-service.js)
 // must check this list before treating a null GROUP_COMMITTEE_SLUG lookup
 // as an error, so a genuinely unmapped future group still fails loudly
-// instead of silently behaving like a shared one.
+// instead of silently behaving like a shared one. 'bus_stop' (added
+// 2026-08-16) stays shared/uncommitted along with traffic/lighting, same as
+// every other category in traffic_infra — no per-category override.
 export const SHARED_NO_COMMITTEE_GROUPS = ['traffic_infra', 'env_health', 'culture_comm'];
 
 // ─── 6a. BOUNDARY COLOR OVERRIDES (per-feature-name fill colors) ─────────────

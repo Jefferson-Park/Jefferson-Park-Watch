@@ -662,7 +662,18 @@ export const TES_RAMPS = {
     },
     holc_grade: {
         label: 'HOLC Grade',
+        // Actual per-feature fill coloring does NOT use these stops —
+        // map-core.js's _tesColorFor() special-cases 'holc_grade' with its
+        // own letter-keyed map (A/B/C/D), since the real geojson field
+        // (props.holc_grade, see buildTesSheet()'s HOLC_GRADE_DESC lookup
+        // in dashboard-app.js) stores a letter grade, not a number. These
+        // numeric stops exist only to drive the sidebar legend chips
+        // (renderTesLegend()) — `labels` translates each placeholder
+        // numeric key into the actual letter grade so the legend reads
+        // "A, B, C, D, N/A" instead of raw numbers. The `9` key previously
+        // had no `labels` entry, which is exactly why the legend showed a
+        // bare "9" chip instead of a grade — fixed below.
         stops: [[1,'#4dac26'],[2,'#fee08b'],[3,'#f46d43'],[4,'#d73027'],[9,'#aaaaaa']],
-        labels: { 1:'A', 2:'B', 3:'C', 4:'D' },
+        labels: { 1: 'A', 2: 'B', 3: 'C', 4: 'D', 9: 'N/A' },
     }
 };

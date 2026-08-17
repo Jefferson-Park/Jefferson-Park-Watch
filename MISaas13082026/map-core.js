@@ -406,6 +406,17 @@ export class CoreMapEngine {
 
   /**
    * Resolves a fill color for a single feature value against a ramp.
+   *
+   * (2026-08-16) The minVal/maxVal interpolation branch below is no longer
+   * reached from loadTesChoropleth() — that call site now deliberately
+   * passes null/null so every mode falls through to the fixed-threshold
+   * loop at the bottom instead (Sun's call: coloring should reflect each
+   * ramp's authored absolute thresholds, not a per-load relative gradient
+   * that can contradict an absolute-threshold info card for the same
+   * field). Left in place, not deleted, in case a genuinely-relative view
+   * is wanted somewhere on purpose later — if you're re-wiring this back
+   * in, make sure whatever calls it also has an absolute-threshold
+   * reference (like a badge) that agrees with it, or don't.
    * @private
    */
   _tesColorFor(value, mode, ramps, minVal, maxVal) {
@@ -505,7 +516,24 @@ export class CoreMapEngine {
     const layer = L.geoJSON(geojson, {
       pane: 'referenceLayers',
       style: (feature) => ({
-        fillColor:   this._tesColorFor(feature.properties?.[mode], mode, ramps, minVal, maxVal),
+        // (2026-08-16) Deliberately pass null/null here, NOT the minVal/
+        // maxVal computed above. Passing them used to make _tesColorFor()
+        // take its min-max interpolation branch, which stretches the full
+        // color gradient across whatever's the lowest/highest value
+        // CURRENTLY LOADED rather than the fixed thresholds authored in
+        // config.js's ramp.stops — meaning "red" meant "relatively lowest
+        // in this view" instead of "actually a bad value," which could
+        // directly contradict the absolute-threshold info card badge
+        // (tesScoreBand() in dashboard-app.js) for the exact same field,
+        // and actively broke temp_diff's diverging-at-zero design (real
+        // min/max aren't symmetric around 0, so 0°F didn't land at the
+        // ramp's middle color). Sun's call: accuracy to the data's actual
+        // absolute meaning over maximizing on-screen contrast — forcing
+        // null/null here always takes the fixed-threshold loop at the
+        // bottom of _tesColorFor instead. minVal/maxVal are still computed
+        // and returned below (some caller may want the informational
+        // range), just no longer fed into the color decision itself.
+        fillColor:   this._tesColorFor(feature.properties?.[mode], mode, ramps, null, null),
         fillOpacity: 0.55,
         color:       '#ffffff',
         weight:      0.6,

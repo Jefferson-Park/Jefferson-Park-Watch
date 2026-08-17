@@ -47,6 +47,7 @@ import {
   getTreeTrimColor,
   getFiscalYearFromRow,
   VIEW_PROFILES,
+  resolveCommitteeSlugsForGroups,
 } from './config.js';
 
 import { submitPublicConcern, validateSubmissionPhoto } from './public-submission-service.js';
@@ -1754,21 +1755,30 @@ async function loadRecords(orgSlug) {
   const warningEl = document.getElementById('policy-warning');
 
   try {
-    // Fetch every non-draft record — no organization_id/committee_slug
-    // filtering at the query level. Visibility is decided entirely by the
-    // client-side group-exclusivity check below (resolveVisibleGroups()),
-    // which is the actual authoritative rule. The org/committee .or() clause
-    // that used to live here caused a real bug: it excluded *shared*-group
-    // records (traffic_infra, planning_dev, env_health, culture_comm) from
-    // an org's fetch whenever that record's organization_id belonged to the
-    // *other* org and its committee_slug wasn't in this org's own committee
-    // list (e.g. a `planning` committee_slug row, or a NULL committee_slug
-    // per SHARED_NO_COMMITTEE_GROUPS) — so those shared categories never
-    // even reached the tab they were supposed to be visible under. The RLS
+    // Fetch every non-draft record — no organization_id filtering at the
+    // query level, ever. Visibility is decided entirely by the client-side
+    // group-exclusivity check below (resolveVisibleGroups()), which is the
+    // actual authoritative rule. The org/committee .or() clause that used to
+    // live here caused a real bug: it excluded *shared*-group records
+    // (traffic_infra, planning_dev, env_health, culture_comm) from an org's
+    // fetch whenever that record's organization_id belonged to the *other*
+    // org and its committee_slug wasn't in this org's own committee list
+    // (e.g. a `planning` committee_slug row, or a NULL committee_slug per
+    // SHARED_NO_COMMITTEE_GROUPS) — so those shared categories never even
+    // reached the tab they were supposed to be visible under. The RLS
     // policy (`status != 'draft'`) already has no org restriction, so
     // fetching everything and filtering client-side is both simpler and
     // correct. See COMMITTEE_SLUG_ALIASES in config.js for the legacy
     // organization_id mistagging this replaces a workaround for.
+    //
+    // The 2026-08-16 scoped-fetch block just below adds a committee_slug
+    // pre-filter for narrow VIEW_PROFILE pages ONLY — it is NOT the same
+    // mechanism as the buggy org/committee filter above and doesn't
+    // reintroduce that bug: it's keyed off the profile's explicit
+    // visibleGroups list, not organization_id, and always includes the
+    // FULL null-committee bucket (every SHARED_NO_COMMITTEE_GROUPS row)
+    // whenever any shared group is visible, rather than narrowing shared
+    // rows down to "this org's committees" the way the old code did.
     //
     // geom_type added alongside geom so renderShapeLayers() can tell Point
     // rows (handled by getRowCoordinates/renderMarkers) apart from
@@ -1780,10 +1790,45 @@ async function loadRecords(orgSlug) {
     // created_at: without one, rows sharing an identical created_at
     // timestamp could sort in a different relative order between pages,
     // letting .range() skip or duplicate a row at the page boundary.
+    //
+    // (2026-08-16) Scoped-fetch optimization: narrow-purpose VIEW_PROFILE
+    // pages (JPW.html, TreeInventory.html — anything with visibleGroups set)
+    // add a committee_slug pre-filter here so they don't have to download
+    // every org's ENTIRE dataset just to show 2-3 groups. This was flagged
+    // as the real cause of JPW.html's slow load on iPhone: the fetch above
+    // was unconditionally pulling the whole spatial_registry table before
+    // this change, regardless of how few groups a wrapper page actually
+    // shows. See resolveCommitteeSlugsForGroups() in config.js for exactly
+    // why this filters on committee_slug and not category_value (short
+    // version: category_value casing is known-inconsistent in real data;
+    // committee_slug is the field _resolveRowGroup() already trusts more).
+    // This is a narrowing pass only — the client-side group-exclusivity
+    // filter just below (resolveVisibleGroups()/_resolveRowGroup()) still
+    // runs unchanged afterward as the actual authoritative rule. Plain
+    // dashboard.html has no VIEW_PROFILE (_viewProfile is null there), so
+    // this whole block is skipped and it keeps fetching everything exactly
+    // as before.
+    let queryConfigure = (q) => q.neq('status', 'draft').order('created_at', { ascending: false }).order('id', { ascending: true });
+    if (_viewProfile?.visibleGroups) {
+      const { slugs, includeNull } = resolveCommitteeSlugsForGroups(_viewProfile.visibleGroups);
+      if (slugs.length || includeNull) {
+        const orParts = [];
+        if (slugs.length) orParts.push(`committee_slug.in.(${slugs.join(',')})`);
+        if (includeNull) orParts.push('committee_slug.is.null');
+        const orExpr = orParts.join(',');
+        queryConfigure = (q) => q.neq('status', 'draft').or(orExpr).order('created_at', { ascending: false }).order('id', { ascending: true });
+      }
+      // slugs.length === 0 && !includeNull would mean a VIEW_PROFILE whose
+      // visibleGroups resolve to nothing fetchable — leave queryConfigure at
+      // its unscoped default rather than building an .or() with zero
+      // conditions (which would be either a Supabase error or an
+      // accidental fetch-nothing, neither of which is the intended
+      // behavior for a misconfigured profile).
+    }
     const { data, error } = await _fetchAllRows(
       'spatial_registry',
       'id, title, category_value, metadata, metadata_payload, committee_slug, status, reported_address, description_notes, geom, geom_type, photo_url, thumbnail_url, created_at, group_id, is_active_parent',
-      (q) => q.neq('status', 'draft').order('created_at', { ascending: false }).order('id', { ascending: true })
+      queryConfigure
     );
 
     if (error) throw error;

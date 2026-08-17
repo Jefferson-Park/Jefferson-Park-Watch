@@ -393,6 +393,63 @@ export const GROUP_COMMITTEE_SLUG = {
 // every other category in traffic_infra — no per-category override.
 export const SHARED_NO_COMMITTEE_GROUPS = ['traffic_infra', 'env_health', 'culture_comm'];
 
+/**
+ * Resolves the committee_slug values (including known legacy aliases) that
+ * a server-side query should filter on to narrow spatial_registry down to a
+ * given set of CATEGORY_GROUPS ids. Used by dashboard-app.js's loadRecords()
+ * scoped-fetch optimization for narrow-purpose VIEW_PROFILE pages (JPW.html,
+ * TreeInventory.html) so they aren't forced to download every org's entire
+ * dataset just to display 2-3 groups.
+ *
+ * Deliberately keyed on committee_slug, NOT category_value. category_value
+ * has known-inconsistent casing/spacing in real data (see dashboard-app.js's
+ * getSymbol() normalization comment — "Street Lighting" vs "street_lighting"
+ * is a real case it has to handle), and _resolveRowGroup() in dashboard-app.js
+ * already falls back to committee_slug specifically *because* category_value
+ * can't be trusted alone for the exact same reason. A server-side `.in()` on
+ * category_value would silently drop any row whose category_value doesn't
+ * exactly match a CATEGORY_MAP key string — on a public safety page, that's
+ * a real record quietly disappearing, not just a cosmetic miss. committee_slug
+ * is comparatively stable (all-lowercase, no free text) and any known legacy
+ * value is already tracked in COMMITTEE_SLUG_ALIASES, so it's addressed here
+ * explicitly rather than discovered as a gap later.
+ *
+ * This is a narrowing optimization only, not the authoritative filter —
+ * resolveVisibleGroups()/_resolveRowGroup() in dashboard-app.js still run
+ * client-side afterward and remain the real source of truth for what's
+ * actually rendered. Over-including here (e.g. pulling in a shared group's
+ * full NULL-committee slice even when only one of its groups is visible) is
+ * fine; under-including is not, which is why includeNull covers the whole
+ * SHARED_NO_COMMITTEE_GROUPS bucket rather than trying to split it further.
+ *
+ * KNOWN RESIDUAL GAP: a grouped parent/child record (group_id) isn't
+ * guaranteed to share the exact same committee_slug across all its rows —
+ * that's not enforced at the DB level. If a linked child ever has a
+ * different committee_slug than its parent, this filter could exclude the
+ * child from a scoped page's fetch even though the parent is included. Not
+ * solved here — flagging in case a grouped attachment ever goes missing on
+ * a narrow-purpose page specifically.
+ * @param {string[]} groupIds
+ * @returns {{ slugs: string[], includeNull: boolean }}
+ */
+export function resolveCommitteeSlugsForGroups(groupIds) {
+    const slugs = new Set();
+    let includeNull = false;
+    for (const groupId of groupIds) {
+        if (SHARED_NO_COMMITTEE_GROUPS.includes(groupId)) {
+            includeNull = true;
+            continue;
+        }
+        const slug = GROUP_COMMITTEE_SLUG[groupId];
+        if (!slug) continue;
+        slugs.add(slug);
+        for (const [legacy, canonical] of Object.entries(COMMITTEE_SLUG_ALIASES)) {
+            if (canonical === slug) slugs.add(legacy);
+        }
+    }
+    return { slugs: [...slugs], includeNull };
+}
+
 // ─── 6a. BOUNDARY COLOR OVERRIDES (per-feature-name fill colors) ─────────────
 // Used by renderBoundaryGeoJSON() in map-core.js when opts.colorOverrides is
 // passed. Keyed by the boundary's own feature.properties.name string

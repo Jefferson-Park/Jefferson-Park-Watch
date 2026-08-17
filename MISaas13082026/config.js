@@ -239,6 +239,7 @@ export const VIEW_PROFILES = {
         orgSlug: 'unnc',
         label: 'MI Community Map | Trees & Greening',
         defaultBoundary: 'tes', // dashboard-app.js maps this to toggleTesLayer() (2026-08 switch from 'unnc')
+        defaultTesMode: 'priority_i', // (2026-08-16) was implicitly 'tes' (TES Score) via _tesMode's module default — Sun wants TreeInventory.html to open on Priority Index instead
         visibleGroups: ['tree_inventory', 'tree_park_services'],
         lockOrg: true, // hides the UNNC/JPW switcher — this page IS the UNNC view
     },
@@ -337,6 +338,23 @@ export const ORG_COMMITTEES = {
 // org's committee list — see resolveOrgCommittees() below.
 export const COMMITTEE_SLUG_ALIASES = {
     'crime-report': 'jpw', // pre-'jpw' freeform value — same committee in practice
+    // (2026-08-16) Found via a live-data check while debugging why Parks &
+    // Rec Site / Walking Trail records were missing from TreeInventory.html:
+    // 34 rows across the table still carry the pre-split blanket 'UNNC'
+    // committee_slug from before UNNC's committees were broken out into
+    // tree-committee/planning/etc. Most of those 34 are actually
+    // planning_dev-ish categories (mix_use_residential, business, vacant_lot,
+    // historic...) that don't really belong under tree-committee — but
+    // resolveCommitteeSlugsForGroups() only supports one canonical target
+    // per legacy alias, and the concrete, reported bug is specifically
+    // tree_park_services' 'parks' (4 rows) and 'trail' (1 row) going
+    // missing. Aliasing to 'tree-committee' fixes that; the ~29 other
+    // 'UNNC'-tagged rows just get harmlessly over-fetched on
+    // TreeInventory.html (client-side group resolution already excludes
+    // them from rendering there via category_value, same safety margin
+    // documented in resolveCommitteeSlugsForGroups() below) until/unless a
+    // narrow planning/econ-dev wrapper needs its own real fix here.
+    'UNNC': 'tree-committee',
 };
 
 /**
@@ -639,7 +657,24 @@ export const SUBTYPE_MATCH_FIELD = {
 export const TES_RAMPS = {
     tes:        {
         label: 'TES Score',
-        stops: [[20,'#d73027'],[40,'#f46d43'],[55,'#fdae61'],[65,'#fee08b'],[75,'#d9ef8b'],[100,'#4dac26']],
+        // (2026-08-16) Realigned to exactly match tesScoreBand()'s info-card
+        // badge cutoffs/colors in dashboard-app.js (CRITICAL <60 / BELOW
+        // AVERAGE 60-69 / ADEQUATE 70-79 / GOOD 80+), so the same score can
+        // never show a different verdict on the map than on its own card —
+        // a score of 68 now colors orange (BELOW AVERAGE) here, not the old
+        // ramp's pale green. Thresholds sit at 59.999/69.999/79.999 rather
+        // than 60/70/80 on the nose: _tesColorFor()'s fixed-threshold loop
+        // is `value <= threshold`, and tesScoreBand()'s cutoffs are `value
+        // >= 60/70/80` — a boundary score of exactly 60 needs to land in
+        // the BELOW AVERAGE bucket (matching the badge), not CRITICAL, so
+        // the lower threshold has to sit just under 60, not at 60 itself.
+        // If tesScoreBand()'s cutoffs ever change, these must change with
+        // them — this is intentionally NOT computed from tesScoreBand() at
+        // runtime, since ramp/badge use different comparison operators
+        // (<= vs >=) and unifying them isn't worth the added indirection
+        // for 4 fixed numbers that rarely change.
+        stops: [[59.999,'#B71C1C'],[69.999,'#C17D11'],[79.999,'#1565C0'],[100,'#2D7A2D']],
+        labels: { 59.999: 'Critical', 69.999: 'Below Avg', 79.999: 'Adequate', 100: 'Good' },
     },
     tc_gap:  {
         label: 'Canopy Gap',

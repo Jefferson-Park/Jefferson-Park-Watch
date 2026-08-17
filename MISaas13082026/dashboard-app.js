@@ -3629,6 +3629,14 @@ const _BOUNDARY_TOGGLE_FNS = {
 };
 
 async function boot() {
+  // Must run before initBoundaryUI() (which calls buildTesModeRow() and
+  // reads _tesMode to mark the initially-active mode button) and before the
+  // defaultBoundary toggle further down (which calls toggleTesLayer() ->
+  // _renderTes(), also reading _tesMode). If a profile doesn't set
+  // defaultTesMode, _tesMode keeps its 'tes' (TES Score) module-level
+  // default from where it's declared above.
+  if (_viewProfile?.defaultTesMode) _tesMode = _viewProfile.defaultTesMode;
+
   initMap();
   buildGroupFilters();
   buildOrgTabs();

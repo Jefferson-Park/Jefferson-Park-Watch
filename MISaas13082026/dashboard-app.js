@@ -31,6 +31,8 @@ import {
   resolveVisibleGroups,
   TES_GEOJSON_URL,
   TES_RAMPS,
+  CES_GEOJSON_URL,
+  CES_RAMPS,
   WOSIP_LABELS,
   SLO_BOUNDARY_COLORS,
   UNNC_BOUNDARY_COLORS,
@@ -199,9 +201,11 @@ let _neighborhoodCouncilsLayer = null;
 let _councilDistrictsActive = false;
 let _neighborhoodCouncilsActive = false;
 let _tesLayer = null;
+let _cesLayer = null; // CalEnviroScreen choropleth — same pattern as _tesLayer, separate layer group
 let _sloActive = false;
 let _unncBoundaryActive = false;
 let _tesActive = false;
+let _cesActive = false; // CalEnviroScreen choropleth toggle — separate from _tesActive, both can be on at once
 let _tesMode = 'tes';
 
 // ─── LAPD Collisions state ──────────────────────────────────────────────────────
@@ -875,6 +879,7 @@ function initMap() {
   _councilDistrictsLayer     = L.layerGroup();
   _neighborhoodCouncilsLayer = L.layerGroup();
   _tesLayer           = L.layerGroup();
+  _cesLayer           = L.layerGroup();
   _lapdLayer          = L.layerGroup();
   _windLayer          = L.layerGroup();
   _purpleairLayer     = L.layerGroup();
@@ -1517,6 +1522,137 @@ function buildTesSheet(props) {
 
 let _tesDiagnosed = false;
 
+/**
+ * CalEnviroScreen percentile band. Deliberately the MIRROR IMAGE of
+ * tesScoreBand() above, not a copy — for TES, higher score = better
+ * (tesScoreBand rewards high numbers with green/GOOD). For CalEnviroScreen,
+ * higher CIscoreP percentile = MORE pollution/vulnerability burden, i.e.
+ * WORSE. Colors are pulled from CES_RAMPS.CIscoreP's stops (which are
+ * themselves OEHHA's own official renderer colors, not invented — see that
+ * ramp's comment in config.js) so a tract's badge color always matches
+ * where it'd land on the choropleth. The 75th-percentile cutoff is not
+ * arbitrary either: it's CalEPA's official SB 535 "Disadvantaged
+ * Community" threshold (top 25% of tracts statewide) — see the badge in
+ * buildCesSheet() below.
+ * @param {number} percentile - CIscoreP, 0-100
+ */
+function cesScoreBand(percentile) {
+  if (percentile == null || isNaN(percentile)) return { label: 'Unknown', color: '#9e9e9e' };
+  if (percentile >= 90) return { label: 'Highest Burden', color: '#ff2200' };
+  if (percentile >= 75) return { label: 'High Burden', color: '#ff6200' };
+  if (percentile >= 50) return { label: 'Above Average Burden', color: '#dfeb00' };
+  return { label: 'Below Average Burden', color: '#3c8000' };
+}
+
+/**
+ * Builds the CalEnviroScreen 4.0 info-sheet card for a clicked tract.
+ * Mirrors buildTesSheet()'s structure and row()/pct-formatting helpers,
+ * but see cesScoreBand()'s comment above for why the color/label direction
+ * is intentionally inverted from TES, not reused.
+ *
+ * Field names are OEHHA's real schema, confirmed 2026-08-17 directly
+ * against the live FeatureServer (.../CalEnviroScreen_4_0_Results_/
+ * FeatureServer/0?f=pjson) — not guessed. Only a subset of the real 21
+ * indicators are shown (the ones most relevant to a greening/urban-
+ * forestry grant narrative); the full set is in the source data if a
+ * specific grant needs a number not surfaced here — extend this function
+ * rather than trying to cram all 21 into one card.
+ * @param {Object} props - feature properties from the CES GeoJSON
+ */
+function buildCesSheet(props) {
+  const pctile = parseFloat(props.CIscoreP);
+  const band   = cesScoreBand(pctile);
+  const tract  = props.TractTXT || '';
+  const pop    = props.ACS2019TotalPop;
+
+  const row = (label, val) => (val === null || val === undefined || val === '')
+    ? '' : `<div class="info-row"><span class="info-label">${esc(label)}</span><span class="info-value">${esc(String(val))}</span></div>`;
+  const pctFmt = (v) => (v == null || isNaN(v)) ? null : `${Number(v).toFixed(0)}th percentile`;
+
+  // CalEPA's official SB 535 disadvantaged-community rule: top 25%
+  // (>=75th percentile) of CalEnviroScreen scores statewide. Directly
+  // relevant to a grant narrative, so worth calling out same as TES's
+  // ej_disadva/HOLC badges — not the same field, this is a threshold
+  // Claude is applying to CIscoreP, not a value pulled from the data.
+  const dacBadge = (!isNaN(pctile) && pctile >= 75)
+    ? `<div style="margin-top:8px;padding:8px 10px;border-radius:8px;background:#fdf1d6;color:#8a5a00;font-size:12px;font-weight:600">📋 SB 535 Disadvantaged Community (top 25% statewide)</div>` : '';
+
+  const scoreRows =
+    row('Pollution Burden', pctFmt(parseFloat(props.PollutionP))) +
+    row('Population Characteristics', pctFmt(parseFloat(props.PopCharP)));
+  const scoreSection = scoreRows ? `
+    <div class="info-sheet-section">
+      <div class="info-sheet-section-label">⚖️ Component Scores</div>
+      ${scoreRows}
+    </div>` : '';
+
+  const indicatorRows =
+    row('Ozone', pctFmt(parseFloat(props.ozoneP))) +
+    row('PM2.5', pctFmt(parseFloat(props.pmP))) +
+    row('Traffic Impacts', pctFmt(parseFloat(props.trafficP))) +
+    row('Poverty', pctFmt(parseFloat(props.povP))) +
+    row('Unemployment', pctFmt(parseFloat(props.unempP))) +
+    row('Asthma', pctFmt(parseFloat(props.asthmaP))) +
+    row('Low Birth Weight', pctFmt(parseFloat(props.lbwP)));
+  const indicatorSection = indicatorRows ? `
+    <div class="info-sheet-section">
+      <div class="info-sheet-section-label">📈 Selected Indicators</div>
+      ${indicatorRows}
+    </div>` : '';
+
+  const demoRows =
+    row('Census Tract', tract) +
+    row('Population (ACS 2019)', pop != null ? Number(pop).toLocaleString() : null);
+  const demoSection = demoRows ? `
+    <div class="info-sheet-section">
+      <div class="info-sheet-section-label">📊 Tract Info</div>
+      ${demoRows}
+    </div>` : '';
+
+  const attribution = `
+    <div class="info-sheet-section" style="font-size:11px;color:var(--muted)">
+      Data: OEHHA CalEnviroScreen 4.0 (2021) ·
+      <a href="https://oehha.ca.gov/calenviroscreen" target="_blank" rel="noopener">oehha.ca.gov/calenviroscreen</a>
+    </div>`;
+
+  return `
+    <div class="info-sheet-header" style="background:${band.color}22">
+      <div class="info-sheet-eyebrow" style="color:${band.color}">${esc(band.label)}</div>
+      <div class="info-sheet-title">Census Tract ${esc(tract)}</div>
+      ${!isNaN(pctile) ? `
+        <div style="font-size:40px;font-weight:800;color:${band.color};margin-top:8px">${pctile.toFixed(0)}<span style="font-size:13px;font-weight:600;color:var(--text);margin-left:8px">CalEnviroScreen Percentile</span></div>` : ''}
+      ${dacBadge}
+    </div>
+    ${scoreSection}${indicatorSection}${demoSection}${attribution}
+  `;
+}
+
+async function _renderCes() {
+  try {
+    await _geoEngine.loadTesChoropleth(CES_GEOJSON_URL, CES_RAMPS, 'CIscoreP', _cesLayer, {
+      onOpenSheet: (props) => showInfoSheet(buildCesSheet(props)),
+    });
+    // No renderTesLegend()/mode-row equivalent yet — CES_RAMPS only has one
+    // mode (CIscoreP) so far, unlike TES's multi-mode row. Add a legend
+    // render call here (mirroring renderTesLegend()) once ces_pollution/
+    // ces_popchar are added to CES_RAMPS.
+  } catch (err) {
+    console.error('[dashboard] CalEnviroScreen choropleth fault:', err.message);
+    alert('Could not load the CalEnviroScreen overlay.');
+  }
+}
+
+async function toggleCesLayer() {
+  _cesActive = !_cesActive;
+  const btn = document.querySelector('.boundary-btn[data-boundary="ces"]');
+  btn?.classList.toggle('active', _cesActive);
+
+  if (!_cesActive) { _map.removeLayer(_cesLayer); return; }
+
+  _cesLayer.addTo(_map);
+  await _renderCes();
+}
+
 
 async function _renderTes() {
   try {
@@ -1580,6 +1716,7 @@ function initBoundaryUI() {
   document.querySelector('.boundary-btn[data-boundary="slo"]')?.addEventListener('click', toggleSloBoundary);
   document.querySelector('.boundary-btn[data-boundary="unnc"]')?.addEventListener('click', toggleUnncBoundary);
   document.querySelector('.boundary-btn[data-boundary="tes"]')?.addEventListener('click', toggleTesLayer);
+  document.querySelector('.boundary-btn[data-boundary="ces"]')?.addEventListener('click', toggleCesLayer);
   document.querySelector('.boundary-btn[data-boundary="council-districts"]')?.addEventListener('click', toggleCouncilDistrictsBoundary);
   document.querySelector('.boundary-btn[data-boundary="neighborhood-councils"]')?.addEventListener('click', toggleNeighborhoodCouncilsBoundary);
 
@@ -3624,6 +3761,7 @@ const _BOUNDARY_TOGGLE_FNS = {
   'slo': toggleSloBoundary,
   'unnc': toggleUnncBoundary,
   'tes': toggleTesLayer,
+  'ces': toggleCesLayer,
   'council-districts': toggleCouncilDistrictsBoundary,
   'neighborhood-councils': toggleNeighborhoodCouncilsBoundary,
 };

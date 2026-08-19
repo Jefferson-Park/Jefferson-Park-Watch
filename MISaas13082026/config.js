@@ -27,6 +27,17 @@ export const IS_LOCAL_SANDBOX = true; // flip to true only on your own machine, 
 
 export const TES_GEOJSON_URL = 'https://sqiioihssmnqatjrednq.supabase.co/storage/v1/object/public/geojson/unnctes.geojson';
 
+// (2026-08-17) Placeholder path — mirrors TES_GEOJSON_URL's pattern.
+// CalEnviroScreen 4.0 has no equivalent of the static unnctes.geojson yet:
+// Sun needs to run the scoped query (see the query URL handed over in
+// chat — Claude couldn't execute it directly, web_fetch only allows
+// previously-seen URLs and the ArcGIS domain isn't on bash_tool's network
+// allowlist) and upload the result to this exact Storage path before the
+// 'ces' boundary toggle below will have anything to render. Until that
+// upload happens, toggleCesLayer() will fail the same documented way
+// toggleSloBoundary() does when _fetchBoundaryGeoJSON() gets a 404.
+export const CES_GEOJSON_URL = 'https://sqiioihssmnqatjrednq.supabase.co/storage/v1/object/public/geojson/unncces.geojson';
+
 export const ASSESSOR_FIND_URL     = 'https://public.gis.lacounty.gov/public/rest/services/LACounty_Cache/LACounty_Parcel/MapServer/find';
 export const ASSESSOR_IDENTIFY_URL = 'https://public.gis.lacounty.gov/public/rest/services/LACounty_Cache/LACounty_Parcel/MapServer/identify';
 export const ASSESSOR_QUERY_URL    = 'https://public.gis.lacounty.gov/public/rest/services/LACounty_Cache/LACounty_Parcel/MapServer/0/query';
@@ -711,4 +722,52 @@ export const TES_RAMPS = {
         stops: [[1,'#4dac26'],[2,'#fee08b'],[3,'#f46d43'],[4,'#d73027'],[9,'#aaaaaa']],
         labels: { 1: 'A', 2: 'B', 3: 'C', 4: 'D', 9: 'N/A' },
     }
+};
+
+// ─── 10. CALENVIROSCREEN CHOROPLETH RAMPS ────────────────────────────────────
+// (2026-08-17) Same [[upperBound, color], ...] fixed-threshold format as
+// TES_RAMPS, consumed the same way by _tesColorFor() in map-core.js (see
+// toggleCesLayer() in dashboard-app.js, which passes CES_RAMPS where
+// toggleTesLayer() passes TES_RAMPS — same function, different ramp/data).
+//
+// ces_overall's 10 stops/colors are NOT invented — they're copied verbatim
+// from OEHHA's own live FeatureServer renderer (fetched from
+// .../CalEnviroScreen_4_0_Results_/FeatureServer/0?f=pjson, drawingInfo ->
+// classBreakInfos, field: CIscoreP), so this ramp renders identically to
+// OEHHA's own official public map. That matters more here than for TES:
+// for a grant narrative citing CalEnviroScreen, showing the exact same
+// green-to-red scale reviewers may already recognize from the official
+// tool is worth more than a custom palette would be.
+export const CES_RAMPS = {
+    // (2026-08-17 fix) Key MUST be the literal GeoJSON property name, not a
+    // descriptive label — loadTesChoropleth() in map-core.js uses this key
+    // for two different things: looking up the ramp itself (ramps[mode])
+    // AND reading each feature's value (feature.properties?.[mode]). This
+    // was originally named 'ces_overall', which doesn't exist as a field
+    // in OEHHA's data (the real field is CIscoreP) — every feature read
+    // undefined, and _tesColorFor()'s `value == null -> return '#cccccc'`
+    // silently painted every polygon flat gray instead of erroring, which
+    // is why the layer looked like it "didn't load." Same naming
+    // convention TES_RAMPS already follows (key 'tes' reads props.tes,
+    // 'priority_i' reads props.priority_i, etc.) — CES_RAMPS just wasn't
+    // held to it on the first pass.
+    CIscoreP: {
+        label: 'CalEnviroScreen (Overall)',
+        // field: CIscoreP — overall percentile, 0-100, higher = MORE
+        // burdened (opposite direction from TES score, where higher is
+        // better — do not reuse tesScoreBand-style "high is good" framing
+        // anywhere near this field).
+        stops: [
+            [10,  '#006100'], [20, '#3c8000'], [30, '#6ba100'], [40, '#a4c400'], [50, '#dfeb00'],
+            [60,  '#ffea00'], [70, '#ffbb00'], [80, '#ff9100'], [90, '#ff6200'], [100, '#ff2200'],
+        ],
+    },
+    // ces_pollution (PollutionP) and ces_popchar (PopCharP) are natural
+    // next additions — same 0-100 percentile shape, same rule applies:
+    // the key must be exactly 'PollutionP'/'PopCharP', not a label — but
+    // weren't added here since Claude only fetched/confirmed the renderer
+    // for the overall CIscoreP field this pass, not the two sub-score
+    // layers' renderers. Add them the same way (fetch that field's
+    // classBreakInfos from the live service, copy the colors) rather than
+    // guessing a palette.
 };

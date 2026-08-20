@@ -119,22 +119,30 @@ async function _fetchAllRows(table, selectCols, configure) {
 
   if (count === 0) return { data: [], error: null };
 
+  // (2026-08-20) Was Promise.all-ing every page at once — fast, but firing
+  // 9+ simultaneous requests against spatial_registry appears to have
+  // overwhelmed the connection pool / RLS evaluation under load and caused
+  // 500s (regression found in production right after this was introduced).
+  // Batching to a small concurrency cap keeps most of the parallelism win
+  // over the original fully-sequential loop without blasting the DB with
+  // every page at once.
+  const CONCURRENCY = 3;
   const pageCount = Math.ceil(count / PAGE_SIZE);
-  const pagePromises = [];
-  for (let i = 0; i < pageCount; i++) {
-    const from = i * PAGE_SIZE;
-    let q = sb.from(table).select(selectCols).range(from, from + PAGE_SIZE - 1);
-    if (configure) q = configure(q);
-    pagePromises.push(q);
+  const allRows = [];
+  for (let batchStart = 0; batchStart < pageCount; batchStart += CONCURRENCY) {
+    const batchPromises = [];
+    for (let i = batchStart; i < Math.min(batchStart + CONCURRENCY, pageCount); i++) {
+      const from = i * PAGE_SIZE;
+      let q = sb.from(table).select(selectCols).range(from, from + PAGE_SIZE - 1);
+      if (configure) q = configure(q);
+      batchPromises.push(q);
+    }
+    const batchResults = await Promise.all(batchPromises);
+    const batchError = batchResults.find(r => r.error)?.error;
+    if (batchError) return { data: null, error: batchError };
+    for (const r of batchResults) allRows.push(...(r.data || []));
   }
 
-  const results = await Promise.all(pagePromises);
-  const firstError = results.find(r => r.error)?.error;
-  if (firstError) return { data: null, error: firstError };
-
-  // Concatenate in page order (Promise.all preserves input order regardless
-  // of which request actually resolves first).
-  const allRows = results.flatMap(r => r.data || []);
   return { data: allRows, error: null };
 }
 

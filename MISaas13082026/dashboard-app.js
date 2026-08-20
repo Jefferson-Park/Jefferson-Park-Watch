@@ -92,55 +92,47 @@ async function _fetchAllRows(table, selectCols, configure) {
   // different symptom). Plain dashboard.html has no visibleGroups scoping
   // to narrow this, so it pages through the WHOLE table on every load.
   //
-  // Fix: ask Postgres for the total row count first (a cheap head-only
-  // request), then fire every page's request concurrently instead of
-  // waiting on each in turn. Falls back to the old sequential loop if the
-  // count request itself fails for any reason, so a count-query hiccup
-  // degrades to "slow like before" rather than breaking the load entirely.
-  let countQuery = sb.from(table).select(selectCols, { count: 'exact', head: true });
-  if (configure) countQuery = configure(countQuery);
-  const { count, error: countError } = await countQuery;
+  // (2026-08-20) First attempt at a fix asked Postgres for an exact row
+  // count up front (`count: 'exact'`) so all pages could be requested
+  // concurrently. DO NOT DO THIS AGAIN — that single query forces a full
+  // COUNT(*) scan with NO LIMIT, evaluating the RLS policy per row across
+  // the whole filtered table. Confirmed in production: Postgres killed it
+  // with error 57014 "canceling statement due to statement timeout." The
+  // original sequential design deliberately never needed a count — it just
+  // paged with .range() until a short page signaled "done" — and that
+  // property is worth keeping.
+  //
+  // Current approach: a 1-page-lookahead pipeline. As soon as page N's
+  // request resolves, page N+1's request is fired immediately — before
+  // page N's rows are even concatenated — so there are at most 2 requests
+  // in flight at any moment. No count query, no unbounded concurrency, and
+  // correctness is unchanged: we still stop the moment a page comes back
+  // short. The one bounded cost is a single wasted final request when the
+  // second-to-last page turns out to be full-length and its speculative
+  // follow-up page comes back empty — negligible next to a full-table
+  // COUNT(*).
+  const makePage = (from) => {
+    let q = sb.from(table).select(selectCols).range(from, from + PAGE_SIZE - 1);
+    if (configure) q = configure(q);
+    return q;
+  };
 
-  if (countError || count == null) {
-    // Fallback: original sequential behavior.
-    let allRows = [];
-    let from = 0;
-    while (true) {
-      let q = sb.from(table).select(selectCols).range(from, from + PAGE_SIZE - 1);
-      if (configure) q = configure(q);
-      const { data, error } = await q;
-      if (error) return { data: null, error };
-      allRows = allRows.concat(data || []);
-      if (!data || data.length < PAGE_SIZE) break; // short page = last page
-      from += PAGE_SIZE;
-    }
-    return { data: allRows, error: null };
-  }
+  let allRows = [];
+  let from = 0;
+  let current = makePage(from);
+  let next = makePage(from + PAGE_SIZE); // fired immediately, in parallel with `current`
 
-  if (count === 0) return { data: [], error: null };
+  while (true) {
+    const { data, error } = await current;
+    if (error) return { data: null, error };
 
-  // (2026-08-20) Was Promise.all-ing every page at once — fast, but firing
-  // 9+ simultaneous requests against spatial_registry appears to have
-  // overwhelmed the connection pool / RLS evaluation under load and caused
-  // 500s (regression found in production right after this was introduced).
-  // Batching to a small concurrency cap keeps most of the parallelism win
-  // over the original fully-sequential loop without blasting the DB with
-  // every page at once.
-  const CONCURRENCY = 3;
-  const pageCount = Math.ceil(count / PAGE_SIZE);
-  const allRows = [];
-  for (let batchStart = 0; batchStart < pageCount; batchStart += CONCURRENCY) {
-    const batchPromises = [];
-    for (let i = batchStart; i < Math.min(batchStart + CONCURRENCY, pageCount); i++) {
-      const from = i * PAGE_SIZE;
-      let q = sb.from(table).select(selectCols).range(from, from + PAGE_SIZE - 1);
-      if (configure) q = configure(q);
-      batchPromises.push(q);
-    }
-    const batchResults = await Promise.all(batchPromises);
-    const batchError = batchResults.find(r => r.error)?.error;
-    if (batchError) return { data: null, error: batchError };
-    for (const r of batchResults) allRows.push(...(r.data || []));
+    const isShortPage = !data || data.length < PAGE_SIZE;
+    allRows = allRows.concat(data || []);
+    if (isShortPage) break; // `next` (if in flight) is simply left unawaited/unused
+
+    from += PAGE_SIZE;
+    current = next;
+    next = makePage(from + PAGE_SIZE);
   }
 
   return { data: allRows, error: null };

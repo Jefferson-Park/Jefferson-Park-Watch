@@ -483,12 +483,28 @@ export class CoreMapEngine {
    *   mouseover tooltip entirely (admin.html: panning across many polygons
    *   was popping tooltips constantly, so it's click-only there — the hover
    *   highlight style still applies, just without the tooltip box).
+   * @param {number} [opts.fillOpacity=0.55] - base fill opacity. Lower this
+   *   (e.g. 0.25-0.3) to bring a choropleth layer visually in line with a
+   *   renderBoundaryGeoJSON() outline layer like SLO (default 0.08), which
+   *   reads much lighter at its default than this function's old hardcoded
+   *   0.55.
+   * @param {number} [opts.hoverFillOpacity=0.78] - fill opacity on mouseover.
+   *   Keep this noticeably higher than opts.fillOpacity so the hover
+   *   highlight still reads as a highlight once the base opacity is lowered.
    * @returns {Promise<{layer: L.GeoJSON, minVal: number|null, maxVal: number|null, availableModes: string[]}|null>}
    *   minVal/maxVal are null for 'holc_grade' (string lookup, no numeric range).
    *   availableModes lists which ramps keys actually exist on this dataset's
    *   properties — lets a caller build mode-switch buttons without guessing.
    */
   async loadTesChoropleth(geojsonUrl, ramps, mode, targetLayerGroup, opts = {}) {
+    // (2026-08-19) fillOpacity/hoverFillOpacity now configurable per-caller —
+    // was hardcoded 0.55/0.78 below, which made CES/TES/HOLC read much
+    // heavier than renderBoundaryGeoJSON()'s SLO outline (fillOpacity 0.08
+    // default). Defaults here match the old hardcoded values so any caller
+    // not passing these (e.g. admin.html, if it doesn't opt in) renders
+    // identically to before.
+    const { fillOpacity = 0.55, hoverFillOpacity = 0.78 } = opts;
+
     this._geojsonCache = this._geojsonCache || {};
 
     let geojson = this._geojsonCache[geojsonUrl];
@@ -534,7 +550,7 @@ export class CoreMapEngine {
         // and returned below (some caller may want the informational
         // range), just no longer fed into the color decision itself.
         fillColor:   this._tesColorFor(feature.properties?.[mode], mode, ramps, null, null),
-        fillOpacity: 0.55,
+        fillOpacity,
         color:       '#ffffff',
         weight:      0.6,
         opacity:     0.7,
@@ -548,8 +564,8 @@ export class CoreMapEngine {
           ? (val != null ? `${(Number(val) * 100).toFixed(1)}%` : '—')
           : (val != null ? Number(val).toFixed(1) : '—');
 
-        lyr.on('mouseover', function () { this.setStyle({ fillOpacity: 0.78, weight: 1.5 }); this.bringToFront(); });
-        lyr.on('mouseout',  function () { this.setStyle({ fillOpacity: 0.55, weight: 0.6 }); });
+        lyr.on('mouseover', function () { this.setStyle({ fillOpacity: hoverFillOpacity, weight: 1.5 }); this.bringToFront(); });
+        lyr.on('mouseout',  function () { this.setStyle({ fillOpacity, weight: 0.6 }); });
 
         if (opts.hoverTooltip !== false) {
           lyr.bindTooltip(`<strong>${label}:</strong> ${displayVal}`, { className: 'mi-tooltip', sticky: true });

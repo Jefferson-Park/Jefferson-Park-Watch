@@ -84,17 +84,57 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 // .eq()/.neq()/.order()/etc. — .range() itself is applied by this helper.
 const PAGE_SIZE = 1000;
 async function _fetchAllRows(table, selectCols, configure) {
-  let allRows = [];
-  let from = 0;
-  while (true) {
+  // (2026-08-19) Was a strictly sequential while-loop — each 1000-row page
+  // waited on the previous page's full round trip before even starting the
+  // next request. Fine when spatial_registry was small; became a real
+  // load-time problem once the table grew past a few thousand rows (see the
+  // 9,000+-row admin table freeze this same growth caused — same table,
+  // different symptom). Plain dashboard.html has no visibleGroups scoping
+  // to narrow this, so it pages through the WHOLE table on every load.
+  //
+  // Fix: ask Postgres for the total row count first (a cheap head-only
+  // request), then fire every page's request concurrently instead of
+  // waiting on each in turn. Falls back to the old sequential loop if the
+  // count request itself fails for any reason, so a count-query hiccup
+  // degrades to "slow like before" rather than breaking the load entirely.
+  let countQuery = sb.from(table).select(selectCols, { count: 'exact', head: true });
+  if (configure) countQuery = configure(countQuery);
+  const { count, error: countError } = await countQuery;
+
+  if (countError || count == null) {
+    // Fallback: original sequential behavior.
+    let allRows = [];
+    let from = 0;
+    while (true) {
+      let q = sb.from(table).select(selectCols).range(from, from + PAGE_SIZE - 1);
+      if (configure) q = configure(q);
+      const { data, error } = await q;
+      if (error) return { data: null, error };
+      allRows = allRows.concat(data || []);
+      if (!data || data.length < PAGE_SIZE) break; // short page = last page
+      from += PAGE_SIZE;
+    }
+    return { data: allRows, error: null };
+  }
+
+  if (count === 0) return { data: [], error: null };
+
+  const pageCount = Math.ceil(count / PAGE_SIZE);
+  const pagePromises = [];
+  for (let i = 0; i < pageCount; i++) {
+    const from = i * PAGE_SIZE;
     let q = sb.from(table).select(selectCols).range(from, from + PAGE_SIZE - 1);
     if (configure) q = configure(q);
-    const { data, error } = await q;
-    if (error) return { data: null, error };
-    allRows = allRows.concat(data || []);
-    if (!data || data.length < PAGE_SIZE) break; // short page = last page
-    from += PAGE_SIZE;
+    pagePromises.push(q);
   }
+
+  const results = await Promise.all(pagePromises);
+  const firstError = results.find(r => r.error)?.error;
+  if (firstError) return { data: null, error: firstError };
+
+  // Concatenate in page order (Promise.all preserves input order regardless
+  // of which request actually resolves first).
+  const allRows = results.flatMap(r => r.data || []);
   return { data: allRows, error: null };
 }
 
@@ -1631,6 +1671,8 @@ async function _renderCes() {
   try {
     await _geoEngine.loadTesChoropleth(CES_GEOJSON_URL, CES_RAMPS, 'CIscoreP', _cesLayer, {
       onOpenSheet: (props) => showInfoSheet(buildCesSheet(props)),
+      fillOpacity: 0.3,
+      hoverFillOpacity: 0.5,
     });
     // No renderTesLegend()/mode-row equivalent yet — CES_RAMPS only has one
     // mode (CIscoreP) so far, unlike TES's multi-mode row. Add a legend
@@ -1658,6 +1700,8 @@ async function _renderTes() {
   try {
     const result = await _geoEngine.loadTesChoropleth(TES_GEOJSON_URL, TES_RAMPS, _tesMode, _tesLayer, {
       onOpenSheet: (props) => showInfoSheet(buildTesSheet(props)),
+      fillOpacity: 0.3,
+      hoverFillOpacity: 0.5,
     });
     renderTesLegend();
 

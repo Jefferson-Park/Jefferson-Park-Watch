@@ -567,6 +567,19 @@
       gap: 6px;
     }
     .tier-btn-row + .tier-btn-row { margin-top: 6px; }
+
+    /* (2026-08-21) Same unconditional-wrap treatment as GMP.html/
+       TreeInventory.html, for CSS consistency across wrappers — JPW only
+       has 5 boundary buttons (no CES/BHUWC here) so this rarely triggers
+       at desktop width, but keeping the rule identical everywhere avoids
+       future drift if a 6th/7th boundary is ever added to this wrapper too. */
+    #boundary-section .tier-btn-row {
+      flex-wrap: wrap;
+    }
+    #boundary-section .tier-btn {
+      flex: 1 1 30%;
+      min-width: 76px;
+    }
     .tier-btn {
       flex: 1;
       padding: 6px 4px;
@@ -1391,18 +1404,9 @@
 
       #address-search-bar { top: 52px; }
 
-      /* The Boundaries row (SLO / UNNC / TES / Council Districts /
-         Neighborhood Councils) is 5 buttons sharing one flex row — fine at
-         desktop sidebar width, but in the ~300px mobile drawer each button
-         gets squeezed to ~50px and its label ellipsis-truncates to 1-2
-         letters. Let it wrap to two rows instead so labels stay readable. */
-      #boundary-section .tier-btn-row {
-        flex-wrap: wrap;
-      }
-      #boundary-section .tier-btn {
-        flex: 1 1 30%;
-        min-width: 84px;
-      }
+      /* (2026-08-21) Boundary-row wrap moved to an unconditional base rule
+         near .tier-btn-row's definition above — see that comment for why.
+         This mobile-only override is no longer needed. */
     }
 
     /* Narrow phones (iPhone 11 = 414px, SE = 375px, etc.) — this used to be
@@ -1506,8 +1510,8 @@
             <button type="button" class="tier-btn boundary-btn" data-boundary="slo" title="Streetscape / Landscape / Overlay committee boundaries">SLO</button>
             <button type="button" class="tier-btn boundary-btn" data-boundary="unnc" title="UNNC neighborhood council boundary">UNNC</button>
             <button type="button" class="tier-btn boundary-btn" data-boundary="tes" title="UNNC GMP Tree Equity Score choropleth">TES</button>
-            <button type="button" class="tier-btn boundary-btn" data-boundary="council-districts" title="LA City Council District boundaries">Council Districts</button>
-            <button type="button" class="tier-btn boundary-btn" data-boundary="neighborhood-councils" title="Neighborhood Council boundaries">Neighborhood Councils</button>
+            <button type="button" class="tier-btn boundary-btn" data-boundary="council-districts" title="LA City Council District boundaries">Districts</button>
+            <button type="button" class="tier-btn boundary-btn" data-boundary="neighborhood-councils" title="Neighborhood Council boundaries">NCs</button>
           </div>
           <!-- TES sub-mode pills — shown only while TES is active -->
           <div id="tes-mode-row"></div>

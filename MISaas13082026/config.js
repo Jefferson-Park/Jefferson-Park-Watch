@@ -38,6 +38,14 @@ export const TES_GEOJSON_URL = 'https://sqiioihssmnqatjrednq.supabase.co/storage
 // toggleSloBoundary() does when _fetchBoundaryGeoJSON() gets a 404.
 export const CES_GEOJSON_URL = 'https://sqiioihssmnqatjrednq.supabase.co/storage/v1/object/public/geojson/unncces.geojson';
 
+// (2026-08-20) Plain boundary layer (GEOID10/CT10/LABEL only — no score
+// field), for the Greening Master Plans wrapper (GMP.html). Uploaded to the
+// same Storage bucket/path pattern as TES/CES. Unlike TES/CES this is
+// rendered via renderBoundaryGeoJSON() (flat outline), not
+// loadTesChoropleth() (choropleth) — see toggleBhuwcBoundary() in
+// dashboard-app.js.
+export const BHUWC_GEOJSON_URL = 'https://sqiioihssmnqatjrednq.supabase.co/storage/v1/object/public/geojson/unncbhuwc.geojson';
+
 export const ASSESSOR_FIND_URL     = 'https://public.gis.lacounty.gov/public/rest/services/LACounty_Cache/LACounty_Parcel/MapServer/find';
 export const ASSESSOR_IDENTIFY_URL = 'https://public.gis.lacounty.gov/public/rest/services/LACounty_Cache/LACounty_Parcel/MapServer/identify';
 export const ASSESSOR_QUERY_URL    = 'https://public.gis.lacounty.gov/public/rest/services/LACounty_Cache/LACounty_Parcel/MapServer/0/query';
@@ -260,6 +268,24 @@ export const VIEW_PROFILES = {
         defaultBoundary: 'slo', // SLO boundary overlay shown by default on load
         visibleGroups: ['public_safety', 'traffic_infra', 'env_health'],
         lockOrg: true, // hides the UNNC/JPW switcher — this page IS the JPW view
+    },
+    // (2026-08-20) Greening Master Plans wrapper (GMP.html). Modeled directly
+    // on 'unnc-tree' above — same org, same visibleGroups — since GMP is the
+    // same UNNC trees/greening scope (JPW.html's TES button title already
+    // called it "UNNC GMP Tree Equity Score choropleth", confirming GMP and
+    // Trees & Greening are the same initiative, not two different scopes).
+    // BHUWC is added as an extra selectable boundary layer (see boundary-btn
+    // row in GMP.html / toggleBhuwcBoundary() in dashboard-app.js), not the
+    // default — defaultBoundary stays 'tes' to match TreeInventory.html.
+    // ASSUMPTION, not confirmed with Sun: flag if GMP actually needs a
+    // different visibleGroups scope than plain Tree Inventory.
+    'unnc-gmp': {
+        orgSlug: 'unnc',
+        label: 'MI Community Map | Greening Master Plans',
+        defaultBoundary: 'tes',
+        defaultTesMode: 'priority_i', // matches unnc-tree's TreeInventory.html default
+        visibleGroups: ['tree_inventory', 'tree_park_services'],
+        lockOrg: true, // hides the UNNC/JPW switcher — this page IS the GMP view
     },
 };
 
@@ -503,6 +529,14 @@ export const SLO_BOUNDARY_COLORS = {};
 // empty by default, auto-hash-colored per name until you want specific ones
 // pinned to specific colors.
 export const UNNC_BOUNDARY_COLORS = {};
+
+// (2026-08-20) Same colorOverrides pattern as SLO/UNNC above, for BHUWC
+// (Greening Master Plans boundary — 22 census-tract polygons, no shared
+// SLO/UNNC-style 'name' field). Keyed by the LABEL property (e.g. '2190.10')
+// since that's the field toggleBhuwcBoundary()'s renderBoundaryGeoJSON()
+// call uses as labelField — empty by default, auto-hash-colored per tract
+// until specific ones need pinning.
+export const BHUWC_BOUNDARY_COLORS = {};
 
 // Citywide reference boundaries (2026-07-08) — Council Districts and
 // Neighborhood Councils, same colorOverrides pattern as SLO/UNNC above:

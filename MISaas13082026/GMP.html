@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MI Community Map | Trees & Greening</title>
+  <title>MI Community Map | Greening Master Plans</title>
 
   <!-- Leaflet -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
@@ -568,11 +568,11 @@
     }
     .tier-btn-row + .tier-btn-row { margin-top: 6px; }
 
-    /* (2026-08-21) Boundary row grew to include CalEnviroScreen this
-       session (SLO/UNNC/TES/CalEnviroScreen/Council Districts/Neighborhood
-       Councils = 6 buttons). Previously only wrapped below 768px (see the
-       removed mobile-only override further down) — fine for 5 buttons at
-       desktop sidebar width, but squeezes too far now even on desktop,
+    /* (2026-08-21) Boundary row (SLO/UNNC/TES/BHUWC/CalEnviroScreen/Council
+       Districts/Neighborhood Councils) grew from 5 to 7 buttons this
+       session. Previously only wrapped below 768px (see the removed
+       mobile-only override further down) — fine for 5 buttons at desktop
+       sidebar width, but 7 buttons squeeze too far even on desktop now,
        ellipsis-truncating labels to 1-2 letters. Wrap unconditionally, at
        every width, instead of only below 768px. */
     #boundary-section .tier-btn-row {
@@ -1439,8 +1439,10 @@
   <!-- View profile activation: read by dashboard-app.js's module script
        below via window.MI_VIEW_PROFILE. Must be a plain (non-module)
        inline script so it runs before the deferred module script — see
-       VIEW_PROFILES in config.js for what 'unnc-tree' actually sets. -->
-  <script>window.MI_VIEW_PROFILE = 'unnc-tree';</script>
+       VIEW_PROFILES in config.js for what 'unnc-gmp' actually sets
+       (2026-08-20: modeled on 'unnc-tree', same org/visibleGroups, plus
+       the BHUWC boundary button below). -->
+  <script>window.MI_VIEW_PROFILE = 'unnc-gmp';</script>
 <div id="app">
 
   <!-- ── Header ─────────────────────────────────────────── -->
@@ -1508,6 +1510,11 @@
             <button type="button" class="tier-btn boundary-btn" data-boundary="slo" title="Streetscape / Landscape / Overlay committee boundaries">SLO</button>
             <button type="button" class="tier-btn boundary-btn" data-boundary="unnc" title="UNNC neighborhood council boundary">UNNC</button>
             <button type="button" class="tier-btn boundary-btn" data-boundary="tes" title="UNNC GMP Tree Equity Score choropleth">TES</button>
+            <!-- (2026-08-20) New for GMP.html — see toggleBhuwcBoundary() in
+                 dashboard-app.js. BHUWC = Baldwin Hills Urban Watershed
+                 Conservancy; UVI = Urban Vulnerability Index (per-tract
+                 choropleth, added this session — see UVI_RAMPS in config.js). -->
+            <button type="button" class="tier-btn boundary-btn" data-boundary="bhuwc" title="Baldwin Hills Urban Watershed Conservancy — Urban Vulnerability Index by census tract">BHUWC</button>
             <button type="button" class="tier-btn boundary-btn" data-boundary="ces" title="OEHHA CalEnviroScreen 5.0 — pollution burden &amp; population vulnerability by census tract">CES</button>
             <button type="button" class="tier-btn boundary-btn" data-boundary="council-districts" title="LA City Council District boundaries">Districts</button>
             <button type="button" class="tier-btn boundary-btn" data-boundary="neighborhood-councils" title="Neighborhood Council boundaries">NCs</button>

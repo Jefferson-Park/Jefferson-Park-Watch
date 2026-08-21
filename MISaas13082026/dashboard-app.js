@@ -33,6 +33,8 @@ import {
   TES_RAMPS,
   CES_GEOJSON_URL,
   CES_RAMPS,
+  BHUWC_GEOJSON_URL,
+  BHUWC_BOUNDARY_COLORS,
   WOSIP_LABELS,
   SLO_BOUNDARY_COLORS,
   UNNC_BOUNDARY_COLORS,
@@ -242,10 +244,12 @@ let _councilDistrictsActive = false;
 let _neighborhoodCouncilsActive = false;
 let _tesLayer = null;
 let _cesLayer = null; // CalEnviroScreen choropleth — same pattern as _tesLayer, separate layer group
+let _bhuwcLayer = null; // Greening Master Plans boundary — same lazy-load-on-first-open pattern as SLO/UNNC
 let _sloActive = false;
 let _unncBoundaryActive = false;
 let _tesActive = false;
 let _cesActive = false; // CalEnviroScreen choropleth toggle — separate from _tesActive, both can be on at once
+let _bhuwcActive = false;
 let _tesMode = 'tes';
 
 // ─── LAPD Collisions state ──────────────────────────────────────────────────────
@@ -920,6 +924,7 @@ function initMap() {
   _neighborhoodCouncilsLayer = L.layerGroup();
   _tesLayer           = L.layerGroup();
   _cesLayer           = L.layerGroup();
+  _bhuwcLayer         = L.layerGroup();
   _lapdLayer          = L.layerGroup();
   _windLayer          = L.layerGroup();
   _purpleairLayer     = L.layerGroup();
@@ -1304,6 +1309,44 @@ async function toggleUnncBoundary() {
   }
 }
 
+// (2026-08-20) Greening Master Plans boundary (GMP.html). Static Storage
+// file like TES/CES, NOT the get_boundaries_as_geojson RPC that SLO/UNNC/
+// Council Districts/Neighborhood Councils use — so this fetches directly,
+// mirroring loadTesChoropleth()'s fetch pattern, rather than calling
+// _fetchBoundaryGeoJSON(). Rendered via renderBoundaryGeoJSON() (plain
+// outline), not loadTesChoropleth() (choropleth), because the BHUWC data
+// has no score/value field to color by — just GEOID10/CT10/LABEL per
+// census tract (confirmed against the actual uploaded file, 22 features).
+async function toggleBhuwcBoundary() {
+  _bhuwcActive = !_bhuwcActive;
+  const btn = document.querySelector('.boundary-btn[data-boundary="bhuwc"]');
+  btn?.classList.toggle('active', _bhuwcActive);
+
+  if (!_bhuwcActive) { _map.removeLayer(_bhuwcLayer); return; }
+
+  _bhuwcLayer.addTo(_map);
+  if (_bhuwcLayer.getLayers().length === 0) {
+    let geojson;
+    try {
+      const res = await fetch(BHUWC_GEOJSON_URL);
+      if (!res.ok) throw new Error(`BHUWC fetch HTTP ${res.status}`);
+      geojson = await res.json();
+    } catch (err) {
+      console.error('[dashboard] BHUWC boundary fetch fault:', err.message);
+      geojson = null;
+    }
+    if (!geojson) { alert('Could not load Greening Master Plans boundary data.'); _bhuwcActive = false; btn?.classList.remove('active'); _map.removeLayer(_bhuwcLayer); return; }
+    _geoEngine.renderBoundaryGeoJSON(geojson, _bhuwcLayer, {
+      colorOverrides: BHUWC_BOUNDARY_COLORS,
+      labelField: 'LABEL', // census tract label, e.g. '2190.10' — confirmed against the actual uploaded geojson, not guessed
+      showAllProperties: true,
+      popupTrigger: 'sheet',
+      onOpenSheet: showInfoSheet,
+      excludeFields: ['OBJECTID', 'Shape__Area', 'Shape__Length', 'GEOID10', 'CT10'], // redundant with LABEL / internal-only
+    });
+  }
+}
+
 // Citywide reference boundaries (2026-07-08). labelField: 'name' is a first
 // guess, same as admin-app.js's toggle handlers for these two — check the
 // console.log right after fetch against your actual imported data and
@@ -1547,6 +1590,14 @@ function buildTesSheet(props) {
   const rankLine = (props.rank != null && props.rankgrpsz != null)
     ? `Rank ${Number(props.rank).toLocaleString()} of ${Number(props.rankgrpsz).toLocaleString()} in LA` : null;
 
+  // (2026-08-20) Source-credit line, parallel to buildCesSheet()'s attribution
+  // block below it in this file — same markup/style, different source.
+  const attribution = `
+    <div class="info-sheet-section" style="font-size:11px;color:var(--muted)">
+      Tree Equity Score Data: American Forests &amp; Google ·
+      <a href="https://treeequityscore.org" target="_blank" rel="noopener">treeequityscore.org</a>
+    </div>`;
+
   return `
     <div class="info-sheet-header" style="background:${band.color}22">
       <div class="info-sheet-eyebrow" style="color:${band.color}">${esc(band.label)}</div>
@@ -1556,7 +1607,7 @@ function buildTesSheet(props) {
         <div style="font-size:40px;font-weight:800;color:${band.color};margin-top:8px">${score.toFixed(0)}<span style="font-size:13px;font-weight:600;color:var(--text);margin-left:8px">Tree Equity Score</span></div>
         ${rankLine ? `<div style="font-size:12px;color:var(--muted);margin-top:2px">${esc(rankLine)}</div>` : ''}` : ''}
     </div>
-    ${canopySection}${heatSection}${equitySection}${wosipSection}${demoSection}
+    ${canopySection}${heatSection}${equitySection}${wosipSection}${demoSection}${attribution}
   `;
 }
 
@@ -1592,18 +1643,39 @@ function cesScoreBand(percentile) {
  *
  * Field names are OEHHA's real schema, confirmed 2026-08-17 directly
  * against the live FeatureServer (.../CalEnviroScreen_4_0_Results_/
- * FeatureServer/0?f=pjson) — not guessed. Only a subset of the real 21
- * indicators are shown (the ones most relevant to a greening/urban-
- * forestry grant narrative); the full set is in the source data if a
- * specific grant needs a number not surfaced here — extend this function
- * rather than trying to cram all 21 into one card.
+ * FeatureServer/0?f=pjson) — not guessed.
+ *
+ * (2026-08-20) CalEnviroScreen 5.0 data confirmed live in unncces.geojson
+ * (verified via user-supplied feature properties: 5.0-only fields SmATSP/
+ * diabetesP present, ACS2024Pop present). Every score/indicator field this
+ * function reads (CIscoreP, PollutionP, PopCharP, ozoneP, pmP, trafficP,
+ * povP, unempP, asthmaP, lbwP) kept its exact 4.0 name in the 5.0 export —
+ * OEHHA's downloadable GeoJSON uses stable abbreviated field names distinct
+ * from the FeatureServer's friendlier web-service aliases (CIscore_Pctl
+ * etc.), so those rows were already rendering correctly. Only two fields
+ * changed and were silently going blank: TractTXT (removed — tract is now
+ * a bare numeric GEOID, e.g. 6037212800) and ACS2019TotalPop (renamed to
+ * ACS2024Pop).
+ *
+ * (2026-08-20, same session) Expanded from a 7-indicator subset to the full
+ * indicator set OEHHA tracks, grouped as Pollution Burden / Population
+ * Characteristics per pollutionSection/popCharSection below — user request,
+ * not a data-source change.
  * @param {Object} props - feature properties from the CES GeoJSON
  */
 function buildCesSheet(props) {
   const pctile = parseFloat(props.CIscoreP);
   const band   = cesScoreBand(pctile);
-  const tract  = props.TractTXT || '';
-  const pop    = props.ACS2019TotalPop;
+  // props.tract is the raw 11-digit GEOID (state+county+6-digit tract code,
+  // e.g. 6037212800 = state 06, county 037, tract code 212800). Standard
+  // Census Bureau display format divides the 6-digit tract code by 100
+  // (212800 -> "2128.00") — mirrors the same last-6-digits GEOID slicing
+  // buildTesSheet() above already does for block groups, applied here to
+  // tracts instead.
+  const tractGeoid = props.tract != null ? String(Math.round(Number(props.tract))) : '';
+  const tractCode  = tractGeoid.length >= 6 ? tractGeoid.slice(-6) : '';
+  const tract      = tractCode ? (parseInt(tractCode, 10) / 100).toFixed(2) : '';
+  const pop    = props.ACS2024Pop;
 
   const row = (label, val) => (val === null || val === undefined || val === '')
     ? '' : `<div class="info-row"><span class="info-label">${esc(label)}</span><span class="info-value">${esc(String(val))}</span></div>`;
@@ -1626,23 +1698,57 @@ function buildCesSheet(props) {
       ${scoreRows}
     </div>` : '';
 
-  const indicatorRows =
+  // (2026-08-20) Full indicator set — previously only 7 of the 21+
+  // indicators were surfaced ("relevant to a grant narrative" per this
+  // function's original scoping comment above). User asked to surface all
+  // available data. Grouped the way OEHHA itself structures CalEnviroScreen
+  // (Pollution Burden = Exposures + Environmental Effects; Population
+  // Characteristics = Sensitive Populations + Socioeconomic Factors) rather
+  // than as one flat list. Diabetes Prevalence and Small Air Toxic Sites
+  // are new to 5.0 (didn't exist in 4.0 at all — see file comment above);
+  // tagged inline with "(New in 5.0)" rather than split into their own
+  // section now that the full set is shown together.
+  const pollutionRows =
     row('Ozone', pctFmt(parseFloat(props.ozoneP))) +
     row('PM2.5', pctFmt(parseFloat(props.pmP))) +
+    row('Diesel PM', pctFmt(parseFloat(props.dieselP))) +
+    row('Pesticides', pctFmt(parseFloat(props.pestP))) +
+    row('Toxic Releases', pctFmt(parseFloat(props.RSEIhazP))) +
     row('Traffic Impacts', pctFmt(parseFloat(props.trafficP))) +
+    row('Drinking Water Contaminants', pctFmt(parseFloat(props.drinkP))) +
+    row('Children\'s Lead Risk', pctFmt(parseFloat(props.leadP))) +
+    row('Cleanup Sites', pctFmt(parseFloat(props.cleanupsP))) +
+    row('Groundwater Threats', pctFmt(parseFloat(props.gwthreatsP))) +
+    row('Hazardous Waste', pctFmt(parseFloat(props.hazP))) +
+    row('Impaired Water Bodies', pctFmt(parseFloat(props.iwbP))) +
+    row('Solid Waste Sites', pctFmt(parseFloat(props.swisP))) +
+    row('Small Air Toxic Sites (New in 5.0)', pctFmt(parseFloat(props.SmATSP)));
+  const pollutionSection = pollutionRows ? `
+    <div class="info-sheet-section">
+      <div class="info-sheet-section-label">🏭 Pollution Burden Indicators</div>
+      ${pollutionRows}
+    </div>` : '';
+
+  const popCharRows =
+    row('Asthma', pctFmt(parseFloat(props.asthmaP))) +
+    row('Low Birth Weight', pctFmt(parseFloat(props.lbwP))) +
+    row('Cardiovascular Disease', pctFmt(parseFloat(props.cvdP))) +
+    row('Diabetes Prevalence (New in 5.0)', pctFmt(parseFloat(props.diabetesP))) +
+    row('Education', pctFmt(parseFloat(props.eduP))) +
+    row('Linguistic Isolation', pctFmt(parseFloat(props.lingP))) +
     row('Poverty', pctFmt(parseFloat(props.povP))) +
     row('Unemployment', pctFmt(parseFloat(props.unempP))) +
-    row('Asthma', pctFmt(parseFloat(props.asthmaP))) +
-    row('Low Birth Weight', pctFmt(parseFloat(props.lbwP)));
-  const indicatorSection = indicatorRows ? `
+    row('Housing Burden', pctFmt(parseFloat(props.housingBP)));
+  const popCharSection = popCharRows ? `
     <div class="info-sheet-section">
-      <div class="info-sheet-section-label">📈 Selected Indicators</div>
-      ${indicatorRows}
+      <div class="info-sheet-section-label">👥 Population Characteristics Indicators</div>
+      ${popCharRows}
     </div>` : '';
+
 
   const demoRows =
     row('Census Tract', tract) +
-    row('Population (ACS 2019)', pop != null ? Number(pop).toLocaleString() : null);
+    row('Population (ACS 2024)', pop != null ? Number(pop).toLocaleString() : null);
   const demoSection = demoRows ? `
     <div class="info-sheet-section">
       <div class="info-sheet-section-label">📊 Tract Info</div>
@@ -1651,7 +1757,7 @@ function buildCesSheet(props) {
 
   const attribution = `
     <div class="info-sheet-section" style="font-size:11px;color:var(--muted)">
-      Data: OEHHA CalEnviroScreen 4.0 (2021) ·
+      Data: OEHHA CalEnviroScreen 5.0 (2026) ·
       <a href="https://oehha.ca.gov/calenviroscreen" target="_blank" rel="noopener">oehha.ca.gov/calenviroscreen</a>
     </div>`;
 
@@ -1663,7 +1769,7 @@ function buildCesSheet(props) {
         <div style="font-size:40px;font-weight:800;color:${band.color};margin-top:8px">${pctile.toFixed(0)}<span style="font-size:13px;font-weight:600;color:var(--text);margin-left:8px">CalEnviroScreen Percentile</span></div>` : ''}
       ${dacBadge}
     </div>
-    ${scoreSection}${indicatorSection}${demoSection}${attribution}
+    ${scoreSection}${pollutionSection}${popCharSection}${demoSection}${attribution}
   `;
 }
 
@@ -1761,6 +1867,7 @@ function initBoundaryUI() {
   document.querySelector('.boundary-btn[data-boundary="unnc"]')?.addEventListener('click', toggleUnncBoundary);
   document.querySelector('.boundary-btn[data-boundary="tes"]')?.addEventListener('click', toggleTesLayer);
   document.querySelector('.boundary-btn[data-boundary="ces"]')?.addEventListener('click', toggleCesLayer);
+  document.querySelector('.boundary-btn[data-boundary="bhuwc"]')?.addEventListener('click', toggleBhuwcBoundary);
   document.querySelector('.boundary-btn[data-boundary="council-districts"]')?.addEventListener('click', toggleCouncilDistrictsBoundary);
   document.querySelector('.boundary-btn[data-boundary="neighborhood-councils"]')?.addEventListener('click', toggleNeighborhoodCouncilsBoundary);
 
@@ -3806,6 +3913,7 @@ const _BOUNDARY_TOGGLE_FNS = {
   'unnc': toggleUnncBoundary,
   'tes': toggleTesLayer,
   'ces': toggleCesLayer,
+  'bhuwc': toggleBhuwcBoundary,
   'council-districts': toggleCouncilDistrictsBoundary,
   'neighborhood-councils': toggleNeighborhoodCouncilsBoundary,
 };

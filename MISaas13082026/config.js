@@ -38,12 +38,13 @@ export const TES_GEOJSON_URL = 'https://sqiioihssmnqatjrednq.supabase.co/storage
 // toggleSloBoundary() does when _fetchBoundaryGeoJSON() gets a 404.
 export const CES_GEOJSON_URL = 'https://sqiioihssmnqatjrednq.supabase.co/storage/v1/object/public/geojson/unncces.geojson';
 
-// (2026-08-20) Plain boundary layer (GEOID10/CT10/LABEL only — no score
-// field), for the Greening Master Plans wrapper (GMP.html). Uploaded to the
-// same Storage bucket/path pattern as TES/CES. Unlike TES/CES this is
-// rendered via renderBoundaryGeoJSON() (flat outline), not
-// loadTesChoropleth() (choropleth) — see toggleBhuwcBoundary() in
-// dashboard-app.js.
+// (2026-08-20) For the Greening Master Plans wrapper (GMP.html). Uploaded to
+// the same Storage bucket/path pattern as TES/CES. Started as a plain
+// GEOID10/CT10/LABEL-only outline layer; later this same session Sun
+// supplied BHUWC_UVI.csv (Urban Vulnerability Index), joined onto this
+// geojson's properties (uviRank/uviRankCat/etc., 13 of 22 tracts), so it's
+// now rendered via loadTesChoropleth() with UVI_RAMPS, same as TES/CES —
+// see toggleBhuwcBoundary() in dashboard-app.js.
 export const BHUWC_GEOJSON_URL = 'https://sqiioihssmnqatjrednq.supabase.co/storage/v1/object/public/geojson/unncbhuwc.geojson';
 
 export const ASSESSOR_FIND_URL     = 'https://public.gis.lacounty.gov/public/rest/services/LACounty_Cache/LACounty_Parcel/MapServer/find';
@@ -530,6 +531,13 @@ export const SLO_BOUNDARY_COLORS = {};
 // pinned to specific colors.
 export const UNNC_BOUNDARY_COLORS = {};
 
+// (2026-08-20) BHUWC_BOUNDARY_COLORS was added earlier this session for a
+// flat-outline renderBoundaryGeoJSON() rendering, then removed here once
+// Sun supplied BHUWC_UVI.csv and BHUWC became a choropleth instead (see
+// UVI_RAMPS below) — colorOverrides doesn't apply to loadTesChoropleth(),
+// so the constant had no consumer left. If BHUWC ever needs a non-
+// choropleth mode again, re-add it following the SLO/UNNC pattern above.
+
 // (2026-08-20) Same colorOverrides pattern as SLO/UNNC above, for BHUWC
 // (Greening Master Plans boundary — 22 census-tract polygons, no shared
 // SLO/UNNC-style 'name' field). Keyed by the LABEL property (e.g. '2190.10')
@@ -804,4 +812,44 @@ export const CES_RAMPS = {
     // layers' renderers. Add them the same way (fetch that field's
     // classBreakInfos from the live service, copy the colors) rather than
     // guessing a palette.
+};
+
+// ─── 11. BHUWC URBAN VULNERABILITY INDEX (UVI) RAMP ──────────────────────────
+// (2026-08-20) Baldwin Hills Urban Watershed Conservancy boundary (GMP.html).
+// Source: Sun-supplied BHUWC_UVI.csv, joined onto unncbhuwc.geojson by
+// GEOID10 (13 of 22 tracts matched; 1 CSV row — 6037234002, Leimert Park —
+// had no matching polygon in the boundary file and was dropped, flagged to
+// Sun rather than silently discarded; the other 9 polygons intentionally
+// have no uviRank/etc. properties at all, per "leave blank for those").
+//
+// UNLIKE CES_RAMPS.CIscoreP, these thresholds are NOT copied from an
+// external authority (no equivalent to OEHHA's own official renderer here)
+// — they're a best-effort read of the one CSV Sun supplied: the numeric
+// uviRank field only showed 15-20 across the 13 scored tracts, and higher
+// numbers reliably lined up with worse categorical severity (uviRankCat:
+// Med tracts sat at 15-17, High tracts at 19-20 — confirmed against every
+// row in the source CSV, not assumed). No "Low" category appeared in this
+// data, so the low end of this ramp (<=14) is inferred headroom for tracts
+// that may score better, not a value actually observed. Same fixed-
+// threshold format/consumption as TES_RAMPS/CES_RAMPS (loadTesChoropleth()
+// in map-core.js) — revisit these cutoffs once more of the 22 tracts have
+// real scores; 13 data points is a thin basis for permanent thresholds.
+export const UVI_RAMPS = {
+    uviRank: {
+        label: 'Urban Vulnerability Index',
+        // field: uviRank — ordinal rank, higher = MORE vulnerable (same
+        // "high is bad" direction as CES_RAMPS.CIscoreP, opposite of
+        // TES_RAMPS.tes where high is good).
+        //
+        // (2026-08-21) Switched from green→red sequential to blue→red
+        // diverging, per Sun's request (low = bluish, high = reddish) —
+        // same ColorBrewer-style diverging palette TES_RAMPS.temp_diff
+        // already uses elsewhere in this file, reused here rather than
+        // inventing a new one. No-data tracts (9 of 22 — see this ramp's
+        // file comment above) are NOT part of this ramp at all: they render
+        // grey via _tesColorFor()'s `value == null -> '#cccccc'` branch in
+        // map-core.js, unconditionally, before any ramp color is consulted.
+        stops: [[14,'#2166ac'],[17,'#67a9cf'],[18,'#f7f7f7'],[20,'#ef8a62'],[30,'#b2182b']],
+        labels: { 14: 'Low', 17: 'Med', 18: 'Med-High', 20: 'High', 30: 'Very High' },
+    },
 };

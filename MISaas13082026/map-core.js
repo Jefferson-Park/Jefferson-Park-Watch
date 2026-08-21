@@ -564,11 +564,20 @@ export class CoreMapEngine {
           ? (val != null ? `${(Number(val) * 100).toFixed(1)}%` : '—')
           : (val != null ? Number(val).toFixed(1) : '—');
 
+        // (2026-08-21) Optional per-call tooltip override — BHUWC/UVI wants
+        // "Area Name (Category)" on hover instead of the generic
+        // "Urban Vulnerability Index: 19.0" this function shows by default.
+        // TES/CES don't pass opts.tooltipHtml, so they're unaffected — same
+        // fallback-when-absent pattern as opts.fillOpacity above.
+        const tooltipHtml = typeof opts.tooltipHtml === 'function'
+          ? opts.tooltipHtml(feature.properties || {}, val)
+          : `<strong>${label}:</strong> ${displayVal}`;
+
         lyr.on('mouseover', function () { this.setStyle({ fillOpacity: hoverFillOpacity, weight: 1.5 }); this.bringToFront(); });
         lyr.on('mouseout',  function () { this.setStyle({ fillOpacity, weight: 0.6 }); });
 
         if (opts.hoverTooltip !== false) {
-          lyr.bindTooltip(`<strong>${label}:</strong> ${displayVal}`, { className: 'mi-tooltip', sticky: true });
+          lyr.bindTooltip(tooltipHtml, { className: 'mi-tooltip', sticky: true });
         }
 
         if (typeof opts.onOpenSheet === 'function') {
@@ -576,7 +585,7 @@ export class CoreMapEngine {
         } else if (opts.hoverTooltip === false) {
           // No richer sheet handler wired up (admin.html) — click still needs
           // to show *something*, just on click instead of hover.
-          lyr.bindPopup(`<strong>${label}:</strong> ${displayVal}`, { className: 'mi-tooltip' });
+          lyr.bindPopup(tooltipHtml, { className: 'mi-tooltip' });
         }
       },
     });

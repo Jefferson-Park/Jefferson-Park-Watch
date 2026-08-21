@@ -34,7 +34,7 @@ import {
   CES_GEOJSON_URL,
   CES_RAMPS,
   BHUWC_GEOJSON_URL,
-  BHUWC_BOUNDARY_COLORS,
+  UVI_RAMPS,
   WOSIP_LABELS,
   SLO_BOUNDARY_COLORS,
   UNNC_BOUNDARY_COLORS,
@@ -1311,12 +1311,16 @@ async function toggleUnncBoundary() {
 
 // (2026-08-20) Greening Master Plans boundary (GMP.html). Static Storage
 // file like TES/CES, NOT the get_boundaries_as_geojson RPC that SLO/UNNC/
-// Council Districts/Neighborhood Councils use — so this fetches directly,
-// mirroring loadTesChoropleth()'s fetch pattern, rather than calling
-// _fetchBoundaryGeoJSON(). Rendered via renderBoundaryGeoJSON() (plain
-// outline), not loadTesChoropleth() (choropleth), because the BHUWC data
-// has no score/value field to color by — just GEOID10/CT10/LABEL per
-// census tract (confirmed against the actual uploaded file, 22 features).
+// Council Districts/Neighborhood Councils use.
+//
+// (2026-08-20, same session) Converted from a plain renderBoundaryGeoJSON()
+// outline to a loadTesChoropleth() choropleth, same as TES/CES, once Sun
+// supplied BHUWC_UVI.csv and asked for a rank-based color ramp — the
+// underlying geojson (unncbhuwc.geojson) now carries uviRank/uviRankCat/etc.
+// properties for 13 of its 22 tracts (see UVI_RAMPS's comment in config.js).
+// loadTesChoropleth() handles missing-field tracts the same way it already
+// handles any other choropleth's null values (_tesColorFor() -> flat gray),
+// so the 9 not-yet-scored tracts don't need special-casing here.
 async function toggleBhuwcBoundary() {
   _bhuwcActive = !_bhuwcActive;
   const btn = document.querySelector('.boundary-btn[data-boundary="bhuwc"]');
@@ -1325,25 +1329,28 @@ async function toggleBhuwcBoundary() {
   if (!_bhuwcActive) { _map.removeLayer(_bhuwcLayer); return; }
 
   _bhuwcLayer.addTo(_map);
-  if (_bhuwcLayer.getLayers().length === 0) {
-    let geojson;
-    try {
-      const res = await fetch(BHUWC_GEOJSON_URL);
-      if (!res.ok) throw new Error(`BHUWC fetch HTTP ${res.status}`);
-      geojson = await res.json();
-    } catch (err) {
-      console.error('[dashboard] BHUWC boundary fetch fault:', err.message);
-      geojson = null;
-    }
-    if (!geojson) { alert('Could not load Greening Master Plans boundary data.'); _bhuwcActive = false; btn?.classList.remove('active'); _map.removeLayer(_bhuwcLayer); return; }
-    _geoEngine.renderBoundaryGeoJSON(geojson, _bhuwcLayer, {
-      colorOverrides: BHUWC_BOUNDARY_COLORS,
-      labelField: 'LABEL', // census tract label, e.g. '2190.10' — confirmed against the actual uploaded geojson, not guessed
-      showAllProperties: true,
-      popupTrigger: 'sheet',
-      onOpenSheet: showInfoSheet,
-      excludeFields: ['OBJECTID', 'Shape__Area', 'Shape__Length', 'GEOID10', 'CT10'], // redundant with LABEL / internal-only
+  try {
+    await _geoEngine.loadTesChoropleth(BHUWC_GEOJSON_URL, UVI_RAMPS, 'uviRank', _bhuwcLayer, {
+      onOpenSheet: (props) => showInfoSheet(buildBhuwcSheet(props)),
+      // (2026-08-21) Area Name + UVI category on hover, per Sun's request —
+      // reuses uviScoreBand() so the tooltip's category label always agrees
+      // with the click-through sheet's badge and the map's own fill color
+      // (all three now derive from the same function/thresholds).
+      tooltipHtml: (props, val) => {
+        const rank = val != null ? parseInt(val, 10) : null;
+        const band = uviScoreBand(rank);
+        const place = props.areaName || props.LABEL || 'Census Tract';
+        return `<strong>${esc(place)}</strong><br>${esc(band.label)}`;
+      },
+      fillOpacity: 0.3,
+      hoverFillOpacity: 0.5,
     });
+  } catch (err) {
+    console.error('[dashboard] BHUWC/UVI choropleth fault:', err.message);
+    alert('Could not load the Greening Master Plans boundary overlay.');
+    _bhuwcActive = false;
+    btn?.classList.remove('active');
+    _map.removeLayer(_bhuwcLayer);
   }
 }
 
@@ -1636,7 +1643,7 @@ function cesScoreBand(percentile) {
 }
 
 /**
- * Builds the CalEnviroScreen 4.0 info-sheet card for a clicked tract.
+ * Builds the CalEnviroScreen 5.0 info-sheet card for a clicked tract.
  * Mirrors buildTesSheet()'s structure and row()/pct-formatting helpers,
  * but see cesScoreBand()'s comment above for why the color/label direction
  * is intentionally inverted from TES, not reused.
@@ -1770,6 +1777,93 @@ function buildCesSheet(props) {
       ${dacBadge}
     </div>
     ${scoreSection}${pollutionSection}${popCharSection}${demoSection}${attribution}
+  `;
+}
+
+/**
+ * (2026-08-20) BHUWC Urban Vulnerability Index — same "high is bad" color
+ * direction as cesScoreBand() above (not TES's "high is good"), matching
+ * UVI_RAMPS.uviRank's stops in config.js. See that ramp's comment for why
+ * these cutoffs are a best-effort read of a 13-row CSV, not an external
+ * authority's published thresholds like CES had.
+ *
+ * (2026-08-21) Colors/thresholds copied verbatim from UVI_RAMPS.uviRank's
+ * stops, using the same "first threshold >= value wins" logic as
+ * _tesColorFor() in map-core.js (NOT interpolated/bucketed independently —
+ * an earlier version of this function bucketed rank>=20/rank>=18 boundaries
+ * that didn't line up with the map's actual per-value stop lookup, which
+ * would've shown rank-19 tracts as "Med-High" here while both the map
+ * and the CSV's own uviRankCat call them "High" — caught before shipping).
+ * If UVI_RAMPS.uviRank's stops ever change, these must change with them —
+ * same intentional-duplication tradeoff tesScoreBand()/TES_RAMPS.tes make.
+ * @param {number} rank - uviRank, ordinal, higher = more vulnerable
+ */
+function uviScoreBand(rank) {
+  if (rank == null || isNaN(rank)) return { label: 'No Data', color: '#9e9e9e' };
+  if (rank <= 14) return { label: 'Low', color: '#2166ac' };
+  if (rank <= 17) return { label: 'Medium', color: '#67a9cf' };
+  if (rank <= 18) return { label: 'Med-High', color: '#f7f7f7' };
+  if (rank <= 20) return { label: 'High', color: '#ef8a62' };
+  return { label: 'Very High', color: '#b2182b' };
+}
+
+/**
+ * Builds the BHUWC Urban Vulnerability Index info-sheet card for a clicked
+ * tract. Mirrors buildCesSheet()'s/buildTesSheet()'s structure. Source data:
+ * Sun-supplied BHUWC_UVI.csv, joined onto unncbhuwc.geojson by GEOID10 (see
+ * UVI_RAMPS's comment in config.js for match/coverage details — only 13 of
+ * 22 tracts have data; the rest render this card with rank == null, which
+ * uviScoreBand() and every row() call below handle as "No Data"/blank,
+ * not a zero or an error).
+ * @param {Object} props - feature properties from the BHUWC GeoJSON
+ */
+function buildBhuwcSheet(props) {
+  const rank  = props.uviRank != null ? parseInt(props.uviRank, 10) : null;
+  const band  = uviScoreBand(rank);
+  const place = props.areaName || 'This Area';
+  const tract = props.LABEL || '';
+
+  const row = (label, val) => (val === null || val === undefined || val === '')
+    ? '' : `<div class="info-row"><span class="info-label">${esc(label)}</span><span class="info-value">${esc(String(val))}</span></div>`;
+
+  const scoreRows =
+    row('UVI Category', props.uviRankCat) +
+    row('Rank', rank != null ? rank : null);
+  const scoreSection = scoreRows ? `
+    <div class="info-sheet-section">
+      <div class="info-sheet-section-label">📊 Score</div>
+      ${scoreRows}
+    </div>` : '';
+
+  const indicatorRows =
+    row('Social Vulnerability', props.socialVulnerability) +
+    row('Lack of Parks & Open Space', props.lackParksOpenSpace) +
+    row('Flood Risk', props.floodRisk) +
+    row('Lack of Biodiversity', props.lackBiodiversity) +
+    row('Lack of Tree Canopy', props.lackTreeCanopy) +
+    row('Degraded and Contaminated Lands', props.degradedContaminatedLands) +
+    row('Heat Risk', props.heatRisk) +
+    row('Wildfire Risk', props.wildfireRisk);
+  const indicatorSection = indicatorRows ? `
+    <div class="info-sheet-section">
+      <div class="info-sheet-section-label">📈 Vulnerability Factors</div>
+      ${indicatorRows}
+    </div>` : '';
+
+  const noDataNotice = rank == null ? `
+    <div class="info-sheet-section" style="font-size:12px;color:var(--muted)">
+      No UVI data available yet for this tract.
+    </div>` : '';
+
+  return `
+    <div class="info-sheet-header" style="background:${band.color}22">
+      <div class="info-sheet-eyebrow" style="color:${band.color}">${esc(band.label)}</div>
+      <div class="info-sheet-title">${esc(place)}</div>
+      ${tract ? `<div class="info-sheet-subtitle">Census Tract ${esc(tract)}</div>` : ''}
+      ${rank != null ? `
+        <div style="font-size:40px;font-weight:800;color:${band.color};margin-top:8px">${rank}<span style="font-size:13px;font-weight:600;color:var(--text);margin-left:8px">UVI Rank</span></div>` : ''}
+    </div>
+    ${scoreSection}${indicatorSection}${noDataNotice}
   `;
 }
 

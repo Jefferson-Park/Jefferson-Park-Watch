@@ -1817,23 +1817,37 @@ function uviScoreBand(rank) {
  * not a zero or an error).
  * @param {Object} props - feature properties from the BHUWC GeoJSON
  */
+/**
+ * Builds the BHUWC Urban Vulnerability Index info-sheet card for a clicked
+ * tract. Mirrors buildCesSheet()'s/buildTesSheet()'s structure. Source data:
+ * Sun-supplied BHUWC_UVI.csv, joined onto unncbhuwc.geojson by GEOID10 (see
+ * UVI_RAMPS's comment in config.js for match/coverage details — only 13 of
+ * 22 tracts have data; the rest render this card with category == null,
+ * which every row() call below handles as "No Data"/blank, not a zero or
+ * an error).
+ *
+ * (2026-08-21) uviRank (the numeric 15-20 value) is Sun's own fabricated
+ * composite — summed from the 8 vulnerability factors below purely to
+ * drive the map's color ramp — and is NOT the official UVI result, so it
+ * is intentionally never displayed anywhere on this card, not even
+ * labeled as internal/derived. The card's one authoritative headline
+ * figure is uviRankCat (props.uviRankCat), the category word straight
+ * from Sun's source CSV ('Med'/'High' as given, not reworded) — shown
+ * where buildCesSheet()/buildTesSheet() would show a big numeric score.
+ * uviRank is still read internally (via uviScoreBand()) purely to pick
+ * the header/big-text COLOR, matching the map's fill color for this
+ * tract — but that color-selection use never puts the number on screen.
+ * @param {Object} props - feature properties from the BHUWC GeoJSON
+ */
 function buildBhuwcSheet(props) {
-  const rank  = props.uviRank != null ? parseInt(props.uviRank, 10) : null;
-  const band  = uviScoreBand(rank);
-  const place = props.areaName || 'This Area';
-  const tract = props.LABEL || '';
+  const rank     = props.uviRank != null ? parseInt(props.uviRank, 10) : null;
+  const band     = uviScoreBand(rank); // color only — see file comment above
+  const place    = props.areaName || 'This Area';
+  const tract    = props.LABEL || '';
+  const category = props.uviRankCat || null; // the one official, displayed result
 
   const row = (label, val) => (val === null || val === undefined || val === '')
     ? '' : `<div class="info-row"><span class="info-label">${esc(label)}</span><span class="info-value">${esc(String(val))}</span></div>`;
-
-  const scoreRows =
-    row('UVI Category', props.uviRankCat) +
-    row('Rank', rank != null ? rank : null);
-  const scoreSection = scoreRows ? `
-    <div class="info-sheet-section">
-      <div class="info-sheet-section-label">📊 Score</div>
-      ${scoreRows}
-    </div>` : '';
 
   const indicatorRows =
     row('Social Vulnerability', props.socialVulnerability) +
@@ -1850,20 +1864,20 @@ function buildBhuwcSheet(props) {
       ${indicatorRows}
     </div>` : '';
 
-  const noDataNotice = rank == null ? `
+  const noDataNotice = category == null ? `
     <div class="info-sheet-section" style="font-size:12px;color:var(--muted)">
       No UVI data available yet for this tract.
     </div>` : '';
 
   return `
     <div class="info-sheet-header" style="background:${band.color}22">
-      <div class="info-sheet-eyebrow" style="color:${band.color}">${esc(band.label)}</div>
+      <div class="info-sheet-eyebrow" style="color:${band.color}">${esc(category || 'No Data')}</div>
       <div class="info-sheet-title">${esc(place)}</div>
       ${tract ? `<div class="info-sheet-subtitle">Census Tract ${esc(tract)}</div>` : ''}
-      ${rank != null ? `
-        <div style="font-size:40px;font-weight:800;color:${band.color};margin-top:8px">${rank}<span style="font-size:13px;font-weight:600;color:var(--text);margin-left:8px">UVI Rank</span></div>` : ''}
+      ${category ? `
+        <div style="font-size:34px;font-weight:800;color:${band.color};margin-top:8px">${esc(category)}<span style="font-size:13px;font-weight:600;color:var(--text);margin-left:8px">Urban Vulnerability Index</span></div>` : ''}
     </div>
-    ${scoreSection}${indicatorSection}${noDataNotice}
+    ${indicatorSection}${noDataNotice}
   `;
 }
 

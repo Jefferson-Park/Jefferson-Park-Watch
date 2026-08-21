@@ -270,22 +270,30 @@ export const VIEW_PROFILES = {
         visibleGroups: ['public_safety', 'traffic_infra', 'env_health'],
         lockOrg: true, // hides the UNNC/JPW switcher — this page IS the JPW view
     },
-    // (2026-08-20) Greening Master Plans wrapper (GMP.html). Modeled directly
-    // on 'unnc-tree' above — same org, same visibleGroups — since GMP is the
-    // same UNNC trees/greening scope (JPW.html's TES button title already
-    // called it "UNNC GMP Tree Equity Score choropleth", confirming GMP and
-    // Trees & Greening are the same initiative, not two different scopes).
-    // BHUWC is added as an extra selectable boundary layer (see boundary-btn
-    // row in GMP.html / toggleBhuwcBoundary() in dashboard-app.js), not the
-    // default — defaultBoundary stays 'tes' to match TreeInventory.html.
-    // ASSUMPTION, not confirmed with Sun: flag if GMP actually needs a
-    // different visibleGroups scope than plain Tree Inventory.
+    // (2026-08-20) Greening Master Plans wrapper (GMP.html). Modeled
+    // initially on 'unnc-tree' — same org — since GMP is the same UNNC
+    // trees/greening initiative (JPW.html's TES button title already
+    // called it "UNNC GMP Tree Equity Score choropleth").
+    //
+    // (2026-08-21) visibleGroups expanded per Sun's explicit request:
+    // planning_dev ('🏗 Planning & Economic Dev') and env_health
+    // ('🌱 Environment & Health') added alongside the original tree
+    // groups — GMP planning work touches both, not just tree data.
+    //
+    // (2026-08-21, same request) defaultBoundary switched tes -> bhuwc —
+    // BHUWC/UVI is now GMP.html's primary boundary layer, on load, per
+    // Sun. Tradeoff worth knowing: only ONE boundary auto-loads on boot
+    // (see _BOUNDARY_TOGGLE_FNS/boot() in dashboard-app.js — single
+    // string, not a list) — so TES no longer auto-loads on this wrapper;
+    // a visitor now has to click TES manually if they want it. Sun asked
+    // about multi-default support separately; flagged as an open option,
+    // not built here since this task only asked to change the current one.
     'unnc-gmp': {
         orgSlug: 'unnc',
         label: 'MI Community Map | Greening Master Plans',
-        defaultBoundary: 'tes',
-        defaultTesMode: 'priority_i', // matches unnc-tree's TreeInventory.html default
-        visibleGroups: ['tree_inventory', 'tree_park_services'],
+        defaultBoundary: 'bhuwc',
+        defaultTesMode: 'priority_i', // still applies whenever TES is turned on manually
+        visibleGroups: ['tree_inventory', 'tree_park_services', 'planning_dev', 'env_health'],
         lockOrg: true, // hides the UNNC/JPW switcher — this page IS the GMP view
     },
 };

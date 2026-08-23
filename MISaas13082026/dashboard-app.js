@@ -3093,6 +3093,121 @@ function _shiftMapForReportPanel() {
   }
 }
 
+/**
+ * (2026-08-21) Standard ray-casting point-in-polygon test. No external
+ * library — turf.js isn't part of this project's dependency set, and this
+ * algorithm is short/well-established enough not to warrant adding one.
+ * Handles holes (a point inside an outer ring but also inside one of its
+ * holes counts as outside) and MultiPolygon geometries. `ring` here is a
+ * GeoJSON-style [lng, lat] coordinate array — NOT [lat, lng], matching
+ * GeoJSON's own axis order, the opposite of Leaflet's [lat, lng] convention
+ * used everywhere else in this file — kept isolated to these three
+ * functions specifically so that mismatch can't leak into the rest of the
+ * codebase's lat/lng-ordered code.
+ */
+function _pointInRing(lat, lng, ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0], yi = ring[i][1];
+    const xj = ring[j][0], yj = ring[j][1];
+    const intersect = ((yi > lat) !== (yj > lat)) &&
+      (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+function _pointInPolygonCoords(lat, lng, polygonCoords) {
+  if (!polygonCoords?.[0] || !_pointInRing(lat, lng, polygonCoords[0])) return false; // outside outer ring
+  for (let h = 1; h < polygonCoords.length; h++) {
+    if (_pointInRing(lat, lng, polygonCoords[h])) return false; // inside a hole
+  }
+  return true;
+}
+
+/** True if (lat,lng) falls inside any Polygon/MultiPolygon feature in a GeoJSON FeatureCollection (or a single Feature/geometry). */
+function _isPointInGeoJSON(lat, lng, geojson) {
+  const features = geojson?.type === 'FeatureCollection' ? geojson.features
+    : geojson?.type === 'Feature' ? [geojson]
+    : geojson?.type ? [{ geometry: geojson }] // bare geometry object
+    : [];
+  for (const feature of features || []) {
+    const geom = feature?.geometry;
+    if (!geom) continue;
+    if (geom.type === 'Polygon') {
+      if (_pointInPolygonCoords(lat, lng, geom.coordinates)) return true;
+    } else if (geom.type === 'MultiPolygon') {
+      for (const poly of geom.coordinates) {
+        if (_pointInPolygonCoords(lat, lng, poly)) return true;
+      }
+    }
+  }
+  return false;
+}
+
+// Small cache so dragging the report pin repeatedly doesn't re-fire the
+// get_boundaries_as_geojson RPC on every single dragend — this session's
+// whole focus has been protecting Supabase egress, and a boundary polygon
+// doesn't change mid-session. Cleared on full page load only (module-level,
+// no invalidation needed — boundary geometry is effectively static).
+const _orgBoundaryPolyCache = {};
+
+/**
+ * (2026-08-21) Sun's request: never block a public submission for being
+ * outside the org's boundary (that's a server-side RPC change — see
+ * submit_public_concern()'s geofence check, not this function), but DO
+ * let the reporter know at pin-placement time, before they submit.
+ *
+ * Deliberately checks ONLY the org's real service boundary (UNNC's polygon
+ * for UNNC, SLO's for JPW — same one applyOrgGeofence() uses to restrict
+ * panning), not every boundary layer this app has (Council Districts,
+ * Neighborhood Councils, TES, CES, BHUWC, etc.). Those are reference/data
+ * overlays, not service-area membership — a pin outside UNNC but still
+ * inside a neighboring Council District is fine and shouldn't warn at all.
+ * Checking every layer would be exactly the confusing false-positive Sun
+ * flagged, not a more thorough check.
+ *
+ * Uses the actual polygon geometry (ray-casting), not a bounding-box
+ * shortcut — a bounding box around an irregular UNNC/SLO shape would flag
+ * plenty of points that are visually outside the boundary as "inside."
+ *
+ * Split into a pure core (isOutsideOrgBoundary, no DOM) + a thin UI wrapper
+ * (checkReportLocationBoundary) so the submit handler can reuse the exact
+ * same check to flag submission metadata, instead of trusting whatever the
+ * banner last showed (which could be stale if e.g. the org tab changed
+ * without the pin being re-set).
+ *
+ * @returns {Promise<boolean|null>} true = outside, false = inside,
+ *   null = couldn't determine (no org boundary defined, or fetch failed —
+ *   caller should treat null as "unknown," not "outside").
+ */
+async function isOutsideOrgBoundary(lat, lng) {
+  const boundaryType = ORG_BOUNDARY_TYPE[_activeOrgSlug];
+  if (!boundaryType) return null; // org with no defined service boundary — nothing to check against
+
+  let geojson = _orgBoundaryPolyCache[boundaryType];
+  if (geojson === undefined) {
+    geojson = await _fetchBoundaryGeoJSON(boundaryType);
+    _orgBoundaryPolyCache[boundaryType] = geojson; // cache the miss (null) too, so a fetch failure doesn't retry on every drag
+  }
+  if (!geojson) return null; // couldn't load boundary geometry — fail open/unknown, don't claim "outside" on a fetch error
+
+  return !_isPointInGeoJSON(lat, lng, geojson);
+}
+
+async function checkReportLocationBoundary(lat, lng) {
+  const el = document.getElementById('report-boundary-notice');
+  if (!el) return;
+
+  const outside = await isOutsideOrgBoundary(lat, lng);
+  if (!outside) { el.classList.remove('show'); return; } // covers both false (inside) and null (unknown) — no warning shown either way
+
+  const orgName = ORG_SHORT_LABELS[_activeOrgSlug] || _orgs[_activeOrgSlug]?.display_name || 'this organization';
+  el.textContent = `📍 This location is outside ${orgName}'s boundary. It'll still be submitted and reviewed — just flagging in case it belongs to a neighboring area.`;
+  el.classList.add('show');
+}
+
+
 function setReportLocation(lat, lng, opts = {}) {
   _reportLatLng = { lat, lng };
 
@@ -3111,12 +3226,14 @@ function setReportLocation(lat, lng, opts = {}) {
     const ll = _reportPinMarker.getLatLng();
     _reportLatLng = { lat: ll.lat, lng: ll.lng };
     updateReportLocationStatus();
+    checkReportLocationBoundary(ll.lat, ll.lng);
     _refreshReportAddressFromLatLng(ll.lat, ll.lng);
   });
 
   _map.setView([lat, lng], Math.max(_map.getZoom(), 16), { animate: true });
   _shiftMapForReportPanel();
   updateReportLocationStatus();
+  checkReportLocationBoundary(lat, lng);
 
   // skipAddressLookup is set when the location came FROM the address field
   // itself (typed → geocoded → pin moved) — reverse-geocoding it right back
@@ -3180,6 +3297,7 @@ function resetReportForm() {
   if (stepLocation) stepLocation.style.display = '';
   document.getElementById('report-success')?.classList.remove('show');
   document.getElementById('report-error')?.classList.remove('show');
+  document.getElementById('report-boundary-notice')?.classList.remove('show');
   const preview = document.getElementById('report-photo-preview');
   if (preview) preview.innerHTML = '';
 
@@ -3307,7 +3425,23 @@ function initReportConcernUI() {
       const metaField     = SUBTYPE_MATCH_FIELD[categoryValue];
       // Confirmed 2026-07-06: submitPublicConcern() now accepts `metadata`
       // (merged in, reserved keys untouched) and `isSensitive`.
-      const metadata = (subtypeDef && metaField) ? { [metaField]: subtypeDef.label } : undefined;
+      // Defaults to {} (not undefined) — the outside_org_boundary
+      // assignment just below needs an object to write onto regardless of
+      // whether a subtype was matched. submitPublicConcern() already treats
+      // {} and undefined identically via its own `...(fields.metadata||{})`.
+      const metadata = (subtypeDef && metaField) ? { [metaField]: subtypeDef.label } : {};
+
+      // (2026-08-21) Recomputed fresh here rather than trusting the banner's
+      // last-shown state — the banner can go stale if e.g. the org tab
+      // changed after the pin was placed. Only set the metadata key when
+      // the check actually resolved true/false; a null (unknown — no org
+      // boundary defined, or the boundary fetch failed) leaves it unset
+      // rather than recording a false "false" that looks like a confirmed
+      // inside-boundary result.
+      const outsideBoundary = await isOutsideOrgBoundary(_reportLatLng?.lat, _reportLatLng?.lng);
+      if (outsideBoundary != null) {
+        metadata.outside_org_boundary = outsideBoundary; // admin-table triage context — see checkReportLocationBoundary()'s file comment
+      }
 
       await submitPublicConcern(sb, {
         organizationId:   org?.id,

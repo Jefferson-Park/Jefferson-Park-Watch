@@ -1228,6 +1228,23 @@
     }
     .report-location-status.set { color: var(--accent-dark); font-weight: 500; }
 
+    /* (2026-08-21) Non-blocking "outside org boundary" notice — see
+       checkReportLocationBoundary() in dashboard-app.js. Amber, not red:
+       this is informational, not an error — the submission still goes
+       through either way. */
+    .report-boundary-notice {
+      display: none;
+      font-size: 12px;
+      color: #92400e;
+      background: #fef3c7;
+      border: 1px solid #fde68a;
+      border-radius: var(--radius);
+      padding: 8px 10px;
+      margin: 0 2px 12px;
+      line-height: 1.4;
+    }
+    .report-boundary-notice.show { display: block; }
+
     .report-field { margin-bottom: 12px; }
     .report-field label {
       display: block;
@@ -1684,6 +1701,7 @@
           <button type="button" id="report-pick-onmap" class="report-secondary-btn">🗺️ Tap map to set pin</button>
         </div>
         <div id="report-location-status" class="report-location-status">No location set yet.</div>
+        <div id="report-boundary-notice" class="report-boundary-notice"></div>
       </div>
 
       <form id="report-form">

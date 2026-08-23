@@ -265,6 +265,15 @@ export async function submitPublicConcern(sb, fields) {
     : (CATEGORY_MAP[fields.categoryValue]?.sensitiveDefault ?? false);
 
   const metadataPayload = {
+    // (2026-08-21) fields.metadata may include outside_org_boundary (bool)
+    // — set client-side in dashboard-app.js's submit handler via
+    // isOutsideOrgBoundary(), a point-in-polygon check against the org's
+    // real service boundary. Purely informational, for admin-table triage
+    // (a resident's pin near the edge, or genuinely outside, still gets
+    // submitted and reviewed either way — see Sun's 2026-08-21 request: no
+    // submission should ever be blocked for being outside a boundary).
+    // Flows through unchanged via this spread; nothing here needed to
+    // change for it to work.
     ...(fields.metadata || {}),
     source: 'public',
     is_sensitive: isSensitiveVal,

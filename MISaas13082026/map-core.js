@@ -41,6 +41,7 @@
 // resolveAssetUrl() returns null for slugs, domains, and HTML routes,
 // preventing any browser resource request from firing against non-image strings.
 import { resolveAssetUrl, resolveRowThumb } from './asset-url-resolver.js';
+import { CARTO_API_KEY } from './config.js';
 
 export class CoreMapEngine {
   constructor(elementId, { center = [34.0254, -118.3182], zoom = 15, theme = {} } = {}) {
@@ -69,7 +70,11 @@ export class CoreMapEngine {
     // free/public endpoint is inconsistent above z19 depending on region
     // (LA metro has 0.3m Maxar coverage but the tile cache itself caps
     // lower), so z19 is the safe floor there.
-    this.BASEMAP_NATIVE_ZOOM = { clean: 20, satellite: 19 };
+    // (2026-08-23) 'osm' added alongside clean/satellite — standard public
+    // OpenStreetMap tile server tops out at z19 natively (same floor as the
+    // satellite provider), matches dashboard-app.js's BASEMAP_PROVIDERS.osm
+    // addition this session.
+    this.BASEMAP_NATIVE_ZOOM = { clean: 20, satellite: 19, osm: 19 };
 
     this.ctx = {
         theme: {
@@ -112,7 +117,7 @@ export class CoreMapEngine {
     this.map.getPane('referenceLayers').style.zIndex = 395;
 
     // Default to clean, low-density CartoDB Positron canvas to ensure high data readability
-    this.baseLayer = L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+    this.baseLayer = L.tileLayer(`https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=${CARTO_API_KEY}`, {
       attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
       maxZoom: this.spatialOptions.maxZoom,
       maxNativeZoom: this.BASEMAP_NATIVE_ZOOM.clean
@@ -124,12 +129,21 @@ export class CoreMapEngine {
 
   /**
    * Switches baseline map context dynamically (e.g., Vector Canvas vs High-Res Satellite Imagery)
-   * @param {string} mode - 'clean' | 'satellite'
+   * @param {string} mode - 'clean' | 'satellite' | 'osm'
    */
   setBasemapMode(mode) {
     const providers = {
-      clean: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-      satellite: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+      clean: `https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=${CARTO_API_KEY}`,
+      satellite: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      // (2026-08-23) Real OpenStreetMap tiles — same provider/rationale as
+      // dashboard-app.js's BASEMAP_PROVIDERS.osm: shows place names (parks,
+      // businesses, landmarks) the 'clean' CartoDB Positron basemap omits
+      // by design. Usage-policy note carried over from dashboard-app.js:
+      // raw tile.openstreetmap.org discourages heavy sustained direct
+      // traffic (operations.osmfoundation.org/policies/tiles/) — fine for
+      // this app's current traffic, worth swapping to a dedicated/paid tile
+      // provider if usage grows.
+      osm: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
     };
 
     if (providers[mode]) {
@@ -315,12 +329,12 @@ export class CoreMapEngine {
    * @param {string} fillColor - Hex token or variable reference
    * @param {number} opacity - Decimal scale fill visibility
    */
-  getPolygonStyle(fillColor, opacity = 0.2) {
+  getPolygonStyle(fillColor, opacity = 0.2, strokeColor = '#D8D3C7', strokeWeight = 1.5) {
     return {
       fillColor: fillColor,
-      weight: 1.5,
+      weight: strokeWeight,
       opacity: 1,
-      color: '#D8D3C7', // Neutral crisp boundary line divider
+      color: strokeColor, // Neutral crisp boundary line divider by default — per-boundary override via renderBoundaryGeoJSON()'s opts.strokeColor
       fillOpacity: opacity
     };
   }
@@ -739,15 +753,23 @@ export class CoreMapEngine {
       showAllProperties = false,
       popupTrigger      = 'hover',
       excludeFields     = [],
+      // (2026-08-23) Per-boundary outline override — previously every
+      // renderBoundaryGeoJSON() caller shared one hardcoded stroke color/
+      // weight from getPolygonStyle() below, with no way to make e.g. UNNC's
+      // outline visually distinct from SLO's. Defaults match the prior
+      // hardcoded values exactly, so any caller not passing these is
+      // pixel-identical to before this change.
+      strokeColor       = '#D8D3C7',
+      strokeWeight       = 1.5,
     } = opts;
 
     const styleFn = colorOverrides
       ? (feature) => {
           const name  = feature.properties?.[labelField];
           const color = colorOverrides[name] || this._hashColorFor(name) || fillColor;
-          return this.getPolygonStyle(color, fillOpacity);
+          return this.getPolygonStyle(color, fillOpacity, strokeColor, strokeWeight);
         }
-      : () => this.getPolygonStyle(fillColor, fillOpacity);
+      : () => this.getPolygonStyle(fillColor, fillOpacity, strokeColor, strokeWeight);
 
     const layer = L.geoJSON(geojson, {
       pane: 'referenceLayers',

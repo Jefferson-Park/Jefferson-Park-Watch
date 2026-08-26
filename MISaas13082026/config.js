@@ -22,6 +22,13 @@ export const FIELD_PHOTOS_BUCKET = 'field-photos'; // hyphen — confirmed from 
 // creating a second bucket, per the "live coexistence" constraint.
 export const ATTACHMENTS_BUCKET = 'attachments';
 
+// ─── 1b. BASEMAP ───────────────────────────────────────────────────────────────
+// Carto now requires an API key on basemaps.cartocdn.com raster tile requests
+// (policy change, Aug 2026) — free up to 5M tile requests/month, no approval
+// queue. Get one at carto.com/basemaps/apikey. Single source of truth so it's
+// only ever set in one place; imported by map-core.js and dashboard-app.js.
+export const CARTO_API_KEY = 'cb1_28e8_1_af68fc9857ebbec888a93d2b';
+
 // ─── 2. EXTERNAL SERVICE URLS ─────────────────────────────────────────────────
 export const IS_LOCAL_SANDBOX = true; // flip to true only on your own machine, never commit true
 
@@ -258,7 +265,13 @@ export const VIEW_PROFILES = {
     'unnc-tree': {
         orgSlug: 'unnc',
         label: 'MI Community Map | Trees & Greening',
-        defaultBoundary: 'tes', // dashboard-app.js maps this to toggleTesLayer() (2026-08 switch from 'unnc')
+        // (2026-08-23) boundaries/defaultBoundaries now read by
+        // renderBoundaryButtons()/boot() in dashboard-app.js — see
+        // BOUNDARY_REGISTRY above for what each id actually renders.
+        // defaultBoundaries is a LIST now (was a single defaultBoundary
+        // string) — multiple boundaries can auto-load on boot.
+        boundaries: ['slo', 'unnc', 'tes', 'ces', 'council-districts', 'neighborhood-councils'],
+        defaultBoundaries: ['tes'],
         defaultTesMode: 'priority_i', // (2026-08-16) was implicitly 'tes' (TES Score) via _tesMode's module default — Sun wants TreeInventory.html to open on Priority Index instead
         visibleGroups: ['tree_inventory', 'tree_park_services'],
         lockOrg: true, // hides the UNNC/JPW switcher — this page IS the UNNC view
@@ -266,7 +279,8 @@ export const VIEW_PROFILES = {
     'jpw-crime': {
         orgSlug: 'jefferson-park-watch',
         label: 'MI Community Map - Public Safety | JPW',
-        defaultBoundary: 'slo', // SLO boundary overlay shown by default on load
+        boundaries: ['slo', 'unnc', 'tes', 'council-districts', 'neighborhood-councils'],
+        defaultBoundaries: ['slo'],
         visibleGroups: ['public_safety', 'traffic_infra', 'env_health'],
         lockOrg: true, // hides the UNNC/JPW switcher — this page IS the JPW view
     },
@@ -280,18 +294,15 @@ export const VIEW_PROFILES = {
     // ('🌱 Environment & Health') added alongside the original tree
     // groups — GMP planning work touches both, not just tree data.
     //
-    // (2026-08-21, same request) defaultBoundary switched tes -> bhuwc —
-    // BHUWC/UVI is now GMP.html's primary boundary layer, on load, per
-    // Sun. Tradeoff worth knowing: only ONE boundary auto-loads on boot
-    // (see _BOUNDARY_TOGGLE_FNS/boot() in dashboard-app.js — single
-    // string, not a list) — so TES no longer auto-loads on this wrapper;
-    // a visitor now has to click TES manually if they want it. Sun asked
-    // about multi-default support separately; flagged as an open option,
-    // not built here since this task only asked to change the current one.
+    // (2026-08-23) defaultBoundaries is now a list — multiple boundaries
+    // CAN auto-load together if wanted later; kept to just ['bhuwc'] here
+    // since that's what Sun actually asked for (BHUWC/UVI as GMP's primary
+    // layer on load), not a change in what loads today.
     'unnc-gmp': {
         orgSlug: 'unnc',
         label: 'MI Community Map | Greening Master Plans',
-        defaultBoundary: 'bhuwc',
+        boundaries: ['slo', 'unnc', 'tes', 'bhuwc', 'ces', 'council-districts', 'neighborhood-councils'],
+        defaultBoundaries: ['bhuwc'],
         defaultTesMode: 'priority_i', // still applies whenever TES is turned on manually
         visibleGroups: ['tree_inventory', 'tree_park_services', 'planning_dev', 'env_health'],
         lockOrg: true, // hides the UNNC/JPW switcher — this page IS the GMP view
@@ -564,6 +575,140 @@ export const BHUWC_BOUNDARY_COLORS = {};
 // names had to be confirmed from real data rather than assumed.
 export const COUNCIL_DISTRICT_COLORS = {};
 export const NEIGHBORHOOD_COUNCIL_COLORS = {};
+
+// ============================================================================
+// BOUNDARY_REGISTRY — single source of truth for every boundary layer's
+// metadata (2026-08-23, Sun's request: "a cleaner single-place system").
+//
+// WHAT THIS DOES AND DOESN'T CHANGE:
+// Before this, adding/editing a boundary meant touching THREE places: this
+// file (URL/ramp/colors), dashboard-app.js (a whole toggle function + state
+// vars), and every wrapper HTML file's hand-typed <button> row. This
+// registry collapses the METADATA side (label, tooltip, styling, which
+// wrapper shows it, what's on by default) into one object here — see
+// VIEW_PROFILES below for the per-wrapper "which boundaries, which
+// defaults" side, and renderBoundaryButtons()/initBoundaryUI() in
+// dashboard-app.js for how buttons now get generated from this instead of
+// being hand-typed per wrapper.
+//
+// It does NOT try to force all 7 boundaries through one generic toggle
+// function. Four of them (slo/unnc/council-districts/neighborhood-
+// councils) are genuinely interchangeable — same RPC fetch pattern, same
+// renderBoundaryGeoJSON() outline rendering, differing only in the data
+// below — so those four now share ONE generic toggleOutlineBoundary(id)
+// function in dashboard-app.js, driven entirely by this registry. The
+// other three (tes/ces/bhuwc) each have real, different behavior (TES's
+// sub-mode pill row + legend + diagnostic; CES's separate render wrapper;
+// BHUWC's custom hover tooltip) that isn't worth flattening into one
+// generic function just for uniformity — they keep their own dedicated
+// toggle functions, but their LABEL/TOOLTIP still live here so button
+// generation is unified across all 7 regardless.
+//
+// kind: 'outline'   -> handled generically by toggleOutlineBoundary()
+// kind: 'choropleth' -> has its own toggle function; registry only supplies
+//                        the button's label/tooltip (toggleFnName tells
+//                        initBoundaryUI() which existing function to wire
+//                        the click to, and defaultBoundaries dispatch which
+//                        function to call on boot).
+// ============================================================================
+export const BOUNDARY_REGISTRY = {
+    slo: {
+        label: 'SLO',
+        tooltip: 'Streetscape / Landscape / Overlay committee boundaries',
+        kind: 'outline',
+        toggleFnName: 'toggleOutlineBoundary',
+        boundaryType: 'slo', // key into get_boundaries_as_geojson RPC — see _fetchBoundaryGeoJSON()
+        labelField: 'slo_name',
+        colorOverrides: SLO_BOUNDARY_COLORS,
+        usePopupBuilder: 'buildSloSheet', // resolved by name in dashboard-app.js — SLO is the one outline boundary with a custom sheet instead of the generic showAllProperties dump
+    },
+    unnc: {
+        label: 'UNNC',
+        tooltip: 'UNNC neighborhood council boundary',
+        kind: 'outline',
+        toggleFnName: 'toggleOutlineBoundary',
+        boundaryType: 'unnc',
+        labelField: 'name',
+        colorOverrides: UNNC_BOUNDARY_COLORS,
+        excludeFields: ['boundary_type'],
+        // (2026-08-23) Sun's request: darker outline than the shared default
+        // (#D8D3C7, a light neutral gray every other outline boundary still
+        // uses). This is now the ONE place that controls it — no other file
+        // needs editing to adjust UNNC's line color/weight further.
+        strokeColor: '#5C6B47', // darker sage-green, distinct from the light neutral default without clashing with UNNC_BOUNDARY_COLORS' fill hash-coloring
+        strokeWeight: 2.5,
+    },
+    tes: {
+        label: 'TES',
+        tooltip: 'UNNC GMP Tree Equity Score choropleth',
+        kind: 'choropleth',
+        toggleFnName: 'toggleTesLayer',
+    },
+    ces: {
+        label: 'CES',
+        tooltip: 'OEHHA CalEnviroScreen 5.0 — pollution burden & population vulnerability by census tract',
+        kind: 'choropleth',
+        toggleFnName: 'toggleCesLayer',
+    },
+    bhuwc: {
+        label: 'BHUWC',
+        tooltip: 'Baldwin Hills Urban Watershed Conservancy — Urban Vulnerability Index by census tract',
+        kind: 'choropleth',
+        toggleFnName: 'toggleBhuwcBoundary',
+    },
+    'council-districts': {
+        label: 'Districts',
+        tooltip: 'LA City Council District boundaries',
+        kind: 'outline',
+        toggleFnName: 'toggleOutlineBoundary',
+        boundaryType: 'council_districts',
+        labelField: 'name',
+        colorOverrides: COUNCIL_DISTRICT_COLORS,
+        excludeFields: ['boundary_type'],
+        // (2026-07-08, carried over) labelField: 'name' was a first guess,
+        // never actually confirmed against real fetched data — the original
+        // toggle function logged a sample-properties console.log every time
+        // specifically so this could be checked. toggleOutlineBoundary()
+        // preserves that same diagnostic for any entry with this flag false.
+        labelFieldConfirmed: false,
+    },
+    'neighborhood-councils': {
+        label: 'NCs',
+        tooltip: 'Neighborhood Council boundaries',
+        kind: 'outline',
+        toggleFnName: 'toggleNeighborhoodCouncilsBoundary_UNUSED', // placeholder, corrected below
+        boundaryType: 'neighborhood_councils',
+        labelField: 'name',
+        colorOverrides: NEIGHBORHOOD_COUNCIL_COLORS,
+        excludeFields: ['boundary_type'],
+        labelFieldConfirmed: false, // same as council-districts above — never confirmed
+    },
+};
+// Fix the one entry above that needs the generic function like its outline
+// siblings — written this way (not inline) so the intent ("this is an
+// outline boundary, same as the others") stays readable in the object
+// literal above rather than a long function name breaking the visual
+// pattern of the other three outline entries.
+BOUNDARY_REGISTRY['neighborhood-councils'].toggleFnName = 'toggleOutlineBoundary';
+
+// (2026-08-23) Boundary list for wrappers with NO named VIEW_PROFILE —
+// currently only dashboard.html (window.MI_VIEW_PROFILE unset — see
+// dashboard-app.js's _viewProfile resolution). Matches dashboard.html's
+// existing button set exactly (confirmed against the live file, not
+// assumed): every boundary except BHUWC, which is GMP-only.
+export const DEFAULT_BOUNDARY_LIST = ['slo', 'unnc', 'tes', 'ces', 'council-districts', 'neighborhood-councils'];
+
+/**
+ * Returns the ordered list of boundary ids a wrapper should show buttons
+ * for. Named VIEW_PROFILE's own `boundaries` list wins; falls back to
+ * DEFAULT_BOUNDARY_LIST for wrappers with no profile (dashboard.html).
+ * @param {string} [viewProfileKey]
+ * @returns {string[]}
+ */
+export function resolveBoundaryList(viewProfileKey) {
+    const profile = viewProfileKey && VIEW_PROFILES[viewProfileKey];
+    return profile?.boundaries || DEFAULT_BOUNDARY_LIST;
+}
 
 export const SYMBOL_DEFAULT = { icon: '📍', color: '#546e7a', radius: 9 };
 

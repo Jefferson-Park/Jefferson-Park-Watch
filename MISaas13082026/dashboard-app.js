@@ -35,6 +35,8 @@ import {
   CES_RAMPS,
   BHUWC_GEOJSON_URL,
   UVI_RAMPS,
+  BOUNDARY_REGISTRY,
+  resolveBoundaryList,
   WOSIP_LABELS,
   SLO_BOUNDARY_COLORS,
   UNNC_BOUNDARY_COLORS,
@@ -52,6 +54,7 @@ import {
   getFiscalYearFromRow,
   VIEW_PROFILES,
   resolveCommitteeSlugsForGroups,
+  CARTO_API_KEY,
 } from './config.js';
 
 import { submitPublicConcern, validateSubmissionPhoto } from './public-submission-service.js';
@@ -213,8 +216,18 @@ let _parcelsLayer = null;      // L.tileLayer for LA County Assessor parcel tile
 let _parcelLabelsLayer = null; // L.layerGroup of house-number labels drawn over the parcel tiles — see loadParcelLabels() below (ported from admin-app.js, 2026-07-26)
 let _parcelsActive = false;
 const BASEMAP_PROVIDERS = {
-  clean:     'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+  clean:     `https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=${CARTO_API_KEY}`,
   satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  // (2026-08-23) Sun's request — real OpenStreetMap tiles, for place names
+  // (parks, businesses, landmarks) the CartoDB Positron 'clean' basemap
+  // renders much more sparsely by design (its whole point is a quiet,
+  // low-density canvas for the data layers on top). Standard public OSM
+  // tile server — usage-policy note: osm.org's own tile server asks that
+  // apps with meaningful traffic not hit it directly long-term (see
+  // operations.osmfoundation.org/policies/tiles/); fine for this civic
+  // app's likely traffic today, but if usage grows, swap this URL for a
+  // paid/dedicated OSM tile provider rather than raw tile.openstreetmap.org.
+  osm:       'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
 };
 // Single Fused Map Cache ArcGIS tile service — confirmed live at
 // LACounty_Cache/LACounty_Parcel (same MapServer as config.js's
@@ -1266,48 +1279,108 @@ function buildSloSheet(props) {
   `;
 }
 
-async function toggleSloBoundary() {
-  _sloActive = !_sloActive;
-  const btn = document.querySelector('.boundary-btn[data-boundary="slo"]');
-  btn?.classList.toggle('active', _sloActive);
+// ============================================================================
+// (2026-08-23) Generic outline-boundary toggle — replaces what used to be
+// four near-identical functions (toggleSloBoundary, toggleUnncBoundary,
+// toggleCouncilDistrictsBoundary, toggleNeighborhoodCouncilsBoundary).
+// Those four only ever differed in: which RPC boundaryType to fetch, which
+// property is the label, which color-override table to use, and (for SLO
+// only) a custom popup builder instead of the generic property dump — all
+// of which now live in BOUNDARY_REGISTRY (config.js) instead of being
+// copy-pasted across four function bodies. TES/CES/BHUWC are NOT part of
+// this — they keep their own dedicated toggle functions further down/above,
+// since each has real distinct behavior (TES's sub-mode row, BHUWC's
+// custom tooltip) not worth flattening into this generic path.
+//
+// Each outline boundary still gets its own persistent L.layerGroup and
+// active-flag variable (_sloLayer/_sloActive, _unncBoundaryLayer/
+// _unncBoundaryActive, etc.) — NOT renamed/consolidated into a single
+// object, because applyOrgGeofence() and other code reference those exact
+// variable names directly. The three helpers below are just lookup
+// indirection so this one function can reach the right variable for a
+// given boundary id without an if/else chain inside the toggle itself.
+// ============================================================================
 
-  if (!_sloActive) { _map.removeLayer(_sloLayer); return; }
+function _outlineBoundaryLayerFor(id) {
+  switch (id) {
+    case 'slo': return _sloLayer;
+    case 'unnc': return _unncBoundaryLayer;
+    case 'council-districts': return _councilDistrictsLayer;
+    case 'neighborhood-councils': return _neighborhoodCouncilsLayer;
+    default: return null;
+  }
+}
+function _outlineBoundaryActiveFor(id) {
+  switch (id) {
+    case 'slo': return _sloActive;
+    case 'unnc': return _unncBoundaryActive;
+    case 'council-districts': return _councilDistrictsActive;
+    case 'neighborhood-councils': return _neighborhoodCouncilsActive;
+    default: return false;
+  }
+}
+function _setOutlineBoundaryActive(id, val) {
+  switch (id) {
+    case 'slo': _sloActive = val; break;
+    case 'unnc': _unncBoundaryActive = val; break;
+    case 'council-districts': _councilDistrictsActive = val; break;
+    case 'neighborhood-councils': _neighborhoodCouncilsActive = val; break;
+  }
+}
 
-  _sloLayer.addTo(_map);
-  if (_sloLayer.getLayers().length === 0) {
-    const geojson = await _fetchBoundaryGeoJSON('slo');
-    if (!geojson) { alert('Could not load SLO boundary data.'); _sloActive = false; btn?.classList.remove('active'); _map.removeLayer(_sloLayer); return; }
-    _geoEngine.renderBoundaryGeoJSON(geojson, _sloLayer, {
-      colorOverrides: SLO_BOUNDARY_COLORS,
-      labelField: 'slo_name',
-      popupBuilder: buildSloSheet,
+// Resolves BOUNDARY_REGISTRY's usePopupBuilder (a string, since config.js
+// can't hold a reference to a function defined in this file) to the real
+// function. SLO is currently the only outline boundary using this — add
+// new entries here if another boundary's registry entry sets
+// usePopupBuilder to something other than 'buildSloSheet'.
+const _POPUP_BUILDERS_BY_NAME = { buildSloSheet };
+
+async function toggleOutlineBoundary(id) {
+  const entry = BOUNDARY_REGISTRY[id];
+  if (!entry || entry.kind !== 'outline') { console.warn('[dashboard] toggleOutlineBoundary called with a non-outline id:', id); return; }
+
+  const active = !_outlineBoundaryActiveFor(id);
+  _setOutlineBoundaryActive(id, active);
+  const btn = document.querySelector(`.boundary-btn[data-boundary="${id}"]`);
+  btn?.classList.toggle('active', active);
+
+  const layer = _outlineBoundaryLayerFor(id);
+  if (!layer) { console.warn('[dashboard] no layer group registered for boundary id:', id); return; }
+
+  if (!active) { _map.removeLayer(layer); return; }
+
+  layer.addTo(_map);
+  if (layer.getLayers().length === 0) {
+    const geojson = await _fetchBoundaryGeoJSON(entry.boundaryType);
+    if (!geojson) {
+      alert(`Could not load ${entry.label} boundary data.`);
+      _setOutlineBoundaryActive(id, false);
+      btn?.classList.remove('active');
+      _map.removeLayer(layer);
+      return;
+    }
+    // (2026-07-08, carried over from the original per-boundary functions)
+    // council-districts/neighborhood-councils have labelFieldConfirmed:
+    // false in the registry — their 'name' labelField guess was never
+    // actually verified against real fetched data. Logs every toggle-on,
+    // not just once, matching the original functions' behavior exactly.
+    if (entry.labelFieldConfirmed === false) {
+      console.log(`[${entry.label}] sample properties (confirm labelField matches):`, geojson.features?.[0]?.properties);
+    }
+    _geoEngine.renderBoundaryGeoJSON(geojson, layer, {
+      colorOverrides: entry.colorOverrides,
+      labelField: entry.labelField,
+      popupBuilder: entry.usePopupBuilder ? _POPUP_BUILDERS_BY_NAME[entry.usePopupBuilder] : null,
+      showAllProperties: !entry.usePopupBuilder, // SLO uses its own sheet builder instead; everyone else falls through to the generic property dump, matching each one's pre-existing behavior exactly
       popupTrigger: 'sheet',
       onOpenSheet: showInfoSheet,
+      excludeFields: entry.excludeFields || [],
+      strokeColor: entry.strokeColor, // undefined -> renderBoundaryGeoJSON's own default (#D8D3C7), same as every boundary before this session
+      strokeWeight: entry.strokeWeight,
     });
   }
 }
 
-async function toggleUnncBoundary() {
-  _unncBoundaryActive = !_unncBoundaryActive;
-  const btn = document.querySelector('.boundary-btn[data-boundary="unnc"]');
-  btn?.classList.toggle('active', _unncBoundaryActive);
-
-  if (!_unncBoundaryActive) { _map.removeLayer(_unncBoundaryLayer); return; }
-
-  _unncBoundaryLayer.addTo(_map);
-  if (_unncBoundaryLayer.getLayers().length === 0) {
-    const geojson = await _fetchBoundaryGeoJSON('unnc');
-    if (!geojson) { alert('Could not load UNNC boundary data.'); _unncBoundaryActive = false; btn?.classList.remove('active'); _map.removeLayer(_unncBoundaryLayer); return; }
-    _geoEngine.renderBoundaryGeoJSON(geojson, _unncBoundaryLayer, {
-      colorOverrides: UNNC_BOUNDARY_COLORS,
-      labelField: 'name',
-      showAllProperties: true,
-      popupTrigger: 'sheet',
-      onOpenSheet: showInfoSheet,
-      excludeFields: ['boundary_type'],
-    });
-  }
-}
 
 // (2026-08-20) Greening Master Plans boundary (GMP.html). Static Storage
 // file like TES/CES, NOT the get_boundaries_as_geojson RPC that SLO/UNNC/
@@ -1354,56 +1427,12 @@ async function toggleBhuwcBoundary() {
   }
 }
 
-// Citywide reference boundaries (2026-07-08). labelField: 'name' is a first
-// guess, same as admin-app.js's toggle handlers for these two — check the
-// console.log right after fetch against your actual imported data and
-// adjust if the real property name differs. showAllProperties:true means
-// the info sheet still shows every field either way while that's unconfirmed.
-async function toggleCouncilDistrictsBoundary() {
-  _councilDistrictsActive = !_councilDistrictsActive;
-  const btn = document.querySelector('.boundary-btn[data-boundary="council-districts"]');
-  btn?.classList.toggle('active', _councilDistrictsActive);
-
-  if (!_councilDistrictsActive) { _map.removeLayer(_councilDistrictsLayer); return; }
-
-  _councilDistrictsLayer.addTo(_map);
-  if (_councilDistrictsLayer.getLayers().length === 0) {
-    const geojson = await _fetchBoundaryGeoJSON('council_districts');
-    if (!geojson) { alert('Could not load Council Districts boundary data.'); _councilDistrictsActive = false; btn?.classList.remove('active'); _map.removeLayer(_councilDistrictsLayer); return; }
-    console.log('[Council Districts] sample properties (confirm labelField matches):', geojson.features?.[0]?.properties);
-    _geoEngine.renderBoundaryGeoJSON(geojson, _councilDistrictsLayer, {
-      colorOverrides: COUNCIL_DISTRICT_COLORS,
-      labelField: 'name', // ← confirm against the console.log above
-      showAllProperties: true,
-      popupTrigger: 'sheet',
-      onOpenSheet: showInfoSheet,
-      excludeFields: ['boundary_type'],
-    });
-  }
-}
-
-async function toggleNeighborhoodCouncilsBoundary() {
-  _neighborhoodCouncilsActive = !_neighborhoodCouncilsActive;
-  const btn = document.querySelector('.boundary-btn[data-boundary="neighborhood-councils"]');
-  btn?.classList.toggle('active', _neighborhoodCouncilsActive);
-
-  if (!_neighborhoodCouncilsActive) { _map.removeLayer(_neighborhoodCouncilsLayer); return; }
-
-  _neighborhoodCouncilsLayer.addTo(_map);
-  if (_neighborhoodCouncilsLayer.getLayers().length === 0) {
-    const geojson = await _fetchBoundaryGeoJSON('neighborhood_councils');
-    if (!geojson) { alert('Could not load Neighborhood Councils boundary data.'); _neighborhoodCouncilsActive = false; btn?.classList.remove('active'); _map.removeLayer(_neighborhoodCouncilsLayer); return; }
-    console.log('[Neighborhood Councils] sample properties (confirm labelField matches):', geojson.features?.[0]?.properties);
-    _geoEngine.renderBoundaryGeoJSON(geojson, _neighborhoodCouncilsLayer, {
-      colorOverrides: NEIGHBORHOOD_COUNCIL_COLORS,
-      labelField: 'name', // ← confirm against the console.log above
-      showAllProperties: true,
-      popupTrigger: 'sheet',
-      onOpenSheet: showInfoSheet,
-      excludeFields: ['boundary_type'],
-    });
-  }
-}
+// (2026-08-23) toggleCouncilDistrictsBoundary() and
+// toggleNeighborhoodCouncilsBoundary() used to live here — both replaced
+// by the generic toggleOutlineBoundary() above, driven by
+// BOUNDARY_REGISTRY['council-districts']/['neighborhood-councils'] in
+// config.js. Behavior unchanged, including the unconfirmed-labelField
+// diagnostic console.log (see toggleOutlineBoundary's own comment).
 
 /** Builds the TES sub-mode pill row (TES Score / Canopy Gap / Heat / Priority / HOLC). */
 function buildTesModeRow() {
@@ -1965,19 +1994,41 @@ async function toggleTesLayer() {
   await _renderTes();
 }
 
+// (2026-08-23) Generates the boundary button row from BOUNDARY_REGISTRY +
+// a wrapper's boundary id list, replacing hand-typed <button> elements
+// that used to be duplicated across all four wrapper HTML files. Adding/
+// removing a boundary from a wrapper is now a one-line edit to that
+// wrapper's `boundaries` array in VIEW_PROFILES (config.js) — no HTML
+// file needs touching. containerId must point to an empty element (the
+// wrapper HTML now just has `<div id="boundary-buttons-row">` where the
+// old hand-typed buttons used to sit).
+function renderBoundaryButtons(containerId, boundaryIds) {
+  const container = document.getElementById(containerId);
+  if (!container) { console.warn('[dashboard] boundary buttons container not found:', containerId); return; }
+  container.innerHTML = boundaryIds.map(id => {
+    const entry = BOUNDARY_REGISTRY[id];
+    if (!entry) { console.warn('[dashboard] boundary id not in BOUNDARY_REGISTRY, skipped:', id); return ''; }
+    return `<button type="button" class="tier-btn boundary-btn" data-boundary="${esc(id)}" title="${esc(entry.tooltip)}">${esc(entry.label)}</button>`;
+  }).join('');
+}
+
 function initBoundaryUI() {
   document.querySelectorAll('.basemap-btn').forEach(btn => {
     btn.addEventListener('click', () => setBasemap(btn.dataset.basemap));
   });
   document.getElementById('parcels-toggle-btn')?.addEventListener('click', toggleParcelsLayer);
 
-  document.querySelector('.boundary-btn[data-boundary="slo"]')?.addEventListener('click', toggleSloBoundary);
-  document.querySelector('.boundary-btn[data-boundary="unnc"]')?.addEventListener('click', toggleUnncBoundary);
-  document.querySelector('.boundary-btn[data-boundary="tes"]')?.addEventListener('click', toggleTesLayer);
-  document.querySelector('.boundary-btn[data-boundary="ces"]')?.addEventListener('click', toggleCesLayer);
-  document.querySelector('.boundary-btn[data-boundary="bhuwc"]')?.addEventListener('click', toggleBhuwcBoundary);
-  document.querySelector('.boundary-btn[data-boundary="council-districts"]')?.addEventListener('click', toggleCouncilDistrictsBoundary);
-  document.querySelector('.boundary-btn[data-boundary="neighborhood-councils"]')?.addEventListener('click', toggleNeighborhoodCouncilsBoundary);
+  // (2026-08-23) Registry-driven: which boundaries this wrapper shows comes
+  // from VIEW_PROFILES[_activeViewProfileKey].boundaries (or
+  // DEFAULT_BOUNDARY_LIST for dashboard.html, which has no named profile —
+  // see resolveBoundaryList()'s own fallback in config.js). Buttons are
+  // generated, then wired generically — no more one addEventListener call
+  // per boundary id hardcoded here.
+  const boundaryIds = resolveBoundaryList(_activeViewProfileKey);
+  renderBoundaryButtons('boundary-buttons-row', boundaryIds);
+  boundaryIds.forEach(id => {
+    document.querySelector(`.boundary-btn[data-boundary="${id}"]`)?.addEventListener('click', () => _fireBoundaryToggle(id));
+  });
 
   buildTesModeRow();
 }
@@ -4147,23 +4198,27 @@ function setLoading(on) {
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 
-// Maps a VIEW_PROFILE's defaultBoundary string to the toggle function that
-// already exists for it — reusing the same functions the boundary buttons
-// call, not new activation logic, so this can't drift out of sync with them.
-const _BOUNDARY_TOGGLE_FNS = {
-  'slo': toggleSloBoundary,
-  'unnc': toggleUnncBoundary,
-  'tes': toggleTesLayer,
-  'ces': toggleCesLayer,
-  'bhuwc': toggleBhuwcBoundary,
-  'council-districts': toggleCouncilDistrictsBoundary,
-  'neighborhood-councils': toggleNeighborhoodCouncilsBoundary,
-};
+// (2026-08-23) Replaces the old _BOUNDARY_TOGGLE_FNS lookup table — that
+// table only ever mapped a boundary id to a toggle function, which is
+// exactly what BOUNDARY_REGISTRY[id].toggleFnName already encodes now.
+// Kept as one small dispatcher (rather than inlining this everywhere) so
+// there's exactly one place that resolves "which id -> which function,"
+// used identically by both initBoundaryUI()'s click listeners and boot()'s
+// default-boundaries loop below — can't drift out of sync with either.
+const _TOGGLE_FN_BY_NAME = { toggleTesLayer, toggleCesLayer, toggleBhuwcBoundary };
+function _fireBoundaryToggle(id) {
+  const entry = BOUNDARY_REGISTRY[id];
+  if (!entry) { console.warn('[dashboard] no BOUNDARY_REGISTRY entry for boundary id:', id); return; }
+  if (entry.toggleFnName === 'toggleOutlineBoundary') return toggleOutlineBoundary(id);
+  const fn = _TOGGLE_FN_BY_NAME[entry.toggleFnName];
+  if (fn) return fn();
+  console.warn('[dashboard] no toggle function found for name:', entry.toggleFnName);
+}
 
 async function boot() {
   // Must run before initBoundaryUI() (which calls buildTesModeRow() and
   // reads _tesMode to mark the initially-active mode button) and before the
-  // defaultBoundary toggle further down (which calls toggleTesLayer() ->
+  // defaultBoundaries toggle further down (which may call toggleTesLayer() ->
   // _renderTes(), also reading _tesMode). If a profile doesn't set
   // defaultTesMode, _tesMode keeps its 'tes' (TES Score) module-level
   // default from where it's declared above.
@@ -4191,10 +4246,12 @@ async function boot() {
   await loadRecords(_activeOrgSlug);
   applyOrgGeofence(_activeOrgSlug); // don't block first paint on the boundary fetch
 
-  if (_viewProfile?.defaultBoundary) {
-    const toggleFn = _BOUNDARY_TOGGLE_FNS[_viewProfile.defaultBoundary];
-    if (toggleFn) toggleFn();
-    else console.warn('[dashboard] VIEW_PROFILE defaultBoundary has no matching toggle function:', _viewProfile.defaultBoundary);
+  // (2026-08-23) defaultBoundaries is now a LIST (was a single
+  // defaultBoundary string) — a profile can auto-load more than one
+  // boundary on boot. dashboard.html has no _viewProfile at all, so this
+  // correctly resolves to [] (no auto-loaded boundary), same as before.
+  for (const id of _viewProfile?.defaultBoundaries || []) {
+    _fireBoundaryToggle(id);
   }
 }
 
